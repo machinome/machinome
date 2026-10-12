@@ -5,12 +5,14 @@ on: [push]
 permissions:
   contents: read
 
+# Every job calls the repository's Makefile at the root (change
+# `release-tooling`): the commands a contributor runs are the commands CI
+# runs. The setup steps (uv and the locked workspace, Node, OpenSCAD,
+# Chromium) stay the workflow's.
+
 jobs:
   lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/machinome
 
     steps:
       - uses: actions/checkout@v4
@@ -33,20 +35,14 @@ jobs:
           uv sync --locked --python 3.12
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
-      - name: Black
+      # black and flake8 over every package's sources, both always run.
+      - name: Lint
         continue-on-error: true
-        run: black --check machinome tests ../machinome-*/machinome
-
-      - name: Flake8
-        continue-on-error: true
-        run: flake8 --max-line-length=89 machinome tests ../machinome-*/machinome
+        run: make lint
 
   test:
     runs-on: ubuntu-latest
     needs: lint
-    defaults:
-      run:
-        working-directory: packages/machinome
 
     steps:
       - uses: actions/checkout@v4
@@ -74,67 +70,32 @@ jobs:
           uv sync --locked --python 3.12
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
-      # The browser viewer's widget is a member of the npm workspace (change
-      # `join-viewer`): one install at the root, its typecheck and tests,
-      # and the bundle the suite and the viewer's tests photograph through.
-      # The widget is named, so the movie's Node suite, the second member,
-      # does not run here before Chromium (change `join-movie`).
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Build and test the widget
-        working-directory: .
-        run: |
-          npm ci --no-audit --no-fund
-          npm run typecheck --workspace packages/machinome-viewer/machinome/viewer/web/widget
-          npm test --workspace packages/machinome-viewer/machinome/viewer/web/widget
-          npm run build --workspace packages/machinome-viewer/machinome/viewer/web/widget
+      # The npm workspace from its lock at the root and the viewer's bundle,
+      # which the suite and the viewer's tests photograph through.
+      - name: Build the bundles
+        run: make widget
 
-      - name: Run tests
-        run: |
-          coverage run --source machinome -m pytest
-          coverage report -m
+      # The viewer's browser tests need Chromium for the Playwright the lock
+      # installs, with the system libraries it needs.
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
 
-      # The mechanics helpers keep their tests in their own directory
-      # (change `join-mechanics`); the workspace synced above installs them.
-      - name: Run the mechanics package's tests
-        working-directory: packages/machinome-mechanics
-        run: python -m pytest
-
-      # The viewer keeps its tests in its own directory; its browser tests
-      # need Chromium for the Playwright the lock installs.
-      - name: Run the viewer package's tests
-        working-directory: packages/machinome-viewer
-        run: |
-          playwright install --with-deps chromium
-          python -m pytest
-
-      # The movie package keeps its tests in its own directory (change
-      # `join-movie`): the Python tests, and the Node suite's projects that
-      # open no browser, run no FFmpeg and write no film.
-      - name: Run the movie package's tests
-        working-directory: packages/machinome-movie
-        run: python -m pytest
-
-      - name: Run the movie package's Node tests
-        working-directory: .
-        run: npm test --workspace packages/machinome-movie/machinome/movie/js -- --project pure --project stage
-
-      # The skills package keeps its tests in its own directory (change
-      # `join-skills`); the workspace synced above installs it.
-      - name: Run the skills package's tests
-        working-directory: packages/machinome-skills
-        run: python -m pytest
+      # Every package with tests of its own, one after another, stopping at
+      # the first failure: the core's suite, the mechanics', the skills',
+      # the viewer's widget and Python tests, the movie's Python tests and
+      # the Node projects that open no browser.
+      - name: Run the tests
+        run: make test
 
   browser-snapshot:
     runs-on: ubuntu-latest
     needs: lint
-    defaults:
-      run:
-        working-directory: packages/machinome
 
     steps:
       - uses: actions/checkout@v4
@@ -171,14 +132,15 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Build the viewer and install Chromium
-        working-directory: .
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build --workspaces --if-present
-          playwright install --with-deps chromium
+      - name: Build the bundles
+        run: make widget
 
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
+
+      # No target runs the real browser's capture: it is this job's own.
       - name: Run real browser snapshot test
+        working-directory: packages/machinome
         env:
           MACHINOME_WEB_SNAPSHOT_E2E: "1"
         run: >-
@@ -187,30 +149,25 @@ jobs:
 
   docs:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/machinome
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10
         with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: packages/machinome/docs/requirements.txt
+          version: "0.11.8"
+          enable-cache: true
+          cache-dependency-glob: packages/machinome/docs/requirements.txt
 
-      # The manual builds from docs/requirements.txt alone: Sphinx, its
-      # theme and the published machinome-viewer, whose widget completes
-      # the committed tutorial exports. Nothing is exported here; the real
-      # machines are shown on machinome.org. Kept in step with
-      # .readthedocs.yaml, and pinned by tests/test_docs_exports.py.
-      - name: Install docs requirements
-        run: pip install -r docs/requirements.txt
-
-      - name: Build docs (fail on warnings)
-        run: python -m sphinx -b html -W docs docs/_build
+      # The manual builds from docs/requirements.txt alone, in an
+      # environment of its own: Sphinx, its theme and the published
+      # machinome-viewer, whose widget completes the committed tutorial
+      # exports. Nothing is exported here; the real machines are shown on
+      # machinome.org. Kept in step with .readthedocs.yaml, and pinned by
+      # tests/test_docs_exports.py.
+      - name: Build the manual (fail on warnings)
+        run: make docs
 
   dist:
     runs-on: ubuntu-latest
@@ -219,25 +176,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10
         with:
-          python-version: "3.12"
+          version: "0.11.8"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
 
-      - name: Install build and twine
-        run: pip install build twine
+      - name: Sync the workspace
+        working-directory: .
+        run: |
+          uv sync --locked --python 3.12
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       # The viewer's source distribution builds its bundle with npm (change
-      # `join-viewer`).
+      # `join-viewer`), and the movie's smoke installs its Node side (change
+      # `join-movie`).
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # Builds every package of the repository, checks the archives and
-      # smokes them in a throwaway environment outside the checkout.
-      # Uploads nothing.
+      # Builds every package of the repository from the tree and from a
+      # clean copy of its tracked files, checks the archives and smokes them
+      # in a throwaway environment outside the checkout. Keeps nothing and
+      # uploads nothing.
       - name: Check the distributions
-        run: scripts/check-dist
+        run: make check
 
   build:
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
@@ -246,43 +210,39 @@ jobs:
     permissions:
       contents: write
 
-    env:
-      MACHINOME_VERSION: "${{ github.ref_name }}"
-    defaults:
-      run:
-        working-directory: packages/machinome
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10
         with:
-          python-version: "3.12"
+          version: "0.11.8"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
 
-      - name: Install packaging
-        run: pip install packaging
-
-      - name: Detect package version
-        id: package_version
+      - name: Sync the workspace
+        working-directory: .
         run: |
-          from os import getenv as env
-          from packaging.version import parse
-          machinome_version = str(parse(env("MACHINOME_VERSION")))
-          print(f"version={machinome_version}", file=open(env("GITHUB_OUTPUT"), "a"), flush=True)
-        shell: python
+          uv sync --locked --python 3.12
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
-      - name: Install requirements
-        run: pip install build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Build python package
+      - name: The tag names the set's version
+        run: test "$GITHUB_REF_NAME" = "v$(make -s version)"
+
+      # The release's archives, built from the tagged commit, checked and
+      # smoked, kept in dist/vX.Y.Z. Nothing is uploaded to a package
+      # index: that is the pilot's `make upload`.
+      - name: Build the release
         run: make dist
 
       - name: Create release
-        if: steps.package_version.outputs.version != null
         run: |
-          gh release create "$MACHINOME_VERSION" ./dist/* \
-            --title "${{ steps.package_version.outputs.version }}" \
+          gh release create "$GITHUB_REF_NAME" "dist/$GITHUB_REF_NAME"/* \
+            --title "${GITHUB_REF_NAME#v}" \
             --repo="$GITHUB_REPOSITORY"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

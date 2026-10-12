@@ -147,6 +147,18 @@ Unreleased
   directory; its documents are part of this manual. Change ``join-movie``
   (ADR-191).
 
+* **One command per step.** A ``Makefile`` at the repository root runs the
+  repository's steps: ``make sync``, ``make test [PKG=<package>]``,
+  ``make lint``, ``make docs``, ``make widget``, ``make check``, and for a
+  release ``make bump VERSION=X.Y.Z``, ``make dist`` and ``make upload``;
+  ``make`` alone lists them. The set's version is declared once, as
+  ``current_version`` of ``.bumpversion.cfg``, and ``make bump`` moves every
+  copy and every lock without committing or tagging.
+  ``scripts/check-dist --out dist/vX.Y.Z`` keeps the archives it built,
+  checked and smoked, the ones ``make upload`` uploads. CI runs the same
+  targets; the framework's own ``Makefile`` is gone. Change
+  ``release-tooling`` (ADR-192).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

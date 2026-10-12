@@ -195,3 +195,39 @@ noise (`vet -h` 56 and 58 ms, `build -h` 231 and 244 ms); an unknown name
 31 ms of it the group's read and the rest unexplained; the fake movie
 command 112 ms. Evidence:
 `packages/machinome/openspec/changes/archive/2026-10-12-commands-contributed-by-packages/evidence.md`.
+
+2. `release-tooling`. **Done** (12 October 2026). The third cycle of the
+road, by the pilot's decisions 2 and 10 of 12 October 2026. Branch
+`v0.9-joins-release-tooling`, planning commit afef5c96 on 462f7119 (after
+`join-movie` and the correction 675edac4 of `scripts/check-dist`'s brace),
+ratified by the orchestrator's review with every recommendation of its Open
+Questions accepted. ADR-192, the repository's steps are the targets of one
+Makefile at its root, accepted; ADR-182 and ADR-183 amended. A root
+`Makefile` with the targets `help` (the default), `version`, `bump
+VERSION=`, `sync`, `test [PKG=]`, `lint`, `docs`, `widget`, `dist`, `upload`,
+`check` and `clean`, declaring the sixteen packages (`PACKAGES`) and the five
+with tests of their own (`TESTED`), which the layout gate holds to the tree;
+the framework's own `Makefile` gone. The set's version is declared once, as
+`current_version` of `.bumpversion.cfg`, whose `commit` and `tag` lines are
+gone; `make bump` moves every copy, both npm locks and `uv.lock`, and never
+commits or tags (proved on a copy: 25 files to 0.9.0, no commit, no tag).
+`scripts/check-dist --out DIR` keeps the archives it proved; `make dist`
+builds them into `dist/vX.Y.Z` from a copy of the commit, refusing a tree
+that differs from it; `make upload` alone runs twine. CI's jobs call the
+targets. By the orchestrator's decision at the checkpoint,
+`packages/machinome/.gitignore` ignores `/_build.lock`, the builder's lock
+the core's suite leaves beside the package directory, which on a clone made
+`make dist`'s guard refuse after `make test` (which test leaves it was not
+identified). Counts: `make test` on the bench, the core 4909 passed and 9
+skipped (the line's 4894 and this change's fifteen tests), the mechanics
+204, the skills 47, the viewer's widget 1715 tests and its Python 252 passed
+(2 skipped), the movie 322 and its Node `pure` and `stage` 329, in 21 min 29
+s; `make check`, 32 archives per run, 32 PASSED each, the core's sdist 1146
+entries from the tree and 1083 from the clean copy, 7 min 15 s; the dry
+release rehearsal on a one-commit copy, `make sync`, `make test
+PKG=machinome` (4909 passed, 9 skipped), `make docs` and `make dist`: 32
+archives in `dist/v0.8.1`, `twine check --strict` 32 PASSED, no entry under a
+`_build` directory, `make dist` again refused, `make clean` keeping `.venv/`,
+`node_modules/` and `dist/v0.8.1/`. Nothing uploaded, tagged or pushed.
+Evidence:
+`packages/machinome/openspec/changes/archive/2026-10-12-release-tooling/evidence.md`.

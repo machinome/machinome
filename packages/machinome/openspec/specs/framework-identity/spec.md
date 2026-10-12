@@ -228,7 +228,8 @@ and `.gitignore`, the links `LICENSE` and `LICENSES`, its package directory
 the framework's manual's.
 
 Every distribution of the set but `machinome-mechanics` SHALL carry one
-version, the framework's, `machinome-viewer` included, whose Python package's
+version, the set's, which `current_version` of the root's `.bumpversion.cfg`
+declares, `machinome-viewer` included, whose Python package's
 `__version__`, widget's `package.json` and entry in the root's npm lock SHALL
 state it too, and every requirement between two of them SHALL be
 the compatible-release pin `~=<version>`, in both directions, between the
@@ -239,19 +240,20 @@ framework and an extension package and between two extension packages alike
 changelog's newest release section and of the manual's `mechanics_version`,
 and a requirement between it and the framework SHALL be a floor (`>=`) that
 the required distribution's version in the repository satisfies. The version
-SHALL be bumped from one configuration at the repository root,
-`.bumpversion.cfg`, naming every manifest's version but that of
+SHALL be bumped by the root `Makefile`'s `make bump` from that
+configuration, which names every manifest's version but that of
 `machinome-mechanics`, which it SHALL NOT name, every pin between the
-distributions of the set and the files that restate the framework's version,
-the viewer's `__init__.py` and its widget's `package.json` among them; the
-root's npm lock SHALL be brought to it by npm.
+distributions of the set and the files that restate the set's version, the
+viewer's `__init__.py` and its widget's `package.json` among them; the
+root's npm lock SHALL be brought to it by npm and `uv.lock` by uv.
 
 The repository root SHALL hold the repository's record and tooling and no
 distribution of its own: the licence texts (`LICENSE`, `LICENSES/`), the
 contributor guide (`CONTRIBUTING.rst`), the AI-use statement (`AI-USE.md`),
 the history (`HISTORY.rst`), `README.md`, which links every directory under
 `packages/`, `context7.json`, the CI workflow under `.github/workflows/`,
-`.bumpversion.cfg`, `scripts/check-dist`, the record of the campaigns that
+`.bumpversion.cfg`, the `Makefile` of the repository's steps,
+`scripts/check-dist`, the record of the campaigns that
 span packages under `workflow/`, a `pyproject.toml` that declares a uv
 workspace whose members are `packages/*`, naming every member as a workspace
 source, with its `uv.lock`, and no `[project]` table, and a private
@@ -281,8 +283,8 @@ seam that resolves it and a node package through its address, rendering one
 part on its kernel where its external program is available and building it as
 far as the program allows where it is not, and upload nothing; the viewer's
 source distribution builds its bundle with npm, which the script SHALL require
-on the PATH before it builds; the CI SHALL run it in a `dist` job after its
-`test` and `docs` jobs, with Node installed.
+on the PATH before it builds; the CI SHALL run it through `make check` in a
+`dist` job after its `test` and `docs` jobs, with Node installed.
 
 #### Scenario: A contributor clones the repository
 
@@ -332,8 +334,8 @@ on the PATH before it builds; the CI SHALL run it in a `dist` job after its
 
 - **WHEN** the manifests under `packages/` and the root's `.bumpversion.cfg`
   are read
-- **THEN** every manifest's version but `machinome-mechanics`'s and
-  `.bumpversion.cfg`'s `current_version` equal the framework's, every
+- **THEN** every manifest's version but `machinome-mechanics`'s equals
+  `.bumpversion.cfg`'s `current_version`, the framework's included, every
   requirement between two distributions of the set is `~=` that version,
   `.bumpversion.cfg` names every manifest but `machinome-mechanics`'s, the
   viewer's `__init__.py`, its widget's `package.json` and the root npm lock's

@@ -7,8 +7,9 @@ The repository `machinome/machinome` holds each of its distributions in a
 directory under `packages/` named as the distribution; the framework is
 `packages/machinome/`. The root holds the repository's record and tooling:
 the one licence, the contributor guide, the AI-use statement, the history,
-the CI, a uv workspace with its lock, `scripts/check-dist`, `context7.json`
-and the record of the campaigns that span packages. The package directory
+the CI, a uv workspace with its lock, the `Makefile` of the repository's
+steps, `scripts/check-dist`, `context7.json` and the record of the campaigns
+that span packages. The package directory
 reaches the five shared files through relative symbolic links, which
 setuptools carries into the archives as regular files (change
 `monorepo-layout`, ADR-182). The framework's extension packages are
@@ -40,7 +41,10 @@ record, its specification the framework's `skills-distribution` (change
 decision log and working record, whose JavaScript directory is the npm
 workspace's second member, its direct dependencies installed beside it by the
 root's `.npmrc`, with a lock of its own for an installed copy (change
-`join-movie`, ADR-191).
+`join-movie`, ADR-191). The repository's steps are the targets of the root
+`Makefile`, which declares every package and the packages with tests of their
+own, and the CI's jobs call those targets (change `release-tooling`,
+ADR-192); the framework keeps no Makefile of its own.
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -70,11 +74,23 @@ SHARED = ('LICENSE', 'LICENSES', 'HISTORY.rst', 'CONTRIBUTING.rst',
 #: repository root.
 FRAMEWORK_ENTRIES = (
     'machinome', 'tests', 'docs', 'openspec', 'tools', 'spike', 'README.rst',
-    'CREDITS.md', 'MANIFEST.in', 'setup.cfg', 'tox.ini', 'Makefile',
+    'CREDITS.md', 'MANIFEST.in', 'setup.cfg', 'tox.ini',
     'requirements.txt', 'requirements_dev.txt', '.readthedocs.yaml',
 )
 
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
+
+#: The repository's steps, one target each (change `release-tooling`).
+MAKEFILE = REPOSITORY / 'Makefile'
+
+#: The Makefile's targets with a help line, `help` the default.
+TARGETS = ('help', 'version', 'bump', 'sync', 'test', 'lint', 'docs',
+           'widget', 'dist', 'upload', 'check', 'clean')
+
+#: A rule of the Makefile: its targets, its prerequisites, its recipe.
+#: A target spelled by a function (`$(addprefix ...)`) is not read.
+RULE = re.compile(r'^([^\s:#=.$][^:#=]*):(?![=:])([^\n#]*)(?:#[^\n]*)?\n'
+                  r'((?:\t[^\n]*(?:\n|$))*)', flags=re.M)
 
 #: The framework's extension packages, by directory: the module each
 #: ships, by its address, and the core's extra that installs it.
@@ -178,6 +194,51 @@ def relative(target):
 def package_directories():
     return sorted(path for path in (REPOSITORY / 'packages').iterdir()
                   if path.is_dir())
+
+
+def makefile():
+    """The root Makefile's text, its continued lines joined."""
+    return MAKEFILE.read_text().replace('\\\n', ' ')
+
+
+def make_variable(name):
+    """The words of a variable the Makefile assigns once, with `:=`."""
+    text = makefile()
+    found = re.findall(rf'^{re.escape(name)}\s*:=\s*(.*)$', text, flags=re.M)
+    if len(found) != 1:
+        raise AssertionError(f'the Makefile assigns {name} {len(found)} '
+                             'times with :=')
+    if re.search(rf'^{re.escape(name)}\s*[+?!]?=', text, flags=re.M):
+        raise AssertionError(f'the Makefile assigns {name} other than with :=')
+    return found[0].split()
+
+
+def make_expanded(words):
+    """The words with each leading `$(NAME)` replaced by its value."""
+    out = []
+    for word in words:
+        reference = re.fullmatch(r'\$\((\w+)\)(.*)', word)
+        if reference:
+            out += [value + reference[2]
+                    for value in make_expanded(make_variable(reference[1]))]
+        else:
+            out.append(word)
+    return out
+
+
+def make_rules():
+    """{target: (prerequisites, recipe)} of every rule the Makefile spells."""
+    rules = {}
+    for match in RULE.finditer(makefile()):
+        for target in match[1].split():
+            rules[target] = (match[2].split(), match[3])
+    return rules
+
+
+def make_targets():
+    """The targets with a help line (`target: ... ## what it does`)."""
+    return re.findall(r'^([a-z][a-z-]*):[^\n]*## ', MAKEFILE.read_text(),
+                      flags=re.M)
 
 
 def portion_files(name, address):
@@ -304,7 +365,8 @@ class TheIndexTest(unittest.TestCase):
 
 
 class TheContinuousIntegrationTest(unittest.TestCase):
-    """The workflow is the repository's; its jobs run from the package."""
+    """The workflow is the repository's; its jobs call the root Makefile's
+    targets (change `release-tooling`)."""
 
     def setUp(self):
         self.jobs = yaml.safe_load(WORKFLOW.read_text())['jobs']
@@ -315,14 +377,48 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         from tests import test_docs_exports
         self.assertEqual(test_docs_exports.WORKFLOW, WORKFLOW)
 
-    def test_every_job_runs_from_the_package_directory(self):
+    #: The targets each job calls, in order.
+    CALLS = {
+        'lint': ['make lint'],
+        'test': ['make widget', 'make test'],
+        'browser-snapshot': ['make widget'],
+        'docs': ['make docs'],
+        'dist': ['make check'],
+        'build': ['make dist'],
+    }
+
+    #: What a target runs, which no job spells itself.
+    SPELLED = {
+        'flake8': r'\bflake8\b', 'black': r'\bblack\b',
+        'sphinx': r'\bsphinx\b', 'coverage': r'\bcoverage\b',
+        'scripts/check-dist': r'scripts/check-dist', 'twine': r'\btwine\b',
+        'pip install': r'\bpip install\b', 'npm': r'\bnpm ',
+        'pytest': r'\bpytest\b',
+    }
+
+    @staticmethod
+    def calls(job):
+        return [line.strip() for step in job['steps']
+                for line in step.get('run', '').splitlines()
+                if re.match(r'make\s', line.strip())]
+
+    def test_every_job_calls_the_makefile(self):
+        self.assertEqual(sorted(self.jobs), sorted(self.CALLS))
         for name, job in self.jobs.items():
-            if name == 'dist':
-                continue
             with self.subTest(job=name):
-                directory = (job.get('defaults') or {}).get(
-                    'run', {}).get('working-directory')
-                self.assertEqual(directory, 'packages/machinome')
+                for step in job['steps']:
+                    if name == 'browser-snapshot' and step.get('env', {}).get(
+                            'MACHINOME_WEB_SNAPSHOT_E2E'):
+                        continue
+                    for command, pattern in self.SPELLED.items():
+                        self.assertIsNone(
+                            re.search(pattern, step.get('run', '')),
+                            f'the {name} job spells {command} in its step '
+                            f'{step.get("name")!r}')
+                self.assertEqual(self.calls(job), self.CALLS[name])
+                self.assertIsNone(job.get('defaults'),
+                                  f'the {name} job sets defaults for its '
+                                  'commands')
 
     def test_every_cache_path_names_a_file(self):
         for name, job in self.jobs.items():
@@ -336,23 +432,20 @@ class TheContinuousIntegrationTest(unittest.TestCase):
 
     def test_the_test_job_runs_each_product_s_tests(self):
         # A product keeps its tests in its directory; the core's suite does
-        # not collect them, so the test job runs them there
-        # (`join-mechanics`).
-        steps = self.jobs['test']['steps']
+        # not collect them, so `make test`, which the test job runs, runs
+        # every package of the Makefile's tested list (`join-mechanics`,
+        # `release-tooling`).
+        self.assertIn('make test', self.calls(self.jobs['test']))
+        tested = make_variable('TESTED')
         for product in PRODUCTS:
             with self.subTest(product=product):
-                self.assertTrue(
-                    any(step.get('working-directory')
-                        == f'packages/{product}'
-                        and 'pytest' in step.get('run', '')
-                        for step in steps),
-                    f'the test job runs no pytest from packages/{product}')
+                self.assertIn(product, tested,
+                              f'the Makefile\'s TESTED omits {product}')
 
     def test_the_dist_job_checks_the_distributions(self):
         dist = self.jobs['dist']
         self.assertEqual(sorted(dist['needs']), ['docs', 'test'])
-        runs = [step.get('run', '') for step in dist['steps']]
-        self.assertIn('scripts/check-dist', runs)
+        self.assertIn('make check', self.calls(dist))
 
     @staticmethod
     def index(steps, found, what):
@@ -361,62 +454,66 @@ class TheContinuousIntegrationTest(unittest.TestCase):
                 return number
         raise AssertionError(f'the job has no step that {what}')
 
-    def test_the_test_job_builds_and_tests_the_widget_before_the_suite(self):
-        # The widget is the npm workspace's member: one install at the root,
-        # its typecheck, tests and bundle before the suite photographs
-        # through it, and Chromium before the viewer's tests (`join-viewer`).
-        # The widget's step names it, so the movie's Node suite, which needs
-        # Chromium for its browser tests, does not run there (`join-movie`).
+    def test_the_test_job_builds_the_bundles_and_chromium_before_the_tests(
+            self):
+        # The widget is the npm workspace's member: `make widget` installs
+        # the workspace at the root and builds its bundle, after Node is set
+        # up; Chromium after the workspace's sync; both before `make test`
+        # (`join-viewer`, `release-tooling`). The Makefile's viewer rule
+        # type-checks, tests and builds the widget, by name, so the movie's
+        # Node suite does not run there, before the viewer's pytest.
         steps = self.jobs['test']['steps']
         node = self.index(
             steps, lambda step: step.get('uses', '').startswith(
                 'actions/setup-node@'), 'sets up Node')
-        suite = self.index(steps, lambda step: step.get('name') == 'Run tests',
-                           'is named "Run tests"')
-        widget = next(iter(NODE_MEMBERS))
-        for command in ('npm ci', f'npm run typecheck --workspace {widget}',
-                        f'npm test --workspace {widget}',
-                        f'npm run build --workspace {widget}'):
-            with self.subTest(command=command):
-                at = self.index(
-                    steps, lambda step: command in step.get('run', '')
-                    and step.get('working-directory') == '.',
-                    f'runs {command} at the root')
-                self.assertLess(node, at, f'{command} runs before Node is set up')
-                self.assertLess(at, suite, f'{command} runs after the suite')
-        viewer = self.index(
-            steps, lambda step: step.get('working-directory')
-            == 'packages/machinome-viewer' and 'pytest' in step.get('run', ''),
-            "runs the viewer's tests")
+        sync = self.index(
+            steps, lambda step: 'uv sync --locked' in step.get('run', ''),
+            'syncs the workspace')
+        widget = self.index(
+            steps, lambda step: step.get('run', '').strip() == 'make widget',
+            'runs make widget')
         chromium = self.index(
             steps, lambda step: 'playwright install --with-deps chromium'
             in step.get('run', ''), 'installs Chromium')
-        self.assertLessEqual(chromium, viewer,
-                             "Chromium is installed after the viewer's tests")
-        if chromium == viewer:
-            run = steps[viewer]['run']
-            self.assertLess(run.index('playwright install'),
-                            run.index('pytest'))
-        for step in steps:
-            with self.subTest(step=step.get('name')):
-                self.assertNotIn('--workspaces', step.get('run', ''),
-                                 'a step of the test job runs every member')
+        tests = self.index(
+            steps, lambda step: step.get('run', '').strip() == 'make test',
+            'runs make test')
+        self.assertLess(node, widget, 'make widget runs before Node is set up')
+        self.assertLess(sync, chromium,
+                        'Chromium is installed before the workspace')
+        self.assertLess(widget, tests, 'make widget runs after make test')
+        self.assertLess(chromium, tests, 'Chromium is installed after '
+                        'make test')
+        rules = make_rules()
+        self.assertIn('widget', rules)
+        self.assertRegex(rules['widget'][1], r'\$\(NPM\) ci\b')
+        recipe = rules['test-machinome-viewer'][1]
+        self.assertEqual(make_variable('WIDGET'), [next(iter(NODE_MEMBERS))])
+        self.assertNotIn('--workspaces', recipe,
+                         "the viewer's rule runs every npm member")
+        at = [recipe.index(command) for command in (
+            '$(NPM) run typecheck --workspace $(WIDGET)',
+            '$(NPM) test --workspace $(WIDGET)',
+            '$(NPM) run build --workspace $(WIDGET)',
+            'cd packages/machinome-viewer && $(PYTHON) -m pytest')]
+        self.assertEqual(at, sorted(at), "the viewer's rule runs its steps "
+                         'out of order')
 
     def test_the_test_job_runs_the_movie_s_node_projects_without_a_browser(
             self):
         # The movie's Node suite: its `pure` and `stage` projects, which open
         # no browser, run no FFmpeg and write no film, from the root after
-        # its `npm ci` (`join-movie`).
-        steps = self.jobs['test']['steps']
-        install = self.index(
-            steps, lambda step: 'npm ci' in step.get('run', '')
-            and step.get('working-directory') == '.', 'runs npm ci at the root')
-        movie = self.index(
-            steps, lambda step: step.get('working-directory') == '.'
-            and f'npm test --workspace {MOVIE_JS} -- --project pure '
-            '--project stage' in step.get('run', ''),
-            "runs the movie's pure and stage projects at the root")
-        self.assertLess(install, movie)
+        # its `npm ci` (`join-movie`): the Makefile's movie rule, which
+        # `make test` runs after `make widget` (`release-tooling`).
+        calls = self.calls(self.jobs['test'])
+        self.assertLess(calls.index('make widget'), calls.index('make test'))
+        self.assertEqual(make_variable('MOVIE_JS'), [MOVIE_JS])
+        recipe = make_rules()['test-machinome-movie'][1]
+        python = recipe.index('cd packages/machinome-movie && $(PYTHON) -m '
+                              'pytest')
+        node = recipe.index('$(NPM) test --workspace $(MOVIE_JS) -- '
+                            '--project pure --project stage')
+        self.assertLess(python, node)
 
     def test_the_dist_job_sets_up_node_before_checking(self):
         # The viewer's source distribution builds its bundle with npm.
@@ -425,9 +522,120 @@ class TheContinuousIntegrationTest(unittest.TestCase):
             steps, lambda step: step.get('uses', '').startswith(
                 'actions/setup-node@'), 'sets up Node')
         check = self.index(
-            steps, lambda step: step.get('run', '') == 'scripts/check-dist',
-            'runs scripts/check-dist')
+            steps, lambda step: step.get('run', '').strip() == 'make check',
+            'runs make check')
         self.assertLess(node, check)
+
+
+class TheMakefileTest(unittest.TestCase):
+    """The repository's steps are the targets of one Makefile at the root,
+    which declares the packages once (change `release-tooling`)."""
+
+    def test_the_makefile_is_the_repository_s(self):
+        self.assertTrue(MAKEFILE.is_file(), f'{MAKEFILE} is missing')
+        own = PACKAGE / 'Makefile'
+        self.assertFalse(os.path.lexists(own), f'{own} exists')
+
+    def test_the_package_list_is_the_package_directories(self):
+        listed = make_variable('PACKAGES')
+        directories = [directory.name for directory in package_directories()]
+        for name in directories:
+            with self.subTest(package=name):
+                self.assertIn(name, listed,
+                              f'the Makefile\'s PACKAGES omits {name}')
+        for name in listed:
+            with self.subTest(listed=name):
+                self.assertIn(name, directories,
+                              f'the Makefile\'s PACKAGES names {name}, which '
+                              'is not a directory of packages/')
+        self.assertEqual(listed, sorted(directories))
+
+    def test_the_tested_list_is_the_core_and_the_products(self):
+        tested = make_variable('TESTED')
+        rules = make_rules()
+        for name in ('machinome', *PRODUCTS):
+            with self.subTest(package=name):
+                self.assertIn(name, tested,
+                              f'the Makefile\'s TESTED omits {name}')
+                self.assertIn(f'test-{name}', rules,
+                              f'the Makefile has no rule test-{name}')
+                self.assertIn('-m pytest', rules[f'test-{name}'][1],
+                              f'the rule test-{name} runs no pytest')
+        for name in tested:
+            with self.subTest(tested=name):
+                self.assertIn(name, ('machinome', *PRODUCTS),
+                              f'the Makefile\'s TESTED names {name}, which '
+                              'keeps no tests of its own')
+        self.assertEqual(len(tested), len(set(tested)))
+
+    def test_the_targets_are_the_decided_ones(self):
+        targets = make_targets()
+        for name in targets:
+            with self.subTest(target=name):
+                self.assertIn(name, TARGETS,
+                              f'the Makefile has a target {name} with a help '
+                              'line')
+        self.assertEqual(sorted(targets), sorted(TARGETS))
+        phony = re.search(r'^\.PHONY:(.*)$', makefile(), flags=re.M)[1].split()
+        for name in TARGETS:
+            with self.subTest(phony=name):
+                self.assertIn(name, phony, f'{name} is not .PHONY')
+        self.assertEqual(make_variable('.DEFAULT_GOAL'), ['help'])
+        for name, (_, recipe) in make_rules().items():
+            with self.subTest(rule=name):
+                self.assertNotIn('sweep', name)
+                self.assertNotIn('load-projects', recipe,
+                                 f'the rule {name} runs the universe sweep')
+
+    def test_upload_is_reached_by_no_other_target(self):
+        rules = make_rules()
+        self.assertEqual(rules['upload'][0], [],
+                         'the rule upload has a prerequisite')
+        for name, (prerequisites, recipe) in rules.items():
+            with self.subTest(rule=name):
+                for target in ('dist', 'upload'):
+                    self.assertNotIn(target, prerequisites,
+                                     f'the rule {name} depends on {target}')
+                if name != 'upload':
+                    self.assertNotIn('twine upload', recipe,
+                                     f'the rule {name} runs twine upload')
+        self.assertIn('twine upload $(RELEASE)/*', rules['upload'][1])
+        self.assertRegex(rules['dist'][1],
+                         r'scripts/check-dist --out (\$\(CURDIR\)/)?'
+                         r'\$\(RELEASE\)')
+        self.assertEqual(make_variable('RELEASE'), ['dist/v$(CURRENT)'])
+        current = ' '.join(make_variable('CURRENT'))
+        self.assertIn('current_version', current)
+        self.assertIn('.bumpversion.cfg', current)
+
+    def test_the_bump_neither_commits_nor_tags(self):
+        recipe = make_rules()['bump'][1]
+        self.assertIn('--no-commit --no-tag', recipe)
+        for command in ('git commit', 'git tag'):
+            with self.subTest(command=command):
+                self.assertNotIn(command, recipe)
+
+    def test_clean_removes_only_what_git_ignores(self):
+        recipe = make_rules()['clean'][1]
+        self.assertEqual(recipe.strip(), 'rm -rf $(CLEAN)')
+        names = [directory.name for directory in package_directories()]
+        for pattern in make_expanded(make_variable('CLEAN')):
+            paths = ([pattern.replace('*', name) for name in names]
+                     if '*' in pattern else [pattern])
+            for path in paths:
+                with self.subTest(path=path):
+                    parts = Path(path).parts
+                    for kept in ('.venv', 'node_modules'):
+                        self.assertNotIn(kept, parts,
+                                         f'make clean removes {path}')
+                    self.assertNotEqual(parts[0], 'dist',
+                                        f'make clean removes {path}')
+                    ignored = subprocess.run(
+                        ['git', 'check-ignore', '-q', '--no-index',
+                         f'{path}/'], cwd=REPOSITORY).returncode
+                    self.assertEqual(ignored, 0,
+                                     f'make clean removes {path}, which Git '
+                                     'does not ignore')
 
 
 class TheRootIsTheRepositorysTest(unittest.TestCase):
@@ -455,7 +663,7 @@ class TheRootIsTheRepositorysTest(unittest.TestCase):
 
     def test_the_root_ignores_the_benches_and_the_venv(self):
         lines = (REPOSITORY / '.gitignore').read_text().splitlines()
-        for pattern in ('/WTs/', '/.venv/'):
+        for pattern in ('/WTs/', '/.venv/', '/.docs-venv/'):
             with self.subTest(pattern=pattern):
                 self.assertIn(pattern, lines)
 

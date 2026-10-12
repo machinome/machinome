@@ -68,13 +68,17 @@ Requirements: Python 3.11 or newer, as the framework's
 ``packages/machinome/pyproject.toml`` requires. Node.js 22 or newer and npm
 build and test the two members of the repository's npm workspace, the
 browser viewer's widget and the movie package's Node side, installed by one
-``npm ci`` at the root, which installs each member's direct dependencies
-beside it, as the root's ``.npmrc`` says; ``machinome movie setup`` is for an
-installed copy of the movie package, not for the checkout. The suite and the
-viewer's tests photograph through the widget's built bundle, and the
-viewer's browser tests need Chromium for the installed Playwright
-(``playwright install chromium``), as the movie's browser and pipeline tests
-do, which need FFmpeg too. `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
+``npm ci`` at the root, which ``make sync`` and ``make widget`` run, and
+which installs each member's direct dependencies beside it, as the root's
+``.npmrc`` says; ``machinome movie setup`` is for an installed copy of the
+movie package, not for the checkout. The suite and the viewer's tests
+photograph through the widget's built bundle, and the viewer's browser tests
+need Chromium for the installed Playwright (``playwright install
+chromium``, which ``make sync`` runs), as the movie's browser and pipeline
+tests do, which need FFmpeg too. The repository's steps are the targets of
+the ``Makefile`` at its root, run from there; ``make`` alone lists them. It
+finds uv and npm on the PATH and the workspace's commands in ``.venv``, so no
+target needs an activated environment. `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
 PATH when working on SolidPython2/Solid2 or raw OpenSCAD nodes, or the
 default OpenSCAD snapshot renderer. All-B-rep projects, CadQuery, build123d
 or the two mixed, build, test and export without it; use ``machinome
@@ -100,11 +104,13 @@ repository)::
     $ git clone https://github.com/machinome/machinome.git
     $ cd machinome
 
-From the clone's root, sync the workspace with uv, which installs every
-package under ``packages/`` editable, the framework with its dev
-dependencies, every kernel the suite runs, into ``.venv``::
+From the clone's root, ``make sync`` installs the workspace from its locks:
+``uv sync --python 3.12``, which installs every package under ``packages/``
+editable, the framework with its dev dependencies, every kernel the suite
+runs, into ``.venv``; ``npm ci``, the npm workspace's dependencies; and the
+Chromium the installed Playwright uses::
 
-    $ uv sync
+    $ make sync
 
 or, without uv, create a virtualenv and install every package under
 ``packages/`` editable in compat mode, the framework with its dev
@@ -127,10 +133,10 @@ dependencies::
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
 now on the PATH of the virtualenv. Install the npm workspace's dependencies
-and build the widget's bundle from the clone's root::
+and build its bundles from the clone's root (``make sync`` installs the
+dependencies and builds no bundle)::
 
-    $ npm ci
-    $ npm run build --workspace packages/machinome-viewer/machinome/viewer/web/widget
+    $ make widget        # npm ci, then every member's bundle
 
 For the layout of the package, and for how to choose between direct pytest
 coverage and the meta-project harness when proving a change, read the
@@ -139,25 +145,48 @@ coverage and the meta-project harness when proving a change, read the
 Running tests
 -------------
 
-The test suite is pytest, run from the framework's directory,
-``packages/machinome``::
+``make test`` runs the tests of every package that keeps tests of its own,
+one after another, stopping at the first that fails; ``make test
+PKG=<package>`` runs one package's. From the clone's root::
+
+    $ make test                  # every package with tests
+    $ make test PKG=machinome    # the framework's suite
+    $ make lint                  # black --check and flake8, as CI runs them
+    $ make docs                  # the manual, warnings as errors
+
+``make test PKG=machinome`` builds the viewer's bundle, which the suite
+photographs through, then runs pytest from the framework's directory,
+``packages/machinome``, where pytest runs a single file and the
+``openspec`` command runs::
 
     $ cd packages/machinome
-    $ make test          # equivalent to: pytest
     $ pytest tests/test_builder_lifecycle.py   # a single file
-    $ make lint          # flake8 + black --check
 
-The mechanics helpers keep their tests in their own directory: run
-``python -m pytest`` from ``packages/machinome-mechanics``. The browser
-viewer keeps its tests in its own directory: run ``python -m pytest`` from
-``packages/machinome-viewer``, and its widget's with ``npm test --workspace
-packages/machinome-viewer/machinome/viewer/web/widget`` from the root. The
-skills package keeps its tests in its own directory too: run ``python -m
-pytest`` from ``packages/machinome-skills``. The movie package keeps its tests
-in its own directory: run ``python -m pytest`` from
-``packages/machinome-movie``, and its Node suite with ``npm test --workspace
+The extension packages keep no tests of their own: the framework's suite
+tests them, and ``make test PKG=machinome-engine-brep`` says so.
+
+The mechanics helpers keep their tests in their own directory: ``make test
+PKG=machinome-mechanics`` runs ``python -m pytest`` from
+``packages/machinome-mechanics``. The browser viewer keeps its tests in its
+own directory: ``make test PKG=machinome-viewer`` runs its widget's type
+check, tests and build from the root, by ``--workspace
+packages/machinome-viewer/machinome/viewer/web/widget``, then ``python -m
+pytest`` from ``packages/machinome-viewer``. The skills package keeps its
+tests in its own directory too: ``make test PKG=machinome-skills`` runs
+``python -m pytest`` from ``packages/machinome-skills``. The movie package
+keeps its tests in its own directory: ``make test PKG=machinome-movie`` runs
+``python -m pytest`` from ``packages/machinome-movie``, then its Node suite's
+``pure`` and ``stage`` projects, which open no browser, as CI does; its whole
+Node suite is ``npm test --workspace
 packages/machinome-movie/machinome/movie/js`` from the root, after ``npm
 ci`` there; the browser and pipeline tests need Chromium and FFmpeg.
+
+``make check`` builds every package's sdist and wheel from the tree and from
+a clean copy of its tracked files, checks, installs and smokes them outside
+the repository, and keeps nothing: run it before a pull request that
+touches packaging. ``make clean`` removes what the targets wrote (the docs
+environment ``.docs-venv``, the manual's build, the packages' build scratch,
+the widget's bundle), never ``.venv``, an npm install or ``dist/``.
 
 Notes:
 
@@ -165,7 +194,8 @@ Notes:
   snapshot-related tests may need ``xvfb-run -a pytest ...``.
 * Browser-snapshot tests are mandatory for changes to that renderer. The
   workspace installs the viewer with its ``snapshot`` extra; build its
-  bundle, install Chromium and run the real capture explicitly::
+  bundle (``make widget``), install Chromium and run the real capture
+  explicitly, from ``packages/machinome``::
 
       $ playwright install chromium
       $ MACHINOME_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
@@ -264,13 +294,23 @@ Pull requests
 Deploying
 ---------
 
-A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in HISTORY.rst); ``.bumpversion.cfg`` at the repository root names every package's version and every pin between them, so one run moves the set.
-Then run::
+A reminder for the maintainers on how to release the set. Every step is a
+target run from the root, and no target uploads what another built:
 
-$ bump2version patch # possible: major / minor / patch
-$ git push
-$ git push --tags
-
-GitHub Actions will then run the test suite; publish to PyPI with
-``make release`` (``twine upload dist/*``).
+1. ``make bump VERSION=X.Y.Z`` moves the set's version, declared once as
+   ``current_version`` of ``.bumpversion.cfg`` (``make version`` prints it),
+   into every copy the configuration names, every pin between the packages
+   among them, the root's npm lock and each npm member's own lock, and
+   ``uv.lock``, and lists the files it changed. It refuses a tree whose
+   tracked files have changes, and it never commits and never tags.
+2. Write the release's records (``HISTORY.rst``, the manual's changelog and
+   release note) and commit.
+3. ``make dist`` builds every package's sdist and wheel from that commit, in
+   a copy outside the checkout, checks, installs and smokes them, and keeps
+   them in ``dist/vX.Y.Z``. It refuses a checkout that differs from its
+   commit and a folder that already holds archives. Read the folder.
+4. Tag the commit ``vX.Y.Z`` and push the branch and the tag: GitHub
+   Actions runs the tests, builds the archives from the tag with ``make
+   dist`` and attaches them to the tag's GitHub release.
+5. ``make upload`` uploads ``dist/vX.Y.Z`` to PyPI with twine, and nothing
+   else.

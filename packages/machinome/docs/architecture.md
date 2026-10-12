@@ -3554,7 +3554,7 @@ pure model closures without rejecting their pure declaration records.
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Repository layout | the repository root (its `pyproject.toml`, `uv.lock`, `.bumpversion.cfg`, `scripts/check-dist` and CI workflow `.github/workflows/python-app.yml`) and `packages/machinome/` | `framework-identity` | 182, 183 |
+| Repository layout | the repository root (its `pyproject.toml`, `uv.lock`, `.bumpversion.cfg`, `Makefile`, `scripts/check-dist` and CI workflow `.github/workflows/python-app.yml`) and `packages/machinome/` | `framework-identity`, `release-tooling` | 182, 183, 192 |
 | Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
 | Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them; every node type in its own distribution, rows below), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180, 184 |
 | B-rep engine, on OCCT, the distribution `machinome-engine-brep` | the repository's `packages/machinome-engine-brep/` (`machinome/engine/brep.py`) | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180, 183 |

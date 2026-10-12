@@ -3,20 +3,22 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """The release facts agree wherever they are stated.
 
-`pyproject.toml` states the version once; every other file that carries
-it, and every record whose top entry must be the released version, is
-held to that one statement, so a release moves the files together or
-fails here naming the one left behind (changes `release-0-7-1` and
-`release-0-8-0`). Every package of the repository carries the framework's
-version, but the mechanics helpers, which carry their own (change
-`join-mechanics`); the viewer's Python package, its widget and the root's npm
-lock carry it too (change `join-viewer`), and the movie's JavaScript
-directory, its own lock and the root lock's entry for it (change
-`join-movie`). Every pin between two of them is
-`~=` that version, and the root's `.bumpversion.cfg` moves them all (change
-`cut-the-engines`).
+`current_version` of the root's `.bumpversion.cfg` states the version once
+(change `release-tooling`); every file that carries it, the framework's
+`pyproject.toml` among them, and every record whose top entry must be the
+released version, is held to that one statement, so a release moves the
+files together or fails here naming the one left behind (changes
+`release-0-7-1` and `release-0-8-0`). Every package of the repository
+carries the framework's version, but the mechanics helpers, which carry
+their own (change `join-mechanics`); the viewer's Python package, its widget
+and the root's npm lock carry it too (change `join-viewer`), and the movie's
+JavaScript directory, its own lock and the root lock's entry for it (change
+`join-movie`). Every pin between two of them is `~=` that version, and the
+root's `.bumpversion.cfg` moves them all (change `cut-the-engines`), through
+`make bump`, which neither commits nor tags (change `release-tooling`).
 """
 
+import configparser
 from datetime import datetime
 import json
 import re
@@ -41,8 +43,16 @@ OWN_VERSION = ('machinome-mechanics',)
 UNRELEASED = '\nUnreleased\n----------\n'
 
 
+def bumpversion():
+    """The `[bumpversion]` section of the root's `.bumpversion.cfg`."""
+    config = configparser.ConfigParser(interpolation=None)
+    config.read_string((REPOSITORY / '.bumpversion.cfg').read_text())
+    return config['bumpversion']
+
+
 def released_version():
-    return tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']['version']
+    """The set's version, declared once (change `release-tooling`)."""
+    return bumpversion()['current_version']
 
 
 def conf_value(name):
@@ -73,9 +83,9 @@ class VersionFilesTest(TestCase):
             'machinome/__init__.py': (
                 f'__version__ = "{self.version}"',
                 (ROOT / 'machinome/__init__.py').read_text()),
-            '.bumpversion.cfg': (
-                f'current_version = {self.version}',
-                (REPOSITORY / '.bumpversion.cfg').read_text()),
+            'pyproject.toml': (
+                f'version = "{self.version}"',
+                (ROOT / 'pyproject.toml').read_text()),
             'docs/conf.py': (
                 f"release = '{self.version}'",
                 (ROOT / 'docs/conf.py').read_text()),
@@ -85,6 +95,11 @@ class VersionFilesTest(TestCase):
                 self.assertIn(statement, text)
         with self.subTest(file='machinome/vet/universe.toml'):
             self.assertEqual(universe['universe']['version'], self.version)
+
+    def test_the_bump_neither_commits_nor_tags(self):
+        """The configuration declares the version and nothing else: the
+        pilot commits and tags (change `release-tooling`)."""
+        self.assertEqual(list(bumpversion()), ['current_version'])
 
     def test_every_member_is_numbered_with_the_core(self):
         for directory, project in members():

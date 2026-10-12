@@ -6,6 +6,7 @@
 /node_modules/
 /.env
 /dist/
+/.docs-venv/
 /packages/*/build/
 /packages/*/*.egg-info/
 __pycache__/

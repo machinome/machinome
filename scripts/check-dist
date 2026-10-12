@@ -23,8 +23,16 @@ it (change `join-movie`). It writes
 nothing inside the repository but the build's own scratch (`build/`,
 `*.egg-info`), the root's `node_modules/` that `npm ci` installs and the
 widget's `dist/`, which each member's `.gitignore`, or the root's, ignores.
+
+With `--out DIR` it also keeps the archives: it refuses, before it builds
+anything, a `DIR` that exists and is not an empty folder, and once every
+member's archives are built, checked, installed and smoked it copies each
+sdist and wheel, flat, into `DIR`, which `make dist` names `dist/vX.Y.Z` and
+`make upload` uploads (change `release-tooling`). A check that fails keeps
+nothing.
 """
 
+import argparse
 import glob
 import json
 import shutil
@@ -878,7 +886,41 @@ def build(directory, name, scratch):
     return wheels[0]
 
 
-def main():
+def keep_out(out):
+    """Refuse an `--out` folder that exists and is not empty."""
+    if out.exists() and (not out.is_dir() or any(out.iterdir())):
+        raise Failure(f'{out} exists and is not an empty folder; the '
+                      'archives of a release are kept in a new one')
+
+
+def keep(out, scratch, wheels):
+    """Copy every archive built, checked and smoked, flat, into `out`."""
+    keep_out(out)
+    archives = sorted(path for name in wheels
+                      for path in (scratch / 'dist' / name).iterdir()
+                      if path.name.endswith(('.tar.gz', '.whl')))
+    names = [path.name for path in archives]
+    twice = sorted({name for name in names if names.count(name) > 1})
+    if twice:
+        raise Failure(f'two members build an archive of one name: '
+                      f'{", ".join(twice)}')
+    out.mkdir(parents=True, exist_ok=True)
+    for path in archives:
+        shutil.copy2(path, out / path.name)
+        print(f'   kept {out / path.name}')
+    print(f'{len(archives)} archives kept in {out}')
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    parser.add_argument('--out', type=Path, metavar='DIR',
+                        help='keep the archives, once every one is built, '
+                        'checked and smoked, flat in DIR, a new or empty '
+                        'folder')
+    arguments = parser.parse_args(argv)
+    out = arguments.out.resolve() if arguments.out else None
+    if out is not None:
+        keep_out(out)
     with tempfile.TemporaryDirectory(prefix='machinome-check-dist-') as tmp:
         scratch = Path(tmp).resolve()
         if scratch.is_relative_to(ROOT):
@@ -926,6 +968,8 @@ def main():
                 run([venv / 'bin' / command[0], *command[1:]], scratch,
                     quiet=True)
                 print(f'   {" ".join(command)}: exit 0')
+        if out is not None:
+            keep(out, scratch, wheels)
     print('Every distribution built, checked, installed and smoked; '
           'nothing uploaded.')
 

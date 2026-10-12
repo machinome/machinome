@@ -20,7 +20,9 @@ into the service's 900-second limit inside the third export (24 September
 
 These tests hold the rule so it cannot creep back: every embedded export is
 committed, and neither build configuration exports, installs from a
-repository, names a system package, a Node tool or a submodule.
+repository, names a system package, a Node tool or a submodule. The CI docs
+job builds through the root Makefile's `docs` target, whose recipe is held
+to the same rule (change `release-tooling`).
 """
 
 import ast
@@ -38,6 +40,7 @@ PACKAGE = Path(__file__).resolve().parents[1]
 REPOSITORY = Path(__file__).resolve().parents[3]
 DOCS = PACKAGE / 'docs'
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
+MAKEFILE = REPOSITORY / 'Makefile'
 READTHEDOCS = PACKAGE / '.readthedocs.yaml'
 REQUIREMENTS = 'docs/requirements.txt'
 
@@ -91,6 +94,17 @@ def embedded_exports():
 
 def docs_job():
     return yaml.safe_load(WORKFLOW.read_text())['jobs']['docs']
+
+
+def docs_recipe():
+    """The recipe of the root Makefile's `docs` target, continued lines
+    joined."""
+    text = MAKEFILE.read_text().replace('\\\n', ' ')
+    found = re.search(r'^docs:[^\n]*\n((?:\t[^\n]*(?:\n|$))*)', text,
+                      flags=re.M)
+    if found is None:
+        raise AssertionError(f'{MAKEFILE} has no docs target')
+    return found[1]
 
 
 def readthedocs():
@@ -186,11 +200,14 @@ class ReadTheDocsBuildsNothingTest(unittest.TestCase):
 
 
 class ActionsDocsJobBuildsNothingTest(unittest.TestCase):
-    """The CI docs job does what Read the Docs does, and fails on
-    warnings."""
+    """The CI docs job does what Read the Docs does, and fails on warnings:
+    it runs the root Makefile's `docs` target, whose recipe installs the
+    requirements alone into an environment of its own and builds with -W
+    (change `release-tooling`)."""
 
     def setUp(self):
         self.steps = docs_job()['steps']
+        self.recipe = docs_recipe()
 
     def test_no_forbidden_step(self):
         for step in self.steps:
@@ -210,18 +227,30 @@ class ActionsDocsJobBuildsNothingTest(unittest.TestCase):
                                  'the docs job installs Node')
                 self.assertNotIn('apt', uses, 'the docs job installs an '
                                  'apt package')
+        with self.subTest(step='the Makefile\'s docs target'):
+            for what, pattern in FORBIDDEN.items():
+                self.assertIsNone(
+                    pattern.search(self.recipe),
+                    f'the Makefile\'s docs target has a {what}; the '
+                    'documentation build produces nothing')
+            for tool in (r'\bnpm\b', r'\bnode\b', r'\bapt\b',
+                         r'\bsubmodule'):
+                self.assertIsNone(
+                    re.search(tool, self.recipe),
+                    f'the Makefile\'s docs target runs {tool}')
+
+    def test_the_job_runs_the_makefile_s_docs_target(self):
+        runs = [step['run'].strip() for step in self.steps if 'run' in step]
+        self.assertEqual(runs, ['make docs'])
 
     def test_installs_the_requirements_alone(self):
-        installs = []
-        for step in self.steps:
-            installs += re.findall(r'pip install\s+(.+)', step.get('run', ''))
-        self.assertEqual(installs, [f'-r {REQUIREMENTS}'])
+        installs = re.findall(
+            r'pip install\s+(?:--python\s+\S+\s+)?(.+)', self.recipe)
+        self.assertEqual(installs, [f'-r {FROM_THE_ROOT}{REQUIREMENTS}'])
 
     def test_builds_with_warnings_as_errors(self):
-        runs = [step.get('run', '') for step in self.steps]
-        self.assertTrue(
-            any(re.search(r'sphinx\b.*\s-W\b', run) for run in runs),
-            'the docs job does not build the manual with -W')
+        self.assertRegex(self.recipe, r'sphinx\b.*\s-W\b',
+                         'the docs target does not build the manual with -W')
 
 
 class StrictBuildTest(unittest.TestCase):

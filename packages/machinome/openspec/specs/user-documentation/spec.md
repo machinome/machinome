@@ -199,8 +199,8 @@ manual.
 Building the manual SHALL require only what `docs/requirements.txt` lists:
 Sphinx, its theme and the published `machinome-viewer` package, which
 completes the committed exports with its widget. The Read the Docs
-configuration and the CI docs job SHALL both install that file and run
-Sphinx, and neither SHALL run `machinome export`, install a system package,
+configuration and the CI docs job, through the root Makefile's `docs`
+target, SHALL both install that file and run Sphinx, and neither SHALL run `machinome export`, install a system package,
 a Node tool or a package from a repository URL, or check out a submodule.
 Every export a page embeds SHALL be committed under `docs/_exports/`. The
 guide to embedding the viewer SHALL show its working host page from the
@@ -215,8 +215,10 @@ file and the Sphinx configuration by their paths from the repository
 root, `packages/machinome/docs/requirements.txt` and
 `packages/machinome/docs/conf.py`, since Read the Docs reads every path in
 it from there. The CI docs job, in the repository's workflow at
-`.github/workflows/python-app.yml`, SHALL run from the package directory,
-where it installs `docs/requirements.txt` and builds `docs`.
+`.github/workflows/python-app.yml`, SHALL run `make docs` at the repository
+root, whose recipe installs `packages/machinome/docs/requirements.txt` alone
+into an environment of its own, `.docs-venv/` at the root, and builds `docs`
+from the package directory into `docs/_build/html`.
 
 Both builds SHALL treat warnings as errors, and the manual's Sphinx
 configuration SHALL make every build nitpicky, so that a cross-reference
@@ -239,8 +241,8 @@ CI docs job run.
 
 #### Scenario: A build configuration grows a build step
 
-- **WHEN** the Read the Docs configuration or the CI docs job gains an
-  export command, a repository install, an apt package, a Node tool or a
+- **WHEN** the Read the Docs configuration, the CI docs job or the
+  Makefile's `docs` target gains an export command, a repository install, an apt package, a Node tool or a
   submodule checkout
 - **THEN** the suite fails naming the file and the step
 
@@ -257,8 +259,9 @@ CI docs job run.
   manual does not document, such as a class named without its module
   where the current module does not hold it, or a docstring line napoleon
   reads as a type
-- **THEN** the CI docs job's command, `python -m sphinx -b html -W docs
-  <out>`, fails naming the reference, with no `-n` on its command line,
+- **THEN** the build the CI docs job runs through `make docs`, `python -m
+  sphinx -b html -W -E docs docs/_build/html`, fails naming the reference,
+  with no `-n` on its command line,
   and the suite fails if the manual's configuration stops being nitpicky
 
 #### Scenario: The configuration names the manual from the repository root
