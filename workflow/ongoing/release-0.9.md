@@ -160,3 +160,38 @@ green at their new place; the originating check of each cycle.
 
 (entries appended at each cycle's close; the joins' entries stay in
 `joins-0.9.md`)
+
+1. `commands-contributed-by-packages`. **Done** (12 October 2026). Beside the joins (12 October 2026): the framework cycle
+`commands-contributed-by-packages`, by the pilot's decision of 12 October
+2026 ("one single machinome cli with packages contributing subcommands").
+Branch `v0.9-joins-command-seam`, planning commit 766e78c1 on 484a528f,
+ratified by the orchestrator's review with every recommendation of its
+Open Questions accepted. ADR-189, a package contributes a command through
+the group `machinome.commands`, accepted; ADR-024 and ADR-168 amended. An
+installed distribution declares `name = "package.module:Class"` in the
+entry-point group `machinome.commands`, its class meeting the framework
+commands' contract with `needs_node` declared; the command is the first
+argument that is not an option, and the group is read only when it is not
+a framework command, so a framework command's dispatch reads no entry
+point; the guard and argparse's choices read the union; `machinome -h`
+lists the contributed commands after the framework's, by name; a
+framework name is never taken (one warning line), a name two packages
+declare runs neither (exit 1 naming both), an absent extra is answered by
+it, an unmet contract refused, other failures propagate, and the help
+lists each as unavailable and exits 0. `machinome/cli.py` alone changes;
+no package declares a command yet: the videomaker (`machinome movie`), the
+skills package (`machinome skills`) and the studio (`machinome studio`)
+register at their joins. Proved by fake distributions written into
+temporary directories (`tests/contributed_commands.py`,
+`tests/test_cli_contributed.py`, thirteen tests; three more in
+`tests/test_cli_lazy_imports.py`, whose help oracle reads the group
+empty). The specs modified are `cli` (one requirement added, two
+modified) and `cli-startup-cost` (two modified). The suite green on the
+bench's uv venv (4854 passed, 24 skipped, the base's, 7508 subtests; the
+orchestrator's run the same); the manual built with warnings as errors.
+Timings against the base, alternating runs: a framework command within
+noise (`vet -h` 56 and 58 ms, `build -h` 231 and 244 ms); an unknown name
+47 and 114 ms; `machinome -h` about 70 ms slower (807 and 874 ms), 25 to
+31 ms of it the group's read and the rest unexplained; the fake movie
+command 112 ms. Evidence:
+`packages/machinome/openspec/changes/archive/2026-10-12-commands-contributed-by-packages/evidence.md`.
