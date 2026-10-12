@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Draws the fixture project's still, python/tests/fixtures/project/media/plate.png:
+// Draws the fixture project's still, tests/fixtures/project/media/plate.png:
 // a seesaw in flat, hard-edged shapes with no text (a stand, a tilted plank, a
 // weight on its low end, the ground, a hill and a sun), so that pixel proofs
 // have edges to compare.
@@ -20,7 +20,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {encodeRgbPng} from '../src/pixels.mjs';
 
 export const WIDTH=864,HEIGHT=576;
-export const STILL=join(dirname(fileURLToPath(import.meta.url)),'..','python','tests','fixtures','project','media','plate.png');
+export const STILL=join(dirname(fileURLToPath(import.meta.url)),'..','..','..','..','tests','fixtures','project','media','plate.png');
 
 const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const circle=(cx,cy,r)=>(x,y)=>(x-cx)*(x-cx)+(y-cy)*(y-cy)<=r*r;

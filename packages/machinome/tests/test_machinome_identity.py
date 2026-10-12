@@ -30,6 +30,7 @@ class MachinomeIdentityTest(TestCase):
         for extra, name in (('viewer', 'machinome-viewer'),
                             ('mechanics', 'machinome-mechanics'),
                             ('skills', 'machinome-skills'),
+                            ('movie', 'machinome-movie'),
                             ('studio', 'machinome-studio')):
             with self.subTest(extra=extra):
                 (requirement,) = project['optional-dependencies'][extra]

@@ -1,7 +1,7 @@
 """A tour of every construct the validation film uses, on the seesaw: the
 project's own template and card, drawn by stage.tsx beside this file."""
 
-from machinome_movie import (Action, Chapter, Credits, Cue, Dissolve, Element, Evidence,
+from machinome.movie import (Action, Chapter, Credits, Cue, Dissolve, Element, Evidence,
     FadeIn, FadeOut, Format, Frame, Movie, Narration, Narrator, Picture, Reframe, Release,
     Reveal, Set, Shot, Slot, Source, Split, Style, Title, View, Wipe)
 

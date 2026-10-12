@@ -22,7 +22,7 @@ from the repository's root:
 .. code-block:: console
 
    npm ci
-   npm run build --workspaces
+   npm run build --workspace packages/machinome-viewer/machinome/viewer/web/widget
 
 The package rebuilds a stale source bundle on lookup, serve or capture only
 when the build tools/dependencies already exist. It never installs npm

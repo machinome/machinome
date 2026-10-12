@@ -1,12 +1,13 @@
+# This package's leavings the root's .gitignore does not name: the Node
+# dependencies npm installs into js/, its own test runs and their memo
+# outside a Git work tree, a local build, the films a test or a probe
+# writes under a project's _build/, and a speech key the Node side reads
+# from js/.env.
 node_modules/
-node_modules
-_build/
-.env
-.env.*
-!.env.example
-*.log
-__pycache__/
-*.egg-info/
 .pytest_cache/
 .test-memo/
-/WTs/
+dist/
+_build/
+*.log
+.env
+.env.*

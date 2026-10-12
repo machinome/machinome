@@ -1,11 +1,25 @@
 # Changelog
 
-Videomaker is private and unversioned; entries accumulate under `Unreleased`
-until the pilot cuts a version. Each change adds its bullet in the cycle that
-lands it.
+Machinome Movie is numbered with Machinome; entries accumulate under
+`Unreleased` until the set is released. Each change adds its bullet in the
+cycle that lands it.
 
 ## Unreleased
 
+- Videomaker is part of the Machinome repository,
+  <https://github.com/machinome/machinome>, at `packages/machinome-movie/`,
+  with its history, as the distribution `machinome-movie`, numbered with
+  Machinome. Its Python package is `machinome.movie` (formerly
+  `machinome_movie`), a portion of the `machinome` package; its Node side is
+  inside it, at `machinome/movie/js/`. `machinome movie` runs every verb of
+  both former command lines, `python -m machinome_movie list|evaluate|watch`
+  and `node bin/videomaker.mjs check|speech|preview|render|build|live|review`,
+  takes a project and a movie name where those took a document, films with
+  the installed viewer instead of `--viewer`, and installs its Node
+  dependencies with `machinome movie setup`. It is licensed as every package
+  of the repository, GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
+  recipient's choice. Playwright is 1.63.0, the viewer's. Its manual is part
+  of Machinome's, <https://machinome.readthedocs.io>.
 - Left and right arrows in the live player jump two seconds backward and
   forward, stopping at the beginning or end of the film or take.
 - The live player's caption and readout reserve a fixed height, keeping the

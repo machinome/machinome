@@ -543,9 +543,53 @@ with its own help, and ``machinome <name> -h`` gives its options. A name
 of the framework's own commands always runs the framework's command. When
 two installed packages add the same name, neither runs, and ``machinome
 <name>`` names both; a command whose package lacks an extra, or cannot be
-loaded, is listed as unavailable with the reason. The skills package adds
-``machinome skills``, below; the videomaker (``machinome movie``) and the
-studio (``machinome studio``) are to add theirs.
+loaded, is listed as unavailable with the reason. The movie package adds
+``machinome movie`` and the skills package ``machinome skills``, below; the
+studio (``machinome studio``) is to add its own.
+
+.. _movie-command:
+
+machinome movie
+===============
+
+::
+
+    machinome movie list PROJECT
+    machinome movie evaluate PROJECT MOVIE [--out FILE]
+    machinome movie watch PROJECT MOVIE [--out FILE] [--interval SECONDS]
+    machinome movie check SOURCE [MOVIE] [--width N] [--fps N] [--silent]
+    machinome movie speech SOURCE [MOVIE] [--width N] [--fps N] [--silent]
+    machinome movie preview SOURCE [MOVIE] [--width N] [--fps N] [--silent]
+    machinome movie render SOURCE [MOVIE] [--width N] [--fps N] [--silent]
+    machinome movie build SOURCE [MOVIE] [--width N] [--fps N] [--silent]
+    machinome movie live SOURCE [MOVIE] [--width N] [--port N] [--poll MS] [--open]
+    machinome movie review MANIFEST
+    machinome movie setup [--remove]
+
+Added by the package ``machinome-movie``, which ``pip install
+"machinome[movie]"`` installs; :doc:`/howto/film-a-movie` is the guide.
+``list``, ``evaluate`` and ``watch`` read a project's movies, declared under
+``[tool.machinome.movies]`` in its ``pyproject.toml``, and write a movie's
+document. The other verbs film: their ``SOURCE`` is a YAML episode, a movie
+document, or a project directory followed by ``MOVIE``, which is evaluated
+first and its document's path printed. ``review`` takes the manifest a render
+wrote. ``setup`` installs the Node side's dependencies into the package, and
+``setup --remove`` deletes them.
+
+The film verbs run on your Node, 22 or newer, named by ``MACHINOME_NODE`` or
+found on the ``PATH``, and draw with the browser viewer installed beside the
+framework; no option names a bundle. ``--width`` is the frame width in
+pixels, ``--fps`` the frame rate, ``--silent`` a film without narration;
+``live`` serves at ``--port`` (any free port by default), compares its inputs
+every ``--poll`` milliseconds instead of watching them, and ``--open`` opens
+the address. ``--out`` is where ``evaluate`` and ``watch`` write the document,
+``--interval`` the seconds between two looks of ``watch``.
+
+The exit status is the Node side's for a film verb, 0 when it did what was
+asked and 1 when it refused; a refusal of the command itself, a missing Node
+or viewer, uninstalled dependencies or a source of the wrong form, is one line
+on standard error and exits 1. :doc:`/reference/movie/command` says what each
+verb checks, proves, prints and writes.
 
 .. _skills-command:
 

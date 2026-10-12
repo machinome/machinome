@@ -64,7 +64,27 @@ a finding.
 
 ## Where this fits
 
-`workflow/` belongs to the Videomaker repository and is committed with it.
-It is not agent instructions: `AGENTS.md` is the working agreement, and a
-document here is never read as authority over it, over `README.md` or over
-`docs/FORMAT.md`.
+Since 12 October 2026 (change `join-movie` of the machinome repository)
+Videomaker is the machinome repository's distribution `machinome-movie`, at
+`packages/machinome-movie/`, and `workflow/` is committed with that
+directory. The notes in force for a maintainer:
+
+- the package's specs and its OpenSpec changes are in `openspec/` here, run
+  with `openspec` from this directory; the framework's are the framework's,
+  at `packages/machinome/openspec/`;
+- the decision log is `workflow/adrs/`, under its own numbers; the
+  framework's is `packages/machinome/docs/adrs/`, cited as "framework
+  ADR-nnn";
+- the manual is the framework's: `howto/film-a-movie.rst`,
+  `howto/declare-a-movie.rst`, `howto/draw-a-movie-stage.rst` and
+  `reference/movie/` under `packages/machinome/docs/`;
+- the Python tests run with `python -m pytest` from this directory, and the
+  Node suite with `npm test --workspace
+  packages/machinome-movie/machinome/movie/js` from the repository's root,
+  after `npm ci` there (`VIDEOMAKER_VIEWER_BUNDLE` naming a built viewer
+  bundle for the viewer layer, `-- --cold` to leave the memo alone).
+
+The other notes here, `warts.md`, `ongoing/`, `archive/`, the first
+rehearsal and the architecture overview, are records of their day; the
+names, paths and commands they give are those of that day. A document here
+is never read as authority over a spec or an ADR.

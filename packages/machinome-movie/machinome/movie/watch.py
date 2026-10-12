@@ -1,4 +1,4 @@
-"""`python -m machinome_movie watch`: a movie evaluated again each time a
+"""`python -m machinome.movie watch`: a movie evaluated again each time a
 file of its project changes (the player-page change).
 
 A change is found by comparing every file's status, polled at an interval:
@@ -69,7 +69,7 @@ class Watch:
 def evaluation(project, movie, out=None):
     """The `evaluate` command, run by this interpreter in a process of its
     own, printing the document's path or the refusal as it does."""
-    command = [sys.executable, '-m', 'machinome_movie', 'evaluate', project, movie]
+    command = [sys.executable, '-m', 'machinome.movie', 'evaluate', project, movie]
     if out:
         command += ['--out', out]
 

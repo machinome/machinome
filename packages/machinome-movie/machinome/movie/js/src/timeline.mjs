@@ -207,7 +207,7 @@ export function movingViews(outgoingChapter,outgoing,chapter,shot){
     .map(([slot,key])=>({key:`${chapter.id}.${key}`,element:key,from:{set:outgoing.set,slot:slotOf(outgoing.places,key)},to:{set:shot.set,slot}}));
 }
 // The words a reframe without a view element in both shots is refused in, by
-// both runtimes (python/machinome_movie/names.py says the same).
+// both runtimes (machinome/movie/names.py says the same).
 export const noViewInBoth=(outgoing,incoming)=>`a reframe from shot ${outgoing} into shot ${incoming} moves a view element both shots place, and there is no view element in both`;
 
 // The reframe into a shot, `local` seconds after it starts (clamped to the

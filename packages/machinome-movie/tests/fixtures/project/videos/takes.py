@@ -2,7 +2,7 @@
 marks, cameras, layers, source excerpt and picture, and the counter's
 clocked take. Declared once, used by every fixture movie."""
 
-from machinome_movie import Camera, Layer, Loop, Mark, Move, Source, Still, Take, Trigger
+from machinome.movie import Camera, Layer, Loop, Mark, Move, Source, Still, Take, Trigger
 
 from models.counter import Counter
 from models.seesaw import Seesaw

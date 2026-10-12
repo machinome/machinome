@@ -1,4 +1,4 @@
-// The Node suite under one runner (AGENTS.md, "Testing policy"; ADR-003).
+// The Node suite under one runner (the package's ADR-003, workflow/adrs/RECORDS/).
 // Pure tests run first and in parallel; slow tests (anything that launches
 // Chromium, runs FFmpeg or writes a build directory) run after them, one file
 // at a time in one worker that shares its module graph, so one Chromium

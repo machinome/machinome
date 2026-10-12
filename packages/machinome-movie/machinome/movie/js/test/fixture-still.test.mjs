@@ -11,7 +11,7 @@ import {drawFixtureStill,STILL,WIDTH,HEIGHT} from '../scripts/draw-fixture-still
 import {decodePng} from '../src/pixels.mjs';
 
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
-const project=join(root,'python','tests','fixtures','project');
+const project=join(root,'..','..','..','tests','fixtures','project');
 
 test('the fixture still is drawn to the same bytes on every run, in flat shapes',()=>{
   const once=drawFixtureStill(),again=drawFixtureStill();

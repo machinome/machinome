@@ -1037,7 +1037,7 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
     const pack=await reviewManifest(manifestOutput);
     console.log(`Review pack: ${pack.generation}${pack.reused?' (verified reuse)':''}`);
   }catch(error){
-    console.warn(`review pack failed; film published: ${error.message}; retry: node bin/videomaker.mjs review ${manifestOutput}`);
+    console.warn(`review pack failed; film published: ${error.message}; retry: machinome movie review ${manifestOutput}`);
   }
   return output;
 }

@@ -14,6 +14,7 @@ from a checkout whose bundle predates its source ships that bundle, and
 
 from dataclasses import dataclass
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -80,8 +81,35 @@ def build_frontend(frontend):
                 f'{level / "node_modules"} is a symlink; refusing npm ci '
                 'because it can empty the shared dependency directory. Use a '
                 'checkout with private dependencies to build distributions.')
-    subprocess.check_call(['npm', 'ci'], cwd=frontend.directory)
+    # Inside the workspace, `npm ci` from a member's directory installs that
+    # member alone and empties every other member's node_modules, the
+    # movie's among them; run at the workspace's root it installs them all
+    # (change `join-movie`). The bundle is built in the widget's directory.
+    root = workspace_root(directory)
+    subprocess.check_call(['npm', 'ci'],
+                          cwd=root if root is not None else frontend.directory)
     subprocess.check_call(['npm', 'run', 'build'], cwd=frontend.directory)
+
+
+def workspace_root(directory):
+    """The npm workspace whose root `package.json` names `directory` among
+    its `workspaces`, or None."""
+    here = Path(directory).resolve()
+    for parent in here.parents:
+        manifest = parent / 'package.json'
+        if not manifest.is_file():
+            continue
+        try:
+            members = json.loads(manifest.read_text()).get('workspaces') or []
+        except (OSError, ValueError, AttributeError):
+            continue
+        if isinstance(members, dict):
+            members = members.get('packages') or []
+        for member in members:
+            if any(found.resolve() == here
+                   for found in parent.glob(str(member))):
+                return parent
+    return None
 
 
 def build_distribution_frontends():

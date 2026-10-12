@@ -74,9 +74,11 @@ jobs:
           uv sync --locked --python 3.12
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
-      # The browser viewer's widget is the npm workspace's member (change
+      # The browser viewer's widget is a member of the npm workspace (change
       # `join-viewer`): one install at the root, its typecheck and tests,
       # and the bundle the suite and the viewer's tests photograph through.
+      # The widget is named, so the movie's Node suite, the second member,
+      # does not run here before Chromium (change `join-movie`).
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -87,9 +89,9 @@ jobs:
         working-directory: .
         run: |
           npm ci --no-audit --no-fund
-          npm run typecheck --workspaces --if-present
-          npm test --workspaces --if-present
-          npm run build --workspaces --if-present
+          npm run typecheck --workspace packages/machinome-viewer/machinome/viewer/web/widget
+          npm test --workspace packages/machinome-viewer/machinome/viewer/web/widget
+          npm run build --workspace packages/machinome-viewer/machinome/viewer/web/widget
 
       - name: Run tests
         run: |
@@ -109,6 +111,17 @@ jobs:
         run: |
           playwright install --with-deps chromium
           python -m pytest
+
+      # The movie package keeps its tests in its own directory (change
+      # `join-movie`): the Python tests, and the Node suite's projects that
+      # open no browser, run no FFmpeg and write no film.
+      - name: Run the movie package's tests
+        working-directory: packages/machinome-movie
+        run: python -m pytest
+
+      - name: Run the movie package's Node tests
+        working-directory: .
+        run: npm test --workspace packages/machinome-movie/machinome/movie/js -- --project pure --project stage
 
       # The skills package keeps its tests in its own directory (change
       # `join-skills`); the workspace synced above installs it.

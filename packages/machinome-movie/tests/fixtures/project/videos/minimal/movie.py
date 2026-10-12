@@ -1,6 +1,6 @@
 """The smallest movie: one chapter, one shot on the shipped Frame, no cues."""
 
-from machinome_movie import Chapter, Format, Frame, Movie, Narration, Narrator, Shot, View
+from machinome.movie import Chapter, Format, Frame, Movie, Narration, Narrator, Shot, View
 
 from videos.takes import Playground
 

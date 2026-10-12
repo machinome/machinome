@@ -1,18 +1,23 @@
 # machinome-movie
 
-The Python half of Videomaker: the declarations a project writes a movie in,
-its own sets and elements among them, and their evaluation to the movie
-document, `machinome-movie/0.2`, the stage draws. See
-[Declaring a movie](../docs/declaring-a-movie.md) for how to write one and
-[the movie document](../docs/movie-document.md) for what it evaluates to.
+The films of [Machinome](https://github.com/machinome/machinome): the
+package `machinome.movie` and the command `machinome movie`. A project
+declares a movie of its machine in Python, or writes an episode in YAML;
+the command evaluates it to the movie document, checks it, generates its
+narration, previews it, renders it through the browser viewer, serves it
+live and makes the review pack of the result. Its Node side runs on the
+user's Node 22 or newer.
 
-Private, unversioned (0.0.0), unpublished; its licence is not selected.
+## Install
 
-    python -m machinome_movie list <project-dir>
-    python -m machinome_movie evaluate <project-dir> <movie-name> [--out FILE]
-    python -m machinome_movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]
+    pip install "machinome[movie]"
+    machinome movie setup
 
-`watch` evaluates the movie, then again whenever a file of the project
-changes, until interrupted.
+## Manual
 
-Tests: `python -m pytest` from this directory.
+<https://machinome.readthedocs.io>
+
+## Licence
+
+GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the recipient's choice; the
+texts are in `LICENSE` and `LICENSES/`.

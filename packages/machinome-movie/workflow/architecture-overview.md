@@ -1,5 +1,11 @@
 # Videomaker architecture overview
 
+(12 October 2026, change `join-movie`) From this date the current statement
+of the package's architecture is the machinome framework's
+`packages/machinome/docs/architecture.md`, section "Movies"; this file is the
+package's record as it stood at the join, its paths and commands those of
+its repository then.
+
 The synthesis: how the tool is built, in one place, derived from the
 baseline specs in [`openspec/specs/`](../openspec/specs/) and the decision
 log in [`docs/adrs/`](adrs/README.md). ADRs accumulate; this document

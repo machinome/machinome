@@ -218,7 +218,7 @@ export function requiredViewerApi(e) {
 // 'episode' for a YAML episode (filmSubject).
 export function filmSubject(film) {return film?.source==='movie'?'movie':'episode';}
 export function viewerApiRefusal(required,declared,subject='episode') {
-  return `This ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}; the selected viewer declares API ${declared}. Select a newer machinome-viewer bundle with --viewer.`;
+  return `This ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}; the selected viewer declares API ${declared}. Install a machinome-viewer that declares it: pip install -U "machinome[viewer]".`;
 }
 // check mounts no viewer (its layout page, when it opens one, has a stub): it
 // reads the "viewer API <n>" banner of the selected bundle.
@@ -229,7 +229,7 @@ export function viewerApiFromBanner(text) {
 export function confirmViewerApi(required,bundleText,subject='episode') {
   if(required.api<=21)return null;
   const declared=bundleText==null?null:viewerApiFromBanner(bundleText);
-  need(declared!==null,`Cannot confirm the viewer API: this ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}, and the selected bundle is missing or declares no "viewer API" banner. Select a machinome-viewer bundle with --viewer.`);
+  need(declared!==null,`Cannot confirm the viewer API: this ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}, and the selected bundle is missing or declares no "viewer API" banner. Install a machinome-viewer that declares it: pip install -U "machinome[viewer]".`);
   need(declared>=required.api,viewerApiRefusal(required,declared,subject));
   return declared;
 }

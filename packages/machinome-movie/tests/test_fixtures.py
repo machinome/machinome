@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from machinome_movie import MovieError, check_document, dumps, evaluate, load_movie
+from machinome.movie import MovieError, check_document, dumps, evaluate, load_movie
 
 from conftest import FIXTURES, PROJECT
 

@@ -1,4 +1,4 @@
-// The test memo (AGENTS.md, "Memoization of slow tests"; ADR-003).
+// The test memo (the package's ADR-003).
 //
 // Two memos, both keyed on content and both kept in one store every worktree
 // of the repository shares, never committed: `videomaker-test-memo/` beside

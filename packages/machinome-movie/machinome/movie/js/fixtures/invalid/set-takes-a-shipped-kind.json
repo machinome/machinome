@@ -149,7 +149,7 @@
       "height": 360,
       "width": 640
     },
-    "root": "../../python/tests/fixtures/project/videos/minimal",
+    "root": "../../../../../tests/fixtures/project/videos/minimal",
     "sourceCode": {
       "declaration": {
         "file": "../../models/seesaw.py",

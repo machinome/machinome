@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 
 from machinome.simulation import Driver, Instruction
-from machinome_movie import (Camera, Chapter, Format, Frame, Loop, Mark, Move, Movie, MovieError,
+from machinome.movie import (Camera, Chapter, Format, Frame, Loop, Mark, Move, Movie, MovieError,
                              Narration, Narrator, Shot, Take, Trigger, View, check_document, dumps,
                              evaluate)
 
@@ -461,7 +461,7 @@ def test_a_model_changed_since_its_export_is_refused_naming_both_identities(tmp_
     assert probe.returncode == 0, probe.stderr
     changed = probe.stdout.strip()
     assert re.fullmatch(r'[0-9a-f]{64}', changed) and changed != IDENTITY
-    result = run_in(Path(__file__).resolve().parents[1], '-m', 'machinome_movie', 'evaluate', copy,
+    result = run_in(Path(__file__).resolve().parents[1], '-m', 'machinome.movie', 'evaluate', copy,
                     'count', '--out', tmp_path / 'count.json')
     assert result.returncode == 1, result.stderr
     for name in ('Take Turns', 'models.counter:Counter', '../../export/counter', IDENTITY,
@@ -534,8 +534,8 @@ def test_a_take_document_is_refused_naming_its_fault(count, change, names):
 
 
 def test_a_take_block_on_a_loop_document(count):
-    document = json.loads((Path(__file__).resolve().parents[2] / 'fixtures' / 'documents'
-                           / 'minimal.json').read_text())
+    document = json.loads((Path(__file__).resolve().parents[1] / 'machinome' / 'movie' / 'js'
+                           / 'fixtures' / 'documents' / 'minimal.json').read_text())
     document['take'] = copy.deepcopy(count['take'])
     with refused('take', 'normalized-loop'):
         check_document(document)

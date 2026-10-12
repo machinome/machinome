@@ -1,5 +1,5 @@
 // The three counting rules of the movie document, as the Python side counts
-// them (python/machinome_movie/text.py): a phrase in a narration, words in a
+// them (machinome/movie/text.py): a phrase in a narration, words in a
 // phrase, a token in a source excerpt. Both character classes are ASCII.
 
 // What a source token is: an identifier or a dotted path of identifiers.

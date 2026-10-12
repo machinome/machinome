@@ -3,6 +3,8 @@
 The schema is the one file both runtimes read; every document Python emits
 validates against it; the fixture project's revision is reproducible; the
 manual page exists, is linked, and its examples are the fixture's own code.
+The manual is the machinome framework's, which these pages joined with the
+package (change `join-movie` of the machinome repository).
 """
 
 import json
@@ -15,15 +17,33 @@ from importlib import resources
 import jsonschema
 import pytest
 
-from machinome_movie import MovieError, dumps, evaluate, load_movie
+from machinome.movie import MovieError, dumps, evaluate, load_movie
 
 from conftest import FIXTURES, PROJECT, PYTHON, REPOSITORY, SCHEMA
 
 REGISTERED = json.loads((FIXTURES / 'manifest.json').read_text())['documents']
 
+#: The framework's manual, beside this package in the repository.
+MANUAL = PYTHON.parent / 'machinome' / 'docs'
+#: The how-to that teaches the declarations, and the pages the films fold
+#: into: the guide, the command, the document and the episode format.
+PAGE = MANUAL / 'howto' / 'declare-a-movie.rst'
+FILM = MANUAL / 'howto' / 'film-a-movie.rst'
+PAGES = [PAGE, FILM, MANUAL / 'howto' / 'draw-a-movie-stage.rst',
+         *sorted((MANUAL / 'reference' / 'movie').glob('*.rst'))]
+
+
+def words(path):
+    return ' '.join(path.read_text().split())
+
+
+def section_titles(text):
+    """A reStructuredText page's section titles, in order."""
+    return re.findall(r'^(\S.*)\n[=\-~]{3,}$', text, flags=re.M)
+
 
 def test_the_package_ships_the_repository_schema():
-    packaged = resources.files('machinome_movie').joinpath('machinome-movie-0.2.json')
+    packaged = resources.files('machinome.movie').joinpath('machinome-movie-0.2.json')
     assert packaged.read_bytes() == SCHEMA.read_bytes()
     assert json.loads(SCHEMA.read_text())['title'] == 'machinome-movie/0.2'
 
@@ -31,11 +51,11 @@ def test_the_package_ships_the_repository_schema():
 def test_nothing_of_0_1_is_left_in_the_package_the_manual_or_the_fixtures():
     # The pilot's ruling: 0.1 was a step, not a protocol; nothing of it is kept.
     assert not (REPOSITORY / 'schema' / 'machinome-movie-0.1.json').exists()
-    places = [*(PYTHON / 'machinome_movie').iterdir(), PYTHON / 'README.md', PYTHON / 'pyproject.toml',
-              REPOSITORY / 'docs' / 'declaring-a-movie.md', FIXTURES / 'README.md', FIXTURES / 'manifest.json',
+    places = [*(PYTHON / 'machinome' / 'movie').iterdir(), PYTHON / 'README.md', PYTHON / 'pyproject.toml',
+              PAGE, FIXTURES / 'README.md', FIXTURES / 'manifest.json',
               *(FIXTURES / 'documents').glob('*.json'), *(FIXTURES / 'invalid').glob('*.json')]
     for path in places:
-        if path.is_file() and path.suffix in ('.py', '.md', '.json', '.toml'):
+        if path.is_file() and path.suffix in ('.py', '.md', '.rst', '.json', '.toml'):
             text = path.read_text(encoding='utf-8')
             for stale in ('machinome-movie/0.1', 'machinome-movie-0.1'):
                 assert stale not in text, f'{path.relative_to(REPOSITORY)} still names {stale}'
@@ -112,45 +132,48 @@ def test_the_counter_is_the_framework_tutorials_clocked_export():
     assert 'models/counter.py' in notice and 'GPL-2.0-or-later OR CERN-OHL-S-2.0-or-later' in notice
 
 
-PAGE = REPOSITORY / 'docs' / 'declaring-a-movie.md'
-
-
 def test_the_manual_page_exists_and_is_linked():
     assert PAGE.is_file()
-    assert '](docs/declaring-a-movie.md)' in (REPOSITORY / 'README.md').read_text()
-    text = PAGE.read_text()
-    assert '](movie-document.md)' in text and 'machinome-movie/0.2' in text
+    assert ':doc:`/howto/declare-a-movie`' in FILM.read_text()
+    index = (MANUAL / 'index.rst').read_text()
+    assert '   howto/declare-a-movie\n' in index
+    text = words(PAGE)
+    assert ':doc:`movie document </reference/movie/document>`' in text and 'machinome-movie/0.2' in text
 
 
 def test_the_manual_says_the_narrator_sets_the_length_and_what_the_end_is():
     # Warts 2 and 7 of the first film declared in Python.
-    text = ' '.join(PAGE.read_text().split())
+    text = words(PAGE)
     assert 'The narrator sets the film\'s length.' in text
     assert 'estimate a film\'s length by speaking its narration, not by counting its shots' in text
-    assert '`check` prints, for each chapter, its take, its length and its tail' in text
-    assert '`lines.end()` the end of the whole narration' in text
-    assert '`{"narrationEnd": true}`' in text
+    assert '``check`` prints, for each chapter, its take, its length and its tail' in text
+    assert '``lines.end()`` the end of the whole narration' in text
+    assert '``{"narrationEnd": true}``' in text
 
 
 def test_the_manual_names_no_project_or_checkout():
-    text = PAGE.read_text()
     for word in ('Leonardo', 'worktree', 'WTs/', 'sawmill'):
-        assert word not in text, word
+        assert word not in PAGE.read_text(), word
+    for page in PAGES:
+        text = page.read_text()
+        for word in ('Leonardo', 'worktree', 'WTs/', '../projects', 'machinome_movie'):
+            assert word not in text, (page.name, word)
 
 
 def test_the_manuals_examples_are_the_fixtures_code():
     text = PAGE.read_text()
-    blocks = re.findall(r'```python\n(.*?)```', text, flags=re.S)
+    blocks = re.findall(r'^\.\. code-block:: python\n\n((?:(?:   .*)?\n)+)', text, flags=re.M)
     assert blocks
     sources = '\n'.join(path.read_text() for path in PROJECT.rglob('*.py'))
     for block in blocks:
         for line in block.rstrip('\n').split('\n'):
+            line = line[3:]
             if line.strip() and line.strip() != '...':
                 assert line in sources, f'manual line not in the fixture project: {line!r}'
 
 
 def test_the_changelog_has_an_unreleased_section_with_this_change():
-    text = (REPOSITORY / 'CHANGELOG.md').read_text()
+    text = (PYTHON / 'CHANGELOG.md').read_text()
     assert '## Unreleased' in text
     assert 'machinome-movie' in text
     assert '(`declarative-stage`' in text
@@ -158,36 +181,36 @@ def test_the_changelog_has_an_unreleased_section_with_this_change():
 
 
 def test_the_manual_teaches_the_clocked_take():
-    text = PAGE.read_text()
-    assert '\n## The take, clocked\n' in text
-    assert text.index('\n## The take\n') < text.index('\n## The take, clocked\n') \
-        < text.index('\n## The template: sets\n')
-    words = ' '.join(text.split())
+    titles = section_titles(PAGE.read_text())
+    assert 'The take, clocked' in titles
+    assert titles.index('The take') < titles.index('The take, clocked') \
+        < titles.index('The template: sets')
+    text = words(PAGE)
     for sentence in (
             'A clocked machine has no loop: it stands at a bank of values and moves when asked.',
-            '`Move(input, to=, over=)` or `Move(input, by=, over=)`',
-            '`Trigger(instruction)` is drawn over the duration its instruction declares',
+            '``Move(input, to=, over=)`` or ``Move(input, by=, over=)``',
+            '``Trigger(instruction)`` is drawn over the duration its instruction declares',
             'A frame is a pure function of take time.',
             'Evaluation runs the steps once through the framework\'s simulation of the model',
-            '`readiness` says what the export does and does not show'):
-        assert sentence in words, sentence
+            '``readiness`` says what the export does and does not show'):
+        assert sentence in text, sentence
 
 
 def test_the_status_line_names_what_is_filmable():
-    text = ' '.join((REPOSITORY / 'README.md').read_text().split())
+    text = words(FILM)
     assert 'running machines are refused' in text
     assert 'a clocked machine\'s take' in text
 
 
-def test_the_manual_and_the_package_readme_document_the_watch():
+def test_the_manual_and_the_command_document_the_watch():
     # The player-page change: `watch` beside `evaluate`.
-    words = ' '.join(PAGE.read_text().split())
-    assert 'python -m machinome_movie watch <project-dir> tour' in words
-    for sentence in ('`watch` evaluates the movie as `evaluate` does',
-                     'passing over `_build`, `.git` and `__pycache__`',
-                     '`--interval`'):
-        assert sentence in words, sentence
-    readme = (PYTHON / 'README.md').read_text()
-    assert 'python -m machinome_movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]' in readme
-    main = (PYTHON / 'machinome_movie' / '__main__.py').read_text()
-    assert 'python -m machinome_movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]' in main
+    text = words(PAGE)
+    assert 'machinome movie watch <project-dir> tour' in text
+    for sentence in ('``watch`` evaluates the movie as ``evaluate`` does',
+                     'passing over ``_build``, ``.git`` and ``__pycache__``',
+                     '``--interval``'):
+        assert sentence in text, sentence
+    assert 'machinome movie watch PROJECT MOVIE [--out FILE] [--interval SECONDS]' in \
+        (MANUAL / 'reference' / 'cli.rst').read_text()
+    main = (PYTHON / 'machinome' / 'movie' / '__main__.py').read_text()
+    assert 'python -m machinome.movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]' in main

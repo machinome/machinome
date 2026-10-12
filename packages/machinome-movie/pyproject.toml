@@ -1,21 +1,75 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-movie"
-version = "0.0.0"
-description = "Declare a narrated film of a machinome model in Python and evaluate it to the movie document"
-readme = "README.md"
+version = "0.8.1"
+description = "Narrated films of machinome models: movies declared in Python, evaluated to the movie document, then checked, voiced, previewed, rendered and served"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
-dependencies = ["machinome", "jsonschema"]
-# The distribution licence is not selected; see the repository README.
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
+keywords = ["machinome", "video", "film"]
+dependencies = [
+    # The framework a movie's take is recorded through, and the browser
+    # viewer every frame is drawn by, released with it: the set carries one
+    # version, and the pins between its packages are ~= both ways.
+    "machinome~=0.8.1",
+    "machinome-viewer~=0.8.1",
+    "jsonschema",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+# `machinome movie`, a command this package adds to machinome (ADR-189).
+[project.entry-points."machinome.commands"]
+movie = "machinome.movie.cli:Movie"
+
+[tool.setuptools.packages.find]
+# The package directory machinome/movie/, which has its own __init__.py,
+# with none at machinome/. Its js/ directory is package data, not a package.
+include = ["machinome.movie"]
+namespaces = true
 
 [tool.setuptools]
-packages = ["machinome_movie"]
+# The wheel's data is named below, not read from MANIFEST.in, which gives
+# the sdist the whole of js/: setuptools then finds no directory of js/ to
+# warn about as a package absent from `packages` (change join-movie).
+include-package-data = false
+zip-safe = false
 
 [tool.setuptools.package-data]
-machinome_movie = ["machinome-movie-0.2.json"]
+# The movie document's schema, a link to js/schema/ in the tree, a file in
+# the wheel; and what the verbs run: the Node side's manifest, its own lock,
+# its command and its sources.
+"machinome.movie" = [
+    "machinome-movie-0.2.json",
+    "js/package.json",
+    "js/package-lock.json",
+    "js/bin/*",
+    "js/src/*",
+    "js/stage/*",
+    "js/player/*",
+    "js/transport/*",
+    "js/schema/*",
+]
+
+[tool.setuptools.exclude-package-data]
+# The tests beside the sources travel in the sdist alone, with the Node
+# suite, its fixtures, its scripts and its configuration.
+"machinome.movie" = ["js/*.test.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

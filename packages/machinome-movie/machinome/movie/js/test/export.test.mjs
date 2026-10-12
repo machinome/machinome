@@ -12,7 +12,7 @@ import {join,dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {viewerFiles,exportFiles} from '../src/export.mjs';
 
-const EXPORTS=join(dirname(fileURLToPath(import.meta.url)),'..','python','tests','fixtures','project','export');
+const EXPORTS=join(dirname(fileURLToPath(import.meta.url)),'..','..','..','..','tests','fixtures','project','export');
 const json=async file=>JSON.parse(await readFile(file,'utf8'));
 // The URLs the extension walk of `stage()` served for the two fixture
 // exports, computed on the base c8c6309 before this change. Literal; never

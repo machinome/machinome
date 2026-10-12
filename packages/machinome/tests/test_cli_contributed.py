@@ -45,7 +45,7 @@ MIGRATION_HINT = ('The CLI grammar changed in 0.4: commands come first. '
 
 DISPATCH = 'from machinome.cli import manage; manage()\n'
 
-MOVIE_DOC = 'Make films of machines (a fake contributed command).'
+FILM_DOC = 'Make films of machines (a fake contributed command).'
 LESSONS_DOC = 'Teach a lesson (a fake contributed command).'
 
 #: The commands the packages installed in the suite's environment
@@ -79,29 +79,29 @@ class ContributedCommandTest(TestCase):
 
     def test_help_lists_contributed_commands_after_the_framework(self):
         """Scenario "A contributed command is listed"."""
-        result = run('fake-movie', 'fake-lessons', argv=['-h'])
+        result = run('fake-film', 'fake-lessons', argv=['-h'])
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(result.stderr, '')
-        self.assertIn('{' + ','.join(choices('movie', 'lessons')) + '}',
+        self.assertIn('{' + ','.join(choices('film', 'lessons')) + '}',
                       result.stdout)
         help_text = squeezed(result.stdout)
-        self.assertIn('movie' + squeezed(MOVIE_DOC), help_text)
+        self.assertIn('film' + squeezed(FILM_DOC), help_text)
         self.assertIn('lessons' + squeezed(LESSONS_DOC), help_text)
 
     def test_a_contributed_command_runs_with_its_own_verbs(self):
         """Scenarios "A contributed command runs" and "A later argument
         spells a framework command": a verb or a source spelling a framework
         command (`build`) is the contributed command's argument."""
-        for argv in (['movie', 'build', 'film.yaml'],
-                     ['movie', 'list', 'build'],
-                     ['movie', 'render', 'film.yaml']):
+        for argv in (['film', 'build', 'film.yaml'],
+                     ['film', 'list', 'build'],
+                     ['film', 'render', 'film.yaml']):
             with self.subTest(argv=argv):
-                result = run('fake-movie', argv=argv)
+                result = run('fake-film', argv=argv)
 
                 self.assertEqual(result.status, 0, result.stderr)
                 self.assertEqual(result.stdout, ' '.join(argv) + '\n')
-                self.assertTrue(result.imported('machinome_fake_movie'))
+                self.assertTrue(result.imported('machinome_fake_film'))
                 self.assertEqual(sorted(COMMAND_MODULES & result.modules), [])
 
     def test_a_second_contributor_runs(self):
@@ -148,33 +148,33 @@ class ContributedCommandTest(TestCase):
     def test_a_framework_command_reads_no_entry_point(self):
         """Scenario "A framework command reads no entry point" of
         `cli-startup-cost`: green before the change, a guard."""
-        result = run('fake-movie', argv=['vet', '-h'])
+        result = run('fake-film', argv=['vet', '-h'])
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertFalse(result.imported('importlib.metadata'))
-        self.assertFalse(result.imported('machinome_fake_movie'))
+        self.assertFalse(result.imported('machinome_fake_film'))
         self.assertEqual(sorted(COMMAND_MODULES & result.modules),
                          ['machinome.manager.vet'])
 
     def test_an_unknown_name_names_the_contributed_commands(self):
         """`cli-startup-cost`: an unknown name's error names the valid
         commands, the contributed ones included."""
-        result = run('fake-movie', argv=['frobnicate'])
+        result = run('fake-film', argv=['frobnicate'])
 
         self.assertEqual(result.status, 2)
-        for name in [*COMMAND_ORDER, 'movie']:
+        for name in [*COMMAND_ORDER, 'film']:
             self.assertIn(name, result.stderr)
         self.assertEqual(sorted(COMMAND_MODULES & result.modules), [])
-        self.assertFalse(result.imported('machinome_fake_movie'))
+        self.assertFalse(result.imported('machinome_fake_film'))
 
     def test_the_legacy_grammar_reads_the_contributed_names(self):
         """Scenario "Legacy grammar with a contributed command"."""
-        result = run('fake-movie', argv=['film.yaml', 'movie'])
+        result = run('fake-film', argv=['film.yaml', 'film'])
 
         self.assertEqual(result.status, 2)
         self.assertEqual(result.stderr, MIGRATION_HINT)
         self.assertEqual(result.stdout, '')
-        self.assertFalse(result.imported('machinome_fake_movie'))
+        self.assertFalse(result.imported('machinome_fake_film'))
 
 
 class ContributedCollisionTest(TestCase):
@@ -203,27 +203,27 @@ class ContributedCollisionTest(TestCase):
 
     def test_a_name_two_packages_contribute_runs_neither(self):
         """Scenario "Two packages contribute one name"."""
-        located = ('fake-movie (machinome_fake_movie:Movie), '
-                   'fake-movie-two (machinome_fake_movie_two:Movie)')
-        result = run('fake-movie', 'fake-movie-two',
-                     argv=['movie', 'list', 'x'])
+        located = ('fake-film (machinome_fake_film:Film), '
+                   'fake-film-two (machinome_fake_film_two:Film)')
+        result = run('fake-film', 'fake-film-two',
+                     argv=['film', 'list', 'x'])
 
         self.assertEqual(result.status, 1, result.stderr)
         self.assertEqual(result.stdout, '')
         self.assertEqual(
             result.stderr,
-            f'Error: machinome movie is contributed by more than one '
+            f'Error: machinome film is contributed by more than one '
             f'package: {located}\n')
-        self.assertFalse(result.imported('machinome_fake_movie'))
-        self.assertFalse(result.imported('machinome_fake_movie_two'))
+        self.assertFalse(result.imported('machinome_fake_film'))
+        self.assertFalse(result.imported('machinome_fake_film_two'))
 
-        listed = run('fake-movie', 'fake-movie-two', argv=['-h'])
+        listed = run('fake-film', 'fake-film-two', argv=['-h'])
         self.assertEqual(listed.status, 0, listed.stderr)
         listing = [line.split()[:2] for line in listed.stdout.splitlines()
-                   if line.split()[:1] == ['movie']]
-        self.assertEqual(listing, [['movie', '(unavailable:']])
+                   if line.split()[:1] == ['film']]
+        self.assertEqual(listing, [['film', '(unavailable:']])
         self.assertIn(
-            squeezed(f'movie (unavailable: contributed by more than one '
+            squeezed(f'film (unavailable: contributed by more than one '
                      f'package: {located})'),
             squeezed(listed.stdout))
 

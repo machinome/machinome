@@ -1,5 +1,11 @@
 # Architecture Decision Records
 
+(12 October 2026, change `join-movie`) The videomaker joined the machinome
+repository at `packages/machinome-movie/`; this log stays its own, beside the
+framework's `packages/machinome/docs/adrs/`. A number cited in the package's
+code, specs and records names this log's ADR; the framework's are cited as
+'framework ADR-nnn'.
+
 Videomaker's decision log. Each ADR records one architectural decision, its
 context, the options weighed and its consequences, as a **delta** against the
 architecture before it. The synthesized current state is

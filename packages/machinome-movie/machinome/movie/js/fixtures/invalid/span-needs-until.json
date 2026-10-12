@@ -823,7 +823,7 @@
       "simulationUrl": null,
       "sourceUrl": null
     },
-    "root": "../../python/tests/fixtures/project/videos/tour",
+    "root": "../../../../../tests/fixtures/project/videos/tour",
     "series": "VIDEOMAKER · FIXTURES",
     "sourceCode": {
       "declaration": {

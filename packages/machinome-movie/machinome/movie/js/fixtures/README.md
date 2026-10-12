@@ -8,7 +8,7 @@ side's suite.
 - `documents/<name>.json` — valid `machinome-movie/0.2` documents. The Python
   suite asserts that evaluating the fixture movie of the same name (declared
   under that name in the fixture project's `[tool.machinome.movies]`, at
-  `python/tests/fixtures/project/videos/<name>/movie.py`) yields exactly this
+  `tests/fixtures/project/videos/<name>/movie.py` of the package) yields exactly this
   document, written for this file (`root` points back at the movie; files are
   written with two-space indentation and a final newline). The Node suite
   asserts that it validates against `schema/machinome-movie-0.2.json`, passes
@@ -84,7 +84,7 @@ so a new fixture is registered once and missed by neither side.
 
 ## The fixture project
 
-`python/tests/fixtures/project/` is a tiny machinome project: a seesaw model
+The package's `tests/fixtures/project/` is a tiny machinome project: a seesaw model
 (`models/seesaw.py`, a declared 20 s loop through which the beam tips), its
 posed export (`export/seesaw/`, which the framework's command writes,
 `machinome export seesaw --fps 30 --frames 600 --no-widget`, and which the
@@ -136,7 +136,7 @@ It makes the commit by the recipe, exports every model from it with
 temporary directory, refuses unless each manifest records the recipe commit
 clean, replaces `export/<model>/` with what the command wrote, evaluates
 every document `manifest.json` registers whose movie the project declares
-into `documents/` (with `PYTHONPATH` set to this repository's `python/`;
+into `documents/` (with `PYTHONPATH` set to the package's directory;
 `<python>`, by default `python3`, needs the package's dependencies) and
 prints what changed. An export made again differs at least by its parts'
 `mtime`. It does not write `resolved/`: run `scripts/pin-resolved.mjs` for

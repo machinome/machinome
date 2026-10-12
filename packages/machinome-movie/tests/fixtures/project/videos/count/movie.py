@@ -2,7 +2,7 @@
 nine, and carries, on the shipped Frame and Split, with its relations typed
 beside it."""
 
-from machinome_movie import (Chapter, Cue, Dissolve, Format, Frame, Movie, Narration, Narrator,
+from machinome.movie import (Chapter, Cue, Dissolve, Format, Frame, Movie, Narration, Narrator,
                              Shot, Source, Split, View)
 
 from models.counter import Counter

@@ -168,7 +168,7 @@
     "expectedDurationSeconds": 8,
     "manifest": "../../export/counter/manifest.json",
     "readiness": "Exported by machinome export; the drums count the crank's turns and carry.",
-    "sourceRevision": "e14e6852e38eec9adc53793f054f387f23cee974",
+    "sourceRevision": "55ad41bf95652c3491ba14501372f2f3a5a08365",
     "timeMode": "take"
   },
   "output": {
@@ -176,7 +176,7 @@
     "height": 360,
     "width": 640
   },
-  "root": "../../python/tests/fixtures/project/videos/count",
+  "root": "../../../../../tests/fixtures/project/videos/count",
   "sourceCode": {
     "relations": {
       "file": "../../models/counter.py",

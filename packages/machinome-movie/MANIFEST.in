@@ -1,0 +1,10 @@
+include CHANGELOG.md
+recursive-include machinome/movie/js *
+prune machinome/movie/js/node_modules
+prune machinome/movie/js/.test-memo
+recursive-include tests *
+recursive-include openspec *.md *.yaml
+recursive-include workflow *
+recursive-include experiments *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

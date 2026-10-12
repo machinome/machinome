@@ -10,8 +10,9 @@
 // scripts/pin-resolved.mjs for the documents that changed and reviews the pins
 // before committing.
 // Usage: node scripts/pin-fixture-project.mjs [--python PYTHON] [--machinome MACHINOME]
-// PYTHON (default python3) runs the machinome_movie package of this
-// repository's python/ directory and must have its dependencies installed;
+// PYTHON (default python3) runs the machinome.movie package of this
+// package's directory, packages/machinome-movie/, and must have its
+// dependencies installed;
 // MACHINOME (default machinome) is the framework's command line.
 import {cp,mkdtemp,readFile,readdir,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -20,7 +21,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
-const project=join(root,'python','tests','fixtures','project'),fixtures=join(root,'fixtures');
+const project=join(root,'..','..','..','tests','fixtures','project'),fixtures=join(root,'fixtures');
 // Every export of the project and the options it is made with: the seesaw's
 // loop at 30 fps over 600 frames, the clocked counter at the defaults.
 const EXPORTS={counter:[],seesaw:['--fps','30','--frames','600']};
@@ -86,8 +87,8 @@ try{
     seen.add(args[i]);options[args[i]]=args[i+1];
   }
   const python=options['--python'],machinome=options['--machinome'];
-  const env={...process.env,PYTHONPATH:[join(root,'python'),process.env.PYTHONPATH].filter(Boolean).join(':')};
-  const movie=(...rest)=>execFileSync(python,['-m','machinome_movie',...rest],{cwd:root,env,encoding:'utf8',stdio:['ignore','pipe','inherit']});
+  const env={...process.env,PYTHONPATH:[join(root,'..','..','..'),process.env.PYTHONPATH].filter(Boolean).join(':')};
+  const movie=(...rest)=>execFileSync(python,['-m','machinome.movie',...rest],{cwd:root,env,encoding:'utf8',stdio:['ignore','pipe','inherit']});
 
   const held=await exportsNow(),made=Object.keys(EXPORTS).sort();
   if(held.join()!==made.join())

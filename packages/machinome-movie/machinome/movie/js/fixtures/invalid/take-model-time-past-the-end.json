@@ -176,7 +176,7 @@
       "height": 360,
       "width": 640
     },
-    "root": "../../python/tests/fixtures/project/videos/count",
+    "root": "../../../../../tests/fixtures/project/videos/count",
     "sourceCode": {
       "relations": {
         "file": "../../models/counter.py",

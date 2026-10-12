@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from machinome_movie import (Action, Camera, Chapter, Cue, Element, Fade, Format, Frame, Loop,
+from machinome.movie import (Action, Camera, Chapter, Cue, Element, Fade, Format, Frame, Loop,
                              Movie, MovieError, Narration, Narrator, Set, Shot, Slide, Slot,
                              Source, Split, View, dumps, evaluate)
 

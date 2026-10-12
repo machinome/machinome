@@ -78,6 +78,9 @@ EXTRAS = {
     # `join-skills`: the skills package, a product numbered with the set, not
     # a kernel.
     'skills': {f'machinome-skills~={VERSION}'},
+    # `join-movie`: the films, a product numbered with the set, not a
+    # kernel.
+    'movie': {f'machinome-movie~={VERSION}'},
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
             'openscad,solid2,jscad,stl,freecad]'},
 }

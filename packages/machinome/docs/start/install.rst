@@ -139,9 +139,10 @@ types in packages of their own that its extras install
 ``machinome-node-openscad``, ``machinome-node-solid2``,
 ``machinome-node-jscad``, ``machinome-node-stl`` and
 ``machinome-node-freecad``), with the mechanics helpers in
-``machinome-mechanics``, with the browser viewer in ``machinome-viewer`` and
-the machinome skills in ``machinome-skills``, all licensed
-|framework_licence|, at the recipient's choice. The framework reaches the
+``machinome-mechanics``, with the browser viewer in ``machinome-viewer``, the
+machinome skills in ``machinome-skills`` and the films in
+``machinome-movie``, all licensed |framework_licence|, at the recipient's
+choice. The framework reaches the
 viewer only as a separate process. The ``viewer`` extra installs it.
 Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes
@@ -191,15 +192,25 @@ and the ``documentVersions`` it reads. This manual matches viewer
 |document_versions|. Without the viewer the command names the extra to
 install and exits 1.
 
-Three more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
+Four more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
 </reference/mechanics/index>`, ``machinome.mechanics``, gear, screw, crank,
 cam, delta, linkage, rolling and belt formulas (the distribution
 ``machinome-mechanics``, version |mechanics_version|); ``skills`` installs
 the :doc:`machinome skills </howto/assistant-skills>` for assistants and the
-command ``machinome skills`` (the distribution ``machinome-skills``); and
-``web-snapshot`` installs the viewer with its headless browser driver for
-transparent photographs; Chromium itself is a second step, ``playwright
-install chromium``. None is needed to start.
+command ``machinome skills`` (the distribution ``machinome-skills``);
+``movie`` installs the films of a machine, ``machinome.movie`` and the
+command ``machinome movie`` (the distribution ``machinome-movie``), whose
+Node side is a second step, run with your Node 22 or newer, and whose
+Chromium and FFmpeg are documented steps of :doc:`/howto/film-a-movie`:
+
+.. code-block:: bash
+
+    $ python -m pip install "machinome[movie]"
+    $ machinome movie setup
+
+and ``web-snapshot`` installs the viewer with its headless browser driver
+for transparent photographs; Chromium itself is a second step,
+``playwright install chromium``. None is needed to start.
 
 Upgrading
 ---------

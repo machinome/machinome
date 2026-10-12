@@ -1,4 +1,4 @@
-// Layer 9: the test memo is honest (AGENTS.md, "Memoization of slow tests").
+// Layer 9: the test memo is honest (the package's ADR-003).
 // Fast tests over a tiny memoized step in a temporary directory, with an
 // explicit toolchain record: no Chromium, no FFmpeg, no real render.
 import {test,describe} from 'vitest';
@@ -377,7 +377,7 @@ describe('the verdict key covers what a slow test can reach',()=>{
     assert.ok(viewer.length>=1,'the viewer layer has tests');
     for(const file of viewer){
       const inputs=await slowTestInputs(file,{root});
-      for(const served of ['stage/runtime.tsx','src/film.html','python/tests/fixtures/project/export/seesaw/manifest.json'])
+      for(const served of ['stage/runtime.tsx','src/film.html','../../../tests/fixtures/project/export/seesaw/manifest.json'])
         assert.ok(inputs.includes(join(root,served)),`${served} is an input of ${file}`);
     }
     const speech=await slowTestInputs(join(root,'test/pipeline/speech.test.mjs'),{root});

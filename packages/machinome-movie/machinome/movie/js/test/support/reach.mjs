@@ -1,5 +1,5 @@
-// What a slow test can reach, for its verdict key (AGENTS.md, "Memoization of
-// slow tests"; ADR-003, amended 30 September 2026 by `test-memo-sharing`).
+// What a slow test can reach, for its verdict key (the package's ADR-003,
+// amended 30 September 2026 by `test-memo-sharing`).
 //
 // The inputs of a slow test file's key are:
 // 1. the import graph: the file and every module it reaches through relative
@@ -37,7 +37,7 @@ const IMPORTS=/\b(?:import|export)\s*(?:[\w*{}\s,$]*?\s*from\s*)?['"](\.{1,2}\/[
 // A module that locates a repository file by path rather than importing it.
 export const LOCATES=/\bimport\.meta\.url\b|\b(?:resolve|join)\(\s*['"](?:\.\.?\/)?(?:bin|src|stage|transport|player|fixtures|schema|python|test)\//;
 
-const FIXTURE_PROJECT='python/tests/fixtures/project';
+const FIXTURE_PROJECT='../../../tests/fixtures/project';
 // What a module reads without importing it, by path relative to the root. A
 // module path (.mjs) is followed through its own imports (a spawned command);
 // a directory is every file under it, less test files and what a build or

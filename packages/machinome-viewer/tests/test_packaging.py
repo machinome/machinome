@@ -64,6 +64,41 @@ class FrontendPackagingTest(TestCase):
                 call(['npm', 'ci'], cwd=widget),
                 call(['npm', 'run', 'build'], cwd=widget)])
 
+    def test_packaging_installs_at_the_workspace_root_that_names_the_widget(self):
+        # Inside the repository's npm workspace, `npm ci` run from a member's
+        # directory installs that member alone and empties every other
+        # member's node_modules, the movie's among them; run at the root it
+        # installs every member (change `join-movie`). The bundle is built
+        # in the widget's directory.
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary).resolve()
+            widget = workspace / 'packages' / 'viewer' / 'widget'
+            widget.mkdir(parents=True)
+            (workspace / 'package.json').write_text(
+                '{"private": true, "workspaces": '
+                '["packages/viewer/widget", "packages/movie/js"]}')
+            frontend = packaging.Frontend(widget, widget / 'dist' / 'bundle.js')
+            with patch.object(packaging.subprocess, 'check_call') as invoke:
+                packaging.build_frontend(frontend)
+            self.assertEqual(invoke.call_args_list, [
+                call(['npm', 'ci'], cwd=workspace),
+                call(['npm', 'run', 'build'], cwd=widget)])
+
+    def test_packaging_installs_in_the_widget_under_a_root_that_names_another(
+            self):
+        with tempfile.TemporaryDirectory() as temporary:
+            outer = Path(temporary).resolve()
+            widget = outer / 'widget'
+            widget.mkdir()
+            (outer / 'package.json').write_text(
+                '{"private": true, "workspaces": ["elsewhere"]}')
+            frontend = packaging.Frontend(widget, widget / 'dist' / 'bundle.js')
+            with patch.object(packaging.subprocess, 'check_call') as invoke:
+                packaging.build_frontend(frontend)
+            self.assertEqual(invoke.call_args_list, [
+                call(['npm', 'ci'], cwd=widget),
+                call(['npm', 'run', 'build'], cwd=widget)])
+
     def test_source_distribution_builds_the_one_frontend(self):
         with patch('machinome.viewer.web.packaging.build_frontend') as build:
             packaging.build_distribution_frontends()

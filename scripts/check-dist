@@ -17,7 +17,9 @@ there, from a table keyed by distribution name.
 It uploads nothing. Installing the wheels' dependencies needs a package
 index. It needs `build` and `twine` importable by the interpreter that runs
 it, and Node 22 and npm on the PATH: the browser viewer's source
-distribution builds its bundle with npm (change `join-viewer`). It writes
+distribution builds its bundle with npm (change `join-viewer`), and the
+movie's smoke installs its Node side from npm's registry or cache and runs
+it (change `join-movie`). It writes
 nothing inside the repository but the build's own scratch (`build/`,
 `*.egg-info`), the root's `node_modules/` that `npm ci` installs and the
 widget's `dist/`, which each member's `.gitignore`, or the root's, ignores.
@@ -657,6 +659,61 @@ print('machinome-viewer', distribution.version, 'module', viewer.__file__,
       'to', report['documentVersions'][-1])
 ''',
         'commands': [['machinome-viewer', 'describe'], ['machinome', 'viewer']],
+    },
+    'machinome-movie': {
+        # Installed from its wheel by path; the smoke reads the extra's
+        # requirement from the core's metadata, installs the Node side as a
+        # user does, and removes it (change `join-movie`).
+        'extras': [],
+        'code': '''
+import importlib.metadata as metadata
+import subprocess
+from pathlib import Path
+import machinome.movie as movie
+distribution = metadata.distribution('machinome-movie')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+shipped = sorted(path for path in files if path.startswith('machinome/'))
+assert 'machinome/movie/cli.py' in shipped, shipped
+assert 'machinome/movie/machinome-movie-0.2.json' in shipped, shipped
+assert 'machinome/movie/js/bin/videomaker.mjs' in shipped, shipped
+assert 'machinome/movie/js/package-lock.json' in shipped, shipped
+assert not [path for path in shipped
+            if '/js/test/' in path or '/js/fixtures/' in path
+            or '/js/scripts/' in path or '.test.' in path
+            or 'node_modules' in path], shipped
+js = Path(movie.__file__).resolve().parent / 'js'
+assert js.is_relative_to(Path(VENV).resolve()), js
+assert f'machinome~={version}' in distribution.requires, distribution.requires
+assert f'machinome-viewer~={version}' in distribution.requires, distribution.requires
+core = metadata.requires('machinome')
+assert any(line.startswith(f'machinome-movie~={version}')
+           and 'movie' in line.partition(';')[2] for line in core), core
+(entry,) = [entry for entry in metadata.entry_points(group='machinome.commands')
+            if entry.name == 'movie']
+assert entry.value == 'machinome.movie.cli:Movie', entry.value
+command = str(Path(VENV) / 'bin' / 'machinome')
+def run(*args):
+    return subprocess.run([command, 'movie', *args], capture_output=True,
+                          text=True)
+before = run('review', 'missing.json')
+assert before.returncode == 1 and 'machinome movie setup' in before.stderr, before
+setup = run('setup')
+assert setup.returncode == 0, setup.stdout + setup.stderr
+assert (js / 'node_modules' / 'esbuild' / 'package.json').is_file(), js
+after = run('review', 'missing.json')
+assert after.returncode == 1 and 'missing.json' in after.stderr, after
+removed = run('setup', '--remove')
+assert removed.returncode == 0 and not (js / 'node_modules').exists(), removed
+'''
+        + LICENCES.substitute(name='machinome-movie')
+        + '''
+print('machinome-movie', distribution.version, 'module', movie.__file__,
+      'Node side installed and removed')
+''',
+        'commands': [['machinome', 'movie', '-h']],
+    },
     'machinome-skills': {
         # Installed from its wheel by path: the smoke reads the extra's
         # requirement from the core's metadata.
@@ -835,6 +892,10 @@ def main():
                 and shutil.which('npm') is None:
             raise Failure("machinome-viewer's bundle is built by npm; put "
                           'Node 22 and npm on the PATH')
+        if any(name == 'machinome-movie' for _, name in listed) \
+                and None in (shutil.which('node'), shutil.which('npm')):
+            raise Failure("machinome-movie's smoke installs and runs its "
+                          'Node side; put Node 22 and npm on the PATH')
         print('Members:', ', '.join(name for _, name in listed))
         wheels = {name: build(directory, name, scratch)
                   for directory, name in listed}

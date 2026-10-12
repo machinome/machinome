@@ -97,7 +97,7 @@ export function keyFiles(checkout){
 // Node's env-file loading never did), then each of keyFiles(checkout). The environment is left
 // unchanged, and no refusal prints a key or any part of one.
 async function providerKey(checkout=TOOL_CHECKOUT){
-  const where=places=>new Error(`No ElevenLabs key: set ELEVENLABS_API_KEY in the environment or in a Videomaker checkout's .env; looked in ${places.join(', ')}`);
+  const where=places=>new Error(`No ElevenLabs key: set ELEVENLABS_API_KEY in the environment, or in the .env of the directory machinome movie runs from; looked in ${places.join(', ')}`);
   if(process.env.ELEVENLABS_API_KEY!==undefined){
     if(process.env.ELEVENLABS_API_KEY)return process.env.ELEVENLABS_API_KEY;
     throw where(['the environment (set but empty)']);

@@ -29,7 +29,7 @@ _MACHINERY = (types.FunctionType, staticmethod, classmethod, property)
 
 
 def _shipped(cls):
-    return cls.__module__ == 'machinome_movie' or cls.__module__.startswith('machinome_movie.')
+    return cls.__module__ == 'machinome.movie' or cls.__module__.startswith('machinome.movie.')
 
 
 def _own_kind(cls, where):

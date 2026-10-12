@@ -14,7 +14,7 @@ import {afterAll,beforeAll,describe,expect,test} from 'vitest';
 import {buildStage,movieTypes,renameOutput} from '../src/stage-build.mjs';
 
 const TOOL=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const TOUR=join(TOOL,'python/tests/fixtures/project/videos/tour');
+const TOUR=join(TOOL,'../../../tests/fixtures/project/videos/tour');
 let work='';
 let stageBlock;
 

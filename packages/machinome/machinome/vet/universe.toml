@@ -38,6 +38,10 @@ deny = [
   # The browser viewer's package, which serves, captures and builds its
   # bundle in processes of its own (change `join-viewer`).
   "machinome.viewer.web",
+  # The films' package, whose command runs Node and npm in processes of
+  # their own; a project's movie declarations are not vetted (change
+  # `join-movie`).
+  "machinome.movie",
 ]
 
 [kernels]                   # allowed, minus the denylists below

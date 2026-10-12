@@ -1,4 +1,4 @@
-"""Layer 1: `python -m machinome_movie watch` evaluates a movie, then
+"""Layer 1: `python -m machinome.movie watch` evaluates a movie, then
 evaluates it again each time a file of its project changes (the player-page
 change). The loop is driven here with an injected listing and sleep, so no
 verdict reads a clock; the command line runs once on a copy of the fixture
@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-from machinome_movie.watch import Watch, listing
+from machinome.movie.watch import Watch, listing
 
 from conftest import PROJECT, PYTHON
 
@@ -72,7 +72,7 @@ def test_the_listing_passes_over_the_tools_products_gits_store_and_bytecode(tmp_
 
 def test_an_interval_that_is_not_a_positive_number_of_seconds_is_refused(tmp_path):
     for value in ('0', '-1', 'soon', 'nan'):
-        result = subprocess.run([sys.executable, '-m', 'machinome_movie', 'watch', str(tmp_path), 'minimal',
+        result = subprocess.run([sys.executable, '-m', 'machinome.movie', 'watch', str(tmp_path), 'minimal',
                                  '--interval', value], capture_output=True, text=True, env=environment())
         assert result.returncode == 1, value
         assert result.stderr.startswith('machinome-movie: --interval '), result.stderr
@@ -96,7 +96,7 @@ def test_the_command_line_evaluates_again_when_a_module_changes_and_stops_cleanl
     copy = tmp_path / 'project'
     shutil.copytree(PROJECT, copy, ignore=shutil.ignore_patterns('_build', '__pycache__'))
     written = copy / 'videos' / 'minimal' / '_build' / 'movie.json'
-    child = subprocess.Popen([sys.executable, '-m', 'machinome_movie', 'watch', str(copy), 'minimal',
+    child = subprocess.Popen([sys.executable, '-m', 'machinome.movie', 'watch', str(copy), 'minimal',
                               '--interval', '0.1'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                              env=environment())
     try:

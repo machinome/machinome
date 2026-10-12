@@ -381,3 +381,67 @@ plan; recorded so the line's head reads whole.
    module or its command (0 files on 12 October 2026), and no module of the
    core changed. Evidence:
    `packages/machinome/openspec/changes/archive/2026-10-12-join-skills/evidence.md`.
+
+5. `join-movie`. **Done** (12 October 2026): branch
+   `v0.9-joins-join-movie`, planning commit 0f30f974 on 40087800, ratified
+   by the orchestrator's review with every recommendation of its Open
+   Questions accepted and three tasks added, with the pilot's decisions of
+   12 October 2026 (`release-0.9.md`, decisions 1 to 5 and 9); the join, the
+   merge commit 646f664d of the videomaker's `main` rewritten by `git
+   filter-repo` to its final paths (677 files, 251 commits, `main` at
+   83322ce; `git log` on `js/src/render.mjs` reaches a716989b of 19
+   September 2026), its two finished branches fetched beside the line as
+   `movie-live-audio-mixer` (a36e32f5) and `movie-record-review`
+   (ca99a77e), two commits each on 83322ce4. ADR-191, the videomaker is a
+   product of the set, its Node side inside its portion and installed by
+   its command, accepted; ADR-182 and ADR-188 amended. The package is
+   `packages/machinome-movie/` (the package directory `machinome/movie/`,
+   its Node side at `machinome/movie/js/` as package data, no `__init__.py`
+   at `machinome/`), at 0.8.1 with the set, requiring `machinome~=0.8.1`,
+   `machinome-viewer~=0.8.1` and `jsonschema`, under the set's licence,
+   keeping its changelog, tests, specs, decision log (`workflow/adrs/`),
+   working record and experiments in its directory; no module of the former
+   name `machinome_movie` is provided, and its root reads each name from its
+   module on first use. Its command `machinome movie`, the first contributor
+   of `machinome.commands`, runs `list`, `evaluate` and `watch` in Python
+   and `check`, `speech`, `preview`, `render`, `build`, `live` and `review`
+   on the user's Node 22 (`MACHINOME_NODE` before the `PATH`) with the
+   installed viewer's bundle, a source being an episode, a movie document
+   or a project and a movie name; `setup` installs the Node side from the
+   package's own lock into the installed package, `setup --remove` deletes
+   it. The core's extra `movie` pins `machinome-movie~=0.8.1`, the root's
+   default group installs it, and `machinome vet` denies the package. The
+   root's npm workspace gains the movie's `js/` as its second member, the
+   root's `.npmrc` (`install-strategy=shallow`) installing each member's
+   direct dependencies beside it (the viewer's 176 resolutions kept;
+   Playwright 1.63.0, one Chromium); the viewer's build hook now runs `npm
+   ci` at the workspace's root, so the second member's dependencies survive
+   it. The manual folds in as three how-tos ("Film a movie of your
+   machine", "Declare a movie", "Draw a movie's stage") and the reference
+   section `reference/movie/` (the command, the document, the episode
+   format), with the CLI reference's section `machinome movie`. The specs
+   modified are `cli`, `cli-startup-cost`, `framework-identity`,
+   `user-documentation`, `framework-contributor-guidance` and `vet`;
+   `movie-distribution` is created (totals + 11, ~ 1); the product's own
+   specs brought current in place. `uv lock` resolves 198 packages. The
+   suite green on the bench's uv venv (4894 passed, 9 skipped, 8422
+   subtests; the orchestrator's run the same); the package's Python tests
+   from its directory, 322 passed, and its Node suite from the root, 52
+   files, 505 passed, none skipped, with the bench's viewer; CI runs the
+   Python tests and the Node suite's `pure` and `stage` projects. The
+   manual built with warnings as errors from `docs/requirements.txt`
+   alone. `scripts/check-dist` green on the tree and on a clean copy:
+   sixteen members built, 32 archives `twine check --strict` passed, the
+   movie's wheel (77 entries, sdist 929) installed by its path, `setup`
+   installed its Node side, a verb reached Node, `setup --remove` removed
+   it; the clean copy's framework sdist holds 1083 entries and its wheel
+   114; nothing uploaded. The projects' move: 33 files in five
+   repositories, the 21 Python modules on `machinome.movie` and 12 film
+   READMEs on `machinome movie`, one commit each (Leonardo 05776cc,
+   kossel 6cb8ea2, Curta-Type-I-3x 6ad3a38, Metamaquina2 2589956,
+   lumiere-cinematographe f7ec9e1). The originating check, from the
+   bench's venv: `machinome movie check` and `preview` of the Curta's
+   `addition`, exit 0, the viewer 0.8.1 found through its entry point, 11
+   highlights measured, the storyboard looked at, the Curta posed across
+   the film's shots. The universe sweep after the move, on the bench: 63 repositories, 130 rows, 122 ok, 0 expected, 2 unexpected, 0 timeout, 6 no-model, identical to `join-mechanics`'s row for row (the two unexpected rows wall clock 41 and fender-bender's, as before); the catalogue's self-referencing link `machinome-projects` excluded with `--only '^(?!machinome-projects/)'`, 24 directories skipped Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-12-join-movie/evidence.md`.

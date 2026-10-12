@@ -8,10 +8,10 @@ mark, the camera.
 
 import pytest
 
-from machinome_movie import (Action, Camera, Chapter, Cue, Element, Format, Frame, Loop,
+from machinome.movie import (Action, Camera, Chapter, Cue, Element, Format, Frame, Loop,
                              Movie, MovieError, Narration, Narrator, Picture, Reframe, Reveal,
                              Set, Shot, Slot, Source, Split, Style, Title, View)
-from machinome_movie.text import excerpt_line, count_token, count_words
+from machinome.movie.text import excerpt_line, count_token, count_words
 
 from models.seesaw import Seesaw
 from videos.takes import Playground

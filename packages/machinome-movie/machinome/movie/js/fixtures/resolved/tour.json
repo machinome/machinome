@@ -126,7 +126,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Exported by machinome export; the beam tips on its pivot through the loop.",
-    "sourceRevision": "e14e6852e38eec9adc53793f054f387f23cee974",
+    "sourceRevision": "55ad41bf95652c3491ba14501372f2f3a5a08365",
     "timeMode": "normalized-loop"
   },
   "release": {
@@ -134,7 +134,7 @@
     "simulationUrl": null,
     "sourceUrl": null
   },
-  "root": "../../python/tests/fixtures/project/videos/tour",
+  "root": "../../../../../tests/fixtures/project/videos/tour",
   "series": "VIDEOMAKER · FIXTURES",
   "sourceCode": {
     "declaration": {

@@ -10,6 +10,7 @@ machinome = { workspace = true }
 machinome-engine-brep = { workspace = true }
 machinome-engine-mesh = { workspace = true }
 machinome-mechanics = { workspace = true }
+machinome-movie = { workspace = true }
 machinome-node-build123d = { workspace = true }
 machinome-node-cadquery = { workspace = true }
 machinome-node-freecad = { workspace = true }
@@ -37,6 +38,7 @@ exclude-dependencies = ["machinome-studio"]
 # `uv sync` at the root installs this group by default: the framework's dev
 # extra, which installs every kernel the suite runs, the mechanics package
 # the catalogue's projects import, so the universe sweep reads them from
-# this venv, and the skills package, whose tests run from its directory and
-# whose command the suite's conformance walk reads.
-dev = ["machinome[dev]", "machinome[mechanics]", "machinome[skills]"]
+# this venv, the skills package and the movie package, whose tests run from
+# their directories and whose commands the suite's conformance walk reads.
+dev = ["machinome[dev]", "machinome[mechanics]", "machinome[skills]",
+       "machinome[movie]"]

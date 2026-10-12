@@ -17,12 +17,12 @@ SHALL list the movie in `pyproject.toml` under `[tool.machinome.movies]` as
 evaluate the movies of a project from that table.
 
 #### Scenario: List a project's movies
-- **WHEN** the author runs `python -m machinome_movie list <project>`
+- **WHEN** the author runs `machinome movie list <project>`
 - **THEN** every name in the project's `[tool.machinome.movies]` table is
   printed with its reference, in table order.
 
 #### Scenario: Evaluate a movie by name
-- **WHEN** the author runs `python -m machinome_movie evaluate <project> <movie>`
+- **WHEN** the author runs `machinome movie evaluate <project> <movie>`
 - **THEN** the movie's module is imported from the project and its document
   is written to `_build/movie.json` beside the module, with `root` `..`.
 
@@ -434,8 +434,8 @@ reframe MUST be refused.
 
 ### Requirement: A movie is evaluated again when its project changes
 
-`python -m machinome_movie watch <project> <movie> [--out FILE] [--interval
-SECONDS]` SHALL evaluate the movie as `evaluate` does, printing the
+`machinome movie watch <project> <movie> [--out FILE] [--interval SECONDS]`
+SHALL evaluate the movie as `evaluate` does, printing the
 document's path or the refusal, and then evaluate it again, once, each time
 a file under the project changes, is added or is removed, found by
 comparing the files' status at every interval (0.5 s unless given), until
@@ -462,8 +462,8 @@ library only.
 
 #### Scenario: On the command line
 
-- **WHEN** `python -m machinome_movie watch <project> minimal --interval
-  0.1` runs on a copy of the fixture project, a module of the movie is
+- **WHEN** `machinome movie watch <project> minimal --interval 0.1`
+  runs on a copy of the fixture project, a module of the movie is
   written again with another byte, and the process is interrupted
 - **THEN** it printed the document's path twice and exited 0.
 

@@ -66,11 +66,15 @@ Development environment
 
 Requirements: Python 3.11 or newer, as the framework's
 ``packages/machinome/pyproject.toml`` requires. Node.js 22 or newer and npm
-build and test the browser viewer's widget, the one member of the
-repository's npm workspace, installed by ``npm ci`` at the root; the suite
-and the viewer's tests photograph through its built bundle, and the
+build and test the two members of the repository's npm workspace, the
+browser viewer's widget and the movie package's Node side, installed by one
+``npm ci`` at the root, which installs each member's direct dependencies
+beside it, as the root's ``.npmrc`` says; ``machinome movie setup`` is for an
+installed copy of the movie package, not for the checkout. The suite and the
+viewer's tests photograph through the widget's built bundle, and the
 viewer's browser tests need Chromium for the installed Playwright
-(``playwright install chromium``). `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
+(``playwright install chromium``), as the movie's browser and pipeline tests
+do, which need FFmpeg too. `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
 PATH when working on SolidPython2/Solid2 or raw OpenSCAD nodes, or the
 default OpenSCAD snapshot renderer. All-B-rep projects, CadQuery, build123d
 or the two mixed, build, test and export without it; use ``machinome
@@ -118,14 +122,15 @@ dependencies::
         -e packages/machinome-viewer \
         -e packages/machinome-mechanics \
         -e packages/machinome-skills \
+        -e packages/machinome-movie \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
-now on the PATH of the virtualenv. Install the widget's dependencies and
-build its bundle from the clone's root::
+now on the PATH of the virtualenv. Install the npm workspace's dependencies
+and build the widget's bundle from the clone's root::
 
     $ npm ci
-    $ npm run build --workspaces
+    $ npm run build --workspace packages/machinome-viewer/machinome/viewer/web/widget
 
 For the layout of the package, and for how to choose between direct pytest
 coverage and the meta-project harness when proving a change, read the
@@ -145,9 +150,14 @@ The test suite is pytest, run from the framework's directory,
 The mechanics helpers keep their tests in their own directory: run
 ``python -m pytest`` from ``packages/machinome-mechanics``. The browser
 viewer keeps its tests in its own directory: run ``python -m pytest`` from
-``packages/machinome-viewer``, and its widget's with ``npm test
---workspaces`` from the root. The skills package keeps its tests in its own
-directory too: run ``python -m pytest`` from ``packages/machinome-skills``.
+``packages/machinome-viewer``, and its widget's with ``npm test --workspace
+packages/machinome-viewer/machinome/viewer/web/widget`` from the root. The
+skills package keeps its tests in its own directory too: run ``python -m
+pytest`` from ``packages/machinome-skills``. The movie package keeps its tests
+in its own directory: run ``python -m pytest`` from
+``packages/machinome-movie``, and its Node suite with ``npm test --workspace
+packages/machinome-movie/machinome/movie/js`` from the root, after ``npm
+ci`` there; the browser and pipeline tests need Chromium and FFmpeg.
 
 Notes:
 

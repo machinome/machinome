@@ -1,4 +1,4 @@
-// The shared fixture project (python/tests/fixtures/project) as a movie the
+// The shared fixture project (the package's tests/fixtures/project) as a movie the
 // browser and pipeline tests produce: copied to a temporary directory,
 // committed by the recipe of fixtures/README.md (so its revision is the one
 // the documents pin), with a fixture document written beside its movie and
@@ -14,7 +14,7 @@ import {installTake} from '../project-fixture.mjs';
 import {viewerDouble} from '../viewer-double.mjs';
 
 export const REPOSITORY=join(dirname(fileURLToPath(import.meta.url)),'..','..');
-export const PROJECT=join(REPOSITORY,'python','tests','fixtures','project');
+export const PROJECT=join(REPOSITORY,'..','..','..','tests','fixtures','project');
 export const FIXTURES=join(REPOSITORY,'fixtures');
 const FIXED={GIT_AUTHOR_NAME:'Videomaker fixture',GIT_AUTHOR_EMAIL:'fixture@videomaker.invalid',
   GIT_AUTHOR_DATE:'2026-09-30T00:00:00+00:00',GIT_COMMITTER_NAME:'Videomaker fixture',
