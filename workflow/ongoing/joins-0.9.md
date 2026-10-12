@@ -79,6 +79,10 @@ prototypes are not packages of the set and do not join.
 
 ## Cycles
 
+From the viewer's join on, `release-0.9.md` beside this note lists the
+cycles and the pilot's decisions of 12 October 2026; this list stays as
+written on 11 October for the record.
+
 Each cycle is one OpenSpec change on a bench cut from this line
 (`scripts/dev-env v0.9-joins-<change> setup --base v0.9-joins`), the
 two-commit cycle with the join merge between its commits.
