@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Coordinator-owned process tests: cancellation must stop tool descendants."""
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ import sys
 import tempfile
 import unittest
 
-from floor.backends.base import RoleContext
-from floor.backends.codex_tools import FloorWorker, dynamic_result
-from floor.backends.codex_wire import CodexProtocolError
-from floor.profiles import load_profile, resolve_profile_runtime
+from machinome.studio.backends.base import RoleContext
+from machinome.studio.backends.codex_tools import FloorWorker, dynamic_result
+from machinome.studio.backends.codex_wire import CodexProtocolError
+from machinome.studio.profiles import load_profile, resolve_profile_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,8 +42,8 @@ class CodexResultAdversarialTests(unittest.TestCase):
 class CodexWorkerAdversarialTests(unittest.IsolatedAsyncioTestCase):
     async def test_partial_worker_start_reaps_process_and_private_state(self):
         with tempfile.TemporaryDirectory() as temporary:
-            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT)).agents[0]
-            context = RoleContext(str(ROOT), temporary, agent, "openspec-builder", "Pilot", "OpenSpec Builder")
+            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")).agents[0]
+            context = RoleContext(str(ROOT / "machinome" / "studio"), temporary, agent, "openspec-builder", "Pilot", "OpenSpec Builder")
             worker = FloorWorker(context, machinome_command=("unused",),
                 broker_url="http://127.0.0.1:1", session_id="synthetic")
             worker.command = [sys.executable, "-c",
@@ -65,9 +65,9 @@ class CodexWorkerAdversarialTests(unittest.IsolatedAsyncioTestCase):
             # frames larger than asyncio's usual 64-KiB reader limit.
             payload = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=") + b"\0" * 96_000
             (project / "fixture.png").write_bytes(payload)
-            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT)).agents[0]
+            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")).agents[0]
             agent = replace(agent, skills=(), runtime=replace(agent.runtime, tools=("Read",)))
-            context = RoleContext(str(ROOT), str(project), agent, "openspec-builder", "Pilot", "OpenSpec Builder")
+            context = RoleContext(str(ROOT / "machinome" / "studio"), str(project), agent, "openspec-builder", "Pilot", "OpenSpec Builder")
             worker = FloorWorker(context, machinome_command=("unused",), broker_url="http://127.0.0.1:1", session_id="synthetic")
             await worker.start()
             try:
@@ -87,9 +87,9 @@ class CodexWorkerAdversarialTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             started, mutation = project / "started", project / "forbidden-late-write"
-            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT)).agents[0]
+            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")).agents[0]
             agent = replace(agent, skills=(), runtime=replace(agent.runtime, tools=("Read",)))
-            context = RoleContext(str(ROOT), str(project), agent, "openspec-builder", "Pilot", "OpenSpec Builder")
+            context = RoleContext(str(ROOT / "machinome" / "studio"), str(project), agent, "openspec-builder", "Pilot", "OpenSpec Builder")
             worker = FloorWorker(context, machinome_command=("unused",), broker_url="http://127.0.0.1:1", session_id="synthetic")
             child_code = (
                 "import pathlib,signal,sys,time; "

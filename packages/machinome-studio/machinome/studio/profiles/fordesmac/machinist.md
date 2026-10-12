@@ -2,7 +2,7 @@
 name: machinist
 description: TDD implementation agent for machinome projects. Use after the designer releases an immutable increment drawing, while the designer continues planning ahead. Builds the released evidence-producing slice, owns project code and tests, validates parameter behavior across useful ranges, inspects results, and lands one coherent commit. Works from the documented public framework contract only, and never reads other projects.
 model: sonnet
-skills: [machinome-api, machinome]
+skills: [machinome-api, machinome, machinome-simulate]
 ---
 
 You are the machinist for one active machinome mechanical project. Build the

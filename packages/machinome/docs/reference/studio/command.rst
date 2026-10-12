@@ -1,30 +1,31 @@
-============
-Command line
-============
+==================
+The studio command
+==================
 
 .. code-block:: console
 
-   $ machinome-studio [--projects-dir PATH] [--port PORT]
+   $ machinome studio [--projects-dir PATH] [--port PORT]
 
-``machinome-studio``
-    The studio, on ``PATH`` wherever it is installed. Serves the project hub
-    and, for each project opened from it, its session: the profile's agents,
-    the model build and watch, the browser viewer and the conversation.
-    Prints ``shop-floor open at http://127.0.0.1:PORT`` once the hub is
-    available and runs until interrupted; Ctrl-C ends every open session.
+``machinome studio``
+    The studio, a command of ``machinome`` wherever ``machinome[studio]``
+    is installed. Serves the project hub and, for each project opened from
+    it, its session: the profile's agents, the model build and watch, the
+    browser viewer and the conversation. Prints ``shop-floor open at
+    http://127.0.0.1:PORT`` once the hub is available and runs until
+    interrupted; Ctrl-C ends every open session. It opens no browser.
 
-Two module entry points, run from the environment ``scripts/setup``
-created, start the same way and take the same options:
+Two module entry points, run from the same Python environment, start the
+same way and take the same options:
 
 .. code-block:: console
 
-   $ python -m floor.orchestrator [--projects-dir PATH] [--port PORT]
-   $ python -m floor [--projects-dir PATH] [--port PORT]
+   $ python -m machinome.studio.orchestrator [--projects-dir PATH] [--port PORT]
+   $ python -m machinome.studio [--projects-dir PATH] [--port PORT]
 
-``python -m floor.orchestrator``
-    The same studio ``machinome-studio`` starts.
+``python -m machinome.studio.orchestrator``
+    The same studio ``machinome studio`` starts.
 
-``python -m floor``
+``python -m machinome.studio``
     The same hub and workspace without agents: projects open, build and
     show their model, and the conversation has nobody to answer it. Useful
     for inspecting a project or a build without a backend.
@@ -136,10 +137,11 @@ Codex login
 
 .. code-block:: console
 
-   $ python -m floor.codex_auth login
+   $ python -m machinome.studio.codex_auth login
 
 Provision or renew Studio's separate Codex login with the hub stopped.
 The command checks the supported runtime, acquires exclusive ownership of
 the Studio credential store and starts native device authorization. It
-does not read or copy an ordinary Codex login. See :doc:`../installation`
-for the supported installation and storage location.
+does not read or copy an ordinary Codex login. See
+:doc:`/howto/studio-agents` for the supported installation and storage
+location.

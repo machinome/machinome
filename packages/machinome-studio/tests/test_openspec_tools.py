@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """The OpenSpec capability and the floor tools it resolves to."""
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.backends.base import session_tool_names
-from floor.mcp_server import OPENSPEC_TOOLS, PROFILE_TOOL_MAP, ProjectTools, resolved_tool_names
-from floor.openspec import resolve_openspec_command, resolve_openspec_root
-from floor.profiles import ProfileError, load_profile
+from machinome.studio.backends.base import session_tool_names
+from machinome.studio.mcp_server import OPENSPEC_TOOLS, PROFILE_TOOL_MAP, ProjectTools, resolved_tool_names
+from machinome.studio.openspec import resolve_openspec_command, resolve_openspec_root
+from machinome.studio.profiles import ProfileError, load_profile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,8 +67,8 @@ class OpenSpecCapabilityTest(unittest.TestCase):
     def test_a_profile_may_declare_the_capability_and_unknown_names_still_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
-            shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-            shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
             manifest = shop / "profiles" / "openspec-builder" / "profile.toml"
             value = manifest.read_text()
 
@@ -85,7 +85,7 @@ class OpenSpecCapabilityTest(unittest.TestCase):
                 load_profile("openspec-builder", shop_root=shop)
 
     def test_openspec_declares_the_capability(self) -> None:
-        openspec = load_profile("openspec-builder", shop_root=ROOT)
+        openspec = load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")
         session = session_tool_names(
             openspec.user_agent.skills, openspec.user_agent.backends["claude"].tools
         )
@@ -93,7 +93,7 @@ class OpenSpecCapabilityTest(unittest.TestCase):
             self.assertIn(tool, session)
 
     def test_no_fordesmac_session_reaches_an_openspec_tool(self) -> None:
-        fordesmac = load_profile("fordesmac", shop_root=ROOT)
+        fordesmac = load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio")
         for agent in fordesmac.agents:
             with self.subTest(agent=agent.id):
                 declared = agent.backends["claude"].tools
@@ -265,7 +265,7 @@ class OpenSpecProjectRecordTest(unittest.TestCase):
         )
         for vector in rejected:
             with self.subTest(vector=vector):
-                with patch("floor.mcp_server.subprocess.run") as run:
+                with patch("machinome.studio.mcp_server.subprocess.run") as run:
                     with self.assertRaises(ValueError):
                         self.tools.openspec_run(vector)
                     run.assert_not_called()
@@ -374,7 +374,7 @@ class SpecOnlyCommitTest(unittest.TestCase):
 
     def test_a_spec_only_commit_renders_nothing(self) -> None:
         self.tools.git_add(["openspec"])
-        with patch("floor.mcp_server.refresh_project_screenshot") as render:
+        with patch("machinome.studio.mcp_server.refresh_project_screenshot") as render:
             result = self.tools.git_commit("docs(openspec): propose the lid/body fit")
 
         self.assertTrue(result["ok"])
@@ -392,7 +392,7 @@ class SpecOnlyCommitTest(unittest.TestCase):
             self.screenshot.write_bytes(b"\x89PNG\r\n\x1a\nFRESH")
             return SimpleNamespace(warning=None)
 
-        with patch("floor.mcp_server.refresh_project_screenshot", side_effect=rendered) as render:
+        with patch("machinome.studio.mcp_server.refresh_project_screenshot", side_effect=rendered) as render:
             result = self.tools.git_commit("feat: revise the rim and record it")
 
         self.assertTrue(result["ok"])

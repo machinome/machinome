@@ -1,6 +1,6 @@
 # ADR-182: The Repository Is a Monorepo of Distributions, Each Named by Its Directory
 
-**Status:** Accepted; a product of a repository of its own keeping its record in its directory, amended 2026-10-12 by [ADR-187](ADR-187-the-mechanics-helpers-are-a-portion-of-the-repository-at-their-own-version.md); an npm workspace at the root, amended 2026-10-12 by [ADR-188](ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md); each member's direct dependencies beside it, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the Makefile of the repository's steps at the root, amended 2026-10-12 by [ADR-192](ADR-192-the-repository-s-steps-are-the-targets-of-one-makefile.md)
+**Status:** Accepted; a product of a repository of its own keeping its record in its directory, amended 2026-10-12 by [ADR-187](ADR-187-the-mechanics-helpers-are-a-portion-of-the-repository-at-their-own-version.md); an npm workspace at the root, amended 2026-10-12 by [ADR-188](ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md); each member's direct dependencies beside it, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the Makefile of the repository's steps at the root, amended 2026-10-12 by [ADR-192](ADR-192-the-repository-s-steps-are-the-targets-of-one-makefile.md); a third npm member keeping no lock of its own, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md)
 **Date:** 2026-10-10
 **Change:** [`monorepo-layout`](../../../openspec/changes/archive/2026-10-10-monorepo-layout/)
 **Related to:**
@@ -94,6 +94,9 @@ and uploads nothing; the CI's `dist` job runs it after `test` and `docs`.
   product numbered with the set; the root holds an npm workspace (ADR-188).
 - Neutral (2026-10-12, `join-movie`): the root's `.npmrc` installs each npm
   member's direct dependencies in its own `node_modules` (ADR-191).
+- Neutral (2026-10-12, `join-studio`): the studio's frontend is the npm
+  workspace's third member and keeps no lock of its own, its wheel carrying
+  the built surface (ADR-193).
 - Bad: a clone without symbolic-link support checks the five links out as
   text files; the framework's development is on Linux.
 - Bad: the editable lenient mode is unfit for namespace portions, so a

@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Claude agent backend — wraps one ``claude`` CLI process per role.
 
 Unlike the OpenCode backend, which multiplexes every role through a
@@ -166,9 +166,13 @@ class ClaudeBackend:
                 **os.environ,
                 "FLOOR_URL": self.broker_url,
                 **({"FLOOR_SESSION": self.session_id} if self.session_id else {}),
+                # The directory holding the package's `machinome/`, from which
+                # the MCP server runs as `machinome.studio.mcp_server`; never
+                # the resource root, whose modules would read as top-level
+                # names there.
                 "PYTHONPATH": os.pathsep.join(
                     item
-                    for item in (str(self.shop_root), os.environ.get("PYTHONPATH", ""))
+                    for item in (str(self.shop_root.parents[1]), os.environ.get("PYTHONPATH", ""))
                     if item
                 ),
             },

@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """One separately provisioned native Codex login, leased by Studio.
 
 This module never discovers, imports or copies normal Codex credentials.
@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Mapping
 
 
-LOGIN_COMMAND = "python -m floor.codex_auth login"
+LOGIN_COMMAND = "python -m machinome.studio.codex_auth login"
 PINNED_VERSION = "codex-cli 0.157.1"
 
 
@@ -248,7 +248,7 @@ def login() -> None:
 
 
 def main() -> None:
-    from floor.backends.codex_policy import CodexPolicyError
+    from machinome.studio.backends.codex_policy import CodexPolicyError
     parser = argparse.ArgumentParser(description="Provision Studio's separate Codex login; stop the hub first.")
     parser.add_argument("operation", choices=("login",))
     parser.parse_args()

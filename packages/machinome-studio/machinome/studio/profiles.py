@@ -1,9 +1,10 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Validated, shop-owned runtime profiles loaded from package resources."""
 
 from __future__ import annotations
 
+import os
 import re
 import tomllib
 from dataclasses import dataclass, field, replace
@@ -296,13 +297,20 @@ def _skill_path(root: Path, skill: str, profile: str) -> Path:
         if root not in candidate.parents or not candidate.is_file():
             raise ProfileError(f"profile {profile}.skills.{skill} must be a contained local skill directory")
         return entry
+    # The profile's link is read one level: it must name shop-skills/<skill>
+    # of the same shop. That entry is the skill's directory, or a link to
+    # one, as machinome-simulate links the skills package's (change
+    # `join-studio`); the entry's own link is followed.
+    shop = root.parent.parent
+    expected = Path(os.path.normpath(shop / "shop-skills" / skill))
+    named = Path(os.path.normpath(entry.parent / os.readlink(entry)))
+    if named != expected:
+        raise ProfileError(f"profile {profile}.skills.{skill} must link directly to shop-skills/<skill>")
     try:
-        target = entry.resolve(strict=True)
+        target = expected.resolve(strict=True)
     except OSError as error:
         raise ProfileError(f"profile {profile}.skills.{skill} is a broken link") from error
-    shop = root.parent.parent
-    expected_parent = shop / "shop-skills"
-    if target.parent != expected_parent.resolve() or not target.is_dir() or not (target / "SKILL.md").is_file():
+    if not target.is_dir() or not (target / "SKILL.md").is_file():
         raise ProfileError(f"profile {profile}.skills.{skill} must link directly to shop-skills/<skill>")
     return entry
 

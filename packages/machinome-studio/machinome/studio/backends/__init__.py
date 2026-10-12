@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Pluggable agent backends for the shop orchestrator.
 
 The ``create_backend`` factory selects a concrete ``AgentBackend``

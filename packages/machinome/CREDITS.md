@@ -159,12 +159,59 @@ their provenance.
 - **Description:** The analytic flexible parts' evaluator, which shapes a
   flexible part from its specification in the browser
 
+### Carried by the studio
+
+The package `machinome-studio` (`machinome.studio`) carries, under
+`packages/machinome-studio/machinome/studio/frontend/public/assets/` and in
+the browser surface its wheel ships, works that are not under this
+repository's licence, each with its own terms.
+
+#### Fonts
+- **Machinome Logo Regular**, the logo-only font derived from Anta, under
+  `brand/v1/fonts/`: SIL Open Font License 1.1; Copyright 2019 The Anta
+  Project Authors (https://github.com/Typedesigners/Anta-Regular), Copyright
+  2026 The Machinome Project Authors (the linkage M adaptation); its notice
+  `OFL.txt` and its `FONTLOG.md` are kept beside it.
+- **Space Grotesk**, by Florian Karsten, under `fonts/`: SIL Open Font
+  License 1.1; Copyright 2020 The Space Grotesk Project Authors
+  (https://github.com/floriankarsten/space-grotesk); its notice
+  `SpaceGrotesk-OFL.txt` is kept beside it.
+- **IBM Plex Mono**, by IBM, under `fonts/`: SIL Open Font License 1.1;
+  Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"; its notice
+  `IBMPlexMono-OFL.txt` is kept beside it.
+
+#### The Machinome identity
+The identity's artwork under `brand/v1/` (the wordmarks, the symbols and the
+favicon pack) and the studio's favicon pack built from it under `favicon/`
+carry no public licence. Machinome, the linkage symbol and the Machinome
+wordmark are trademarks of Poiesis Tecnologia da Informação LTDA; this
+repository's licence grants no right to use them.
+
+#### Bundled into the browser surface
+The studio's frontend bundles these packages, minified, into the built
+surface `machinome/studio/static/`, which the wheel carries; the versions are
+those the root `package-lock.json` resolves for the frontend. These licences
+are the bundled libraries' own, stated as their provenance.
+
+- **react** and **react-dom** 19.2.7, **scheduler** 0.27.0: MIT License,
+  https://github.com/facebook/react
+- **three** 0.185.1: MIT License, https://github.com/mrdoob/three.js
+- **monaco-editor** 0.56.0: MIT License,
+  https://github.com/microsoft/monaco-editor
+- **@monaco-editor/react** 4.7.0 and **@monaco-editor/loader** 1.7.0: MIT
+  License, https://github.com/suren-atoyan/monaco-react
+- **state-local** 1.0.7: MIT License,
+  https://github.com/suren-atoyan/state-local
+- **marked** 14.0.0: MIT License, https://github.com/markedjs/marked
+- **dompurify** 3.4.8: MPL-2.0 OR Apache-2.0, as its `package.json` names
+  it, https://github.com/cure53/DOMPurify
+
 ### Adapted from Machinome Studio, in the skills package
 
 The package `machinome-skills` (`machinome.skills`) ships the skills
 `machinome` and `machinome-simulate`, whose mechanical workflow guidance is
 adapted from the `machinome` and `simulate-project` skills of Machinome
-Studio (<https://github.com/machinome/machinome-studio>), with revisions for
+Studio (the repository's `packages/machinome-studio/`), with revisions for
 independent, cross-harness use and documentation-based API lookup.
 Copyright 2026 Luis Henrique Cassis Fagundes, the author of both.
 

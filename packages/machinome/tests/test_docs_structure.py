@@ -215,6 +215,38 @@ class NavigationTest(unittest.TestCase):
             ['  movie is declared with ``machinome.movie`` (formerly '
              '``machinome' '_movie``).'])
 
+    def test_the_studio_is_three_how_tos_and_a_reference_section(self):
+        # `join-studio`: the studio's manual folds in by reader intent, three
+        # how-to guides and a reference section of what it is, its command,
+        # the project configuration, the profiles and troubleshooting.
+        index = (DOCS / 'index.rst').read_text()
+        for caption, entries in (
+                ('How-to guides', ('howto/open-a-studio-project',
+                                   'howto/studio-workspace',
+                                   'howto/studio-agents')),
+                ('Reference', ('reference/studio/index',))):
+            toctree = re.search(
+                rf':caption:\s*{caption}\n\n((?:   \S+\n)+)', index)
+            self.assertIsNotNone(toctree, f'index.rst has no {caption} toctree')
+            for entry in entries:
+                with self.subTest(caption=caption, entry=entry):
+                    self.assertIn(entry, toctree.group(1).split())
+        section = (DOCS / 'reference' / 'studio' / 'index.rst').read_text()
+        toctree = re.search(r'\.\. toctree::\n(?:   :\S+:.*\n)*\n((?:   \S+\n)+)',
+                            section)
+        self.assertIsNotNone(toctree, 'the studio section has no toctree')
+        self.assertEqual(toctree.group(1).split(),
+                         ['command', 'project-configuration', 'profiles',
+                          'troubleshooting'])
+        page = ' '.join(
+            (DOCS / 'howto' / 'open-a-studio-project.rst').read_text().split())
+        for spelled in ('pip install "machinome[studio]"',
+                        'playwright install chromium',
+                        'machinome studio --projects-dir',
+                        'npm install -g @fission-ai/openspec'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, page)
+
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',
                         'releases/development-0.7.rst'):
@@ -242,21 +274,26 @@ class KernelExtrasTest(unittest.TestCase):
 
     #: The FreeCAD node package's module before it joined the repository
     #: (`join-freecad`), the mechanics helpers' module and separate manual
-    #: before they joined it (`join-mechanics`), and the browser viewer's
-    #: separate manual and repository (`join-viewer`).
+    #: before they joined it (`join-mechanics`), the browser viewer's
+    #: separate manual and repository (`join-viewer`), and the studio's
+    #: repository, launcher and package before it joined (`join-studio`).
     STALE = ('Everything else comes with the package',
              'machinome.node.adapters', 'machinome' '_freecad',
              'machinome' '_mechanics',
              'machinome-mechanics.readthedocs',
              'machinome-viewer.readthedocs',
-             'github.com/machinome/machinome-viewer') + FORMER
+             'github.com/machinome/machinome-viewer',
+             'github.com/machinome/machinome-studio',
+             'machinome-studio --projects-dir', 'python -m floor') + FORMER
 
     #: The changelog records the dissolution and the released names, and
     #: the upgrading page maps every former name to its new one, the
     #: dissolved adapters' addresses included (change `release-0-8-0`); both
-    #: record the mechanics helpers' former module (`join-mechanics`).
+    #: record the mechanics helpers' former module (`join-mechanics`); the
+    #: changelog names the studio's former module form (`join-studio`).
     RECORDS = {'project/changelog.rst': ('machinome.node.adapters',
-                                         'machinome' '_mechanics') + FORMER,
+                                         'machinome' '_mechanics',
+                                         'python -m floor') + FORMER,
                'project/upgrading.rst': ('machinome.node.adapters',
                                          'machinome' '_mechanics') + FORMER}
 
@@ -275,7 +312,8 @@ class KernelExtrasTest(unittest.TestCase):
         # package; `join-mechanics`: the `mechanics` extra the mechanics
         # helpers; `join-viewer`: the `viewer` extra the browser viewer;
         # `join-skills`: the `skills` extra the skills package; `join-movie`:
-        # the `movie` extra the films, and their Node side's second step.
+        # the `movie` extra the films, and their Node side's second step;
+        # `join-studio`: the `studio` extra the studio, Chromium its second.
         page = (DOCS / 'start' / 'install.rst').read_text()
         for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
                              'machinome-node-cadquery',
@@ -286,10 +324,12 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-jscad', 'machinome-node-stl',
                              'machinome-node-freecad', 'machinome-mechanics',
                              'machinome-viewer', 'machinome-skills',
-                             'machinome-movie'):
+                             'machinome-movie', 'machinome-studio'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
-        for line in ('pip install "machinome[movie]"', 'machinome movie setup'):
+        for line in ('pip install "machinome[movie]"', 'machinome movie setup',
+                     'pip install "machinome[studio]"',
+                     'playwright install chromium'):
             with self.subTest(line=line):
                 self.assertIn(line, page)
 
@@ -311,7 +351,7 @@ def conf_value(name):
 
 class CommandReferenceTest(unittest.TestCase):
     """The command reference documents the commands packages add
-    (`join-skills`, `join-movie`)."""
+    (`join-skills`, `join-movie`, `join-studio`)."""
 
     #: The movie command's verbs (`join-movie`).
     MOVIE_VERBS = ('list', 'evaluate', 'watch', 'check', 'speech', 'preview',
@@ -357,6 +397,22 @@ class CommandReferenceTest(unittest.TestCase):
         section = ' '.join(self.section('Commands from other packages').split())
         self.assertIn('The movie package adds ``machinome movie``', section)
         self.assertNotIn('videomaker', section)
+
+    def test_the_studio_command_has_its_section(self):
+        self.assertIn('.. _studio-command:\n\nmachinome studio\n', self.page)
+        section = self.section('machinome studio')
+        for spelled in ('machinome studio [--projects-dir PATH] [--port PORT]',
+                        '--projects-dir', '--port', 'FLOOR_PORT',
+                        'python -m machinome.studio.orchestrator',
+                        'python -m machinome.studio',
+                        ':doc:`/reference/studio/command`'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, section)
+
+    def test_the_studio_is_no_longer_to_add_its_command(self):
+        section = ' '.join(self.section('Commands from other packages').split())
+        self.assertIn('the studio ``machinome studio``', section)
+        self.assertNotIn('is to add its own', section)
 
 
 class ReleaseFactsTest(unittest.TestCase):

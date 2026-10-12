@@ -86,10 +86,16 @@ jobs:
       - name: Install Chromium
         run: playwright install --with-deps chromium
 
+      # The studio's tests run the OpenSpec CLI, the studio's runtime
+      # prerequisite, installed as a maker installs it (change `join-studio`).
+      - name: Install the OpenSpec CLI
+        run: npm install -g @fission-ai/openspec@1.6.0
+
       # Every package with tests of its own, one after another, stopping at
       # the first failure: the core's suite, the mechanics', the skills',
       # the viewer's widget and Python tests, the movie's Python tests and
-      # the Node projects that open no browser.
+      # the Node projects that open no browser, and the studio's frontend
+      # build and tests, its browser tests left to a contributor's machine.
       - name: Run the tests
         run: make test
 

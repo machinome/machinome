@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Dedicated Studio credentials never borrow the ordinary Codex login."""
 import os
 from pathlib import Path
@@ -8,7 +8,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from floor.codex_auth import AuthLease, CodexAuthError, studio_home, validate_home, cleanup_journal_temporaries, codex_binary
+from machinome.studio.codex_auth import AuthLease, CodexAuthError, studio_home, validate_home, cleanup_journal_temporaries, codex_binary
 
 
 class CodexAuthTests(unittest.TestCase):
@@ -47,8 +47,8 @@ class CodexAuthTests(unittest.TestCase):
             with self.assertRaises(CodexAuthError):
                 validate_home(home)
     def test_unsupported_native_version_is_refused_under_private_metadata_environment(self):
-        with patch("floor.codex_auth.shutil.which", return_value="/synthetic/codex"), \
-             patch("floor.codex_auth.subprocess.run", return_value=SimpleNamespace(stdout="codex-cli 0.157.2")) as run:
+        with patch("machinome.studio.codex_auth.shutil.which", return_value="/synthetic/codex"), \
+             patch("machinome.studio.codex_auth.subprocess.run", return_value=SimpleNamespace(stdout="codex-cli 0.157.2")) as run:
             with self.assertRaisesRegex(CodexAuthError, "Unsupported Codex version"):
                 codex_binary()
             self.assertNotEqual(run.call_args.kwargs["env"]["HOME"], os.environ.get("HOME"))
@@ -106,7 +106,7 @@ class CodexAuthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary) / "codex"
             home.mkdir(mode=0o700)
-            with self.assertRaisesRegex(CodexAuthError, "floor.codex_auth login"):
+            with self.assertRaisesRegex(CodexAuthError, "machinome.studio.codex_auth login"):
                 validate_home(home, require_auth=True)
 
     def test_auth_validation_redacts_malformed_secret(self):

@@ -22,6 +22,7 @@ machinome-node-step = { workspace = true }
 machinome-node-stl = { workspace = true }
 machinome-viewer = { workspace = true }
 machinome-skills = { workspace = true }
+machinome-studio = { workspace = true }
 
 [tool.uv]
 # Every member installs editable in compat mode, a .pth line per package
@@ -29,16 +30,13 @@ machinome-skills = { workspace = true }
 # core's path extension (machinome._namespace_portions) admits it. uv reads
 # this setting here at the root and nowhere else.
 config-settings = { editable_mode = "compat" }
-# A product no index serves yet: machinome-studio is unpublished, and uv
-# locks every extra of every member, so the studio extra would fail the lock;
-# it leaves this list when an index serves it.
-exclude-dependencies = ["machinome-studio"]
 
 [dependency-groups]
 # `uv sync` at the root installs this group by default: the framework's dev
 # extra, which installs every kernel the suite runs, the mechanics package
 # the catalogue's projects import, so the universe sweep reads them from
-# this venv, the skills package and the movie package, whose tests run from
-# their directories and whose commands the suite's conformance walk reads.
+# this venv, the skills package, the movie package and the studio, whose
+# tests run from their directories and whose commands the suite's
+# conformance walk reads.
 dev = ["machinome[dev]", "machinome[mechanics]", "machinome[skills]",
-       "machinome[movie]"]
+       "machinome[movie]", "machinome[studio]"]

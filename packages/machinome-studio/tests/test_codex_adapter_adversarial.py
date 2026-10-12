@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Coordinator-owned attacks against the model-to-floor dispatch boundary."""
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from pathlib import Path
 import unittest
 from unittest.mock import AsyncMock
 
-from floor.backends.base import BackendEvent, ContextUnrecoverable, InactiveTurn, session_tool_names
-from floor.backends.codex_wire import CodexProtocolError
-from floor.orchestrator import ShopOrchestrator
+from machinome.studio.backends.base import BackendEvent, ContextUnrecoverable, InactiveTurn, session_tool_names
+from machinome.studio.backends.codex_wire import CodexProtocolError
+from machinome.studio.orchestrator import ShopOrchestrator
 from tests import test_codex_backend as fixtures
 from tests import test_orchestrator as orchestration
 

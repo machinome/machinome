@@ -72,10 +72,12 @@ reading document versions |document_versions|. Check the installed viewer's
 report with ``machinome viewer`` rather than inferring capability from a
 package name. See :doc:`changelog` and :doc:`upgrading`.
 
-Machinome Studio, the agent harness the framework is developed with,
-remains experimental and unpublished; the reserved ``studio`` extra is not
-an installable route from a package index. Browser-delivery experiments
-are not a released capability.
+Machinome Studio is the package ``machinome-studio`` of the set, installed
+by the ``studio`` extra (:doc:`/reference/studio/index`). It is
+experimental: its roles, prompts and disciplines are exercised and revised
+on real projects. It runs on Linux only, and no index serves it until the
+set's next release is published. Browser-delivery experiments are not a
+released capability.
 
 Limits
 ------

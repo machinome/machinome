@@ -82,6 +82,16 @@ Unreleased
   installed viewer (:doc:`/howto/film-a-movie`, :ref:`movie-command`). A
   movie is declared with ``machinome.movie`` (formerly ``machinome_movie``).
 
+* **The studio is part of this manual.** Opening a project in the studio,
+  working in its workspace and choosing its agents are how-to guides
+  (:doc:`/howto/open-a-studio-project`, :doc:`/howto/studio-workspace`,
+  :doc:`/howto/studio-agents`), and its command, configuration, profiles
+  and troubleshooting are the reference section
+  :doc:`/reference/studio/index`. ``pip install "machinome[studio]"``
+  installs it, numbered with the framework, and ``machinome studio``
+  starts it: a script that ran ``machinome-studio`` or ``python -m floor``
+  runs ``machinome studio`` or ``python -m machinome.studio``.
+
 Machinome 0.8.1
 ---------------
 

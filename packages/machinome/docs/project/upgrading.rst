@@ -441,9 +441,7 @@ The ``mechanics`` extra selects the independent
 The framework does not re-export the helpers. The pages on :doc:`the
 mechanics helpers </reference/mechanics/index>` cover installation,
 coordinate conventions and every helper.
-The ``studio`` extra names
-Machinome Studio, which remains experimental and unpublished and cannot
-be installed from an index.
+In 0.8 the ``studio`` extra named Machinome Studio, which no index served.
 
 Verify your project
 ---------------------

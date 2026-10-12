@@ -62,11 +62,13 @@ the line and joined here with their history, the browser viewer under
 `packages/machinome-viewer/`, split from this repository on 5 September 2026
 and joined back with its history, and the machinome skills under
 `packages/machinome-skills/`, founded in a repository of their own after the
-line and joined here with their history, and the films under
+line and joined here with their history, the films under
 `packages/machinome-movie/`, founded in a repository of their own after the
-line and joined here with their history, and the notes under `workflow/`,
-written since the line are agent-written like the code, and reviewed the
-same way.
+line and joined here with their history, and the studio under
+`packages/machinome-studio/`, founded after the line, developed in a
+repository of its own and joined here with its history on 12 October 2026,
+and the notes under `workflow/`, written since the line are agent-written
+like the code, and reviewed the same way.
 
 ## How the agents work
 
@@ -99,7 +101,7 @@ and is responsible for it. No model is an author of Machinome.
 ## The other repositories
 
 The same practice and the same line apply to the sibling repositories:
-molejo, machinome-studio, machinome.org and the Foundry projects under
+molejo, machinome.org and the Foundry projects under
 <https://github.com/machinome-foundry>. molejo, machinome.org and the
 Foundry projects were founded after the line and are agent-written
 throughout. Text a model wrote for machinome.org is marked there file by

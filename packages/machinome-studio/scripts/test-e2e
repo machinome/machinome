@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+# The studio's browser tests, opted in: the frontend built from the
+# repository's npm workspace, then the three modules that start the hub, run
+# from the package's directory (change join-studio).
 set -euo pipefail
 
-npm --prefix floor/frontend run build
-python -m unittest tests.test_floor_entrypoint tests.test_floor_api tests.test_shop_lifecycle_e2e -v
+package="$(cd "$(dirname "$0")/.." && pwd)"
+repository="$(cd "$package/../.." && pwd)"
+(cd "$repository" && npm run build --workspace packages/machinome-studio/machinome/studio/frontend)
+cd "$package"
+MACHINOME_STUDIO_E2E=1 python -m unittest tests.test_floor_entrypoint tests.test_floor_api tests.test_shop_lifecycle_e2e -v

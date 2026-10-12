@@ -1,12 +1,12 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """In-memory AgentBackend double for orchestrator acceptance tests."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from floor.backends.base import (
+from machinome.studio.backends.base import (
     AgentBackend,
     BackendEvent,
     DeliveryReceipt,
@@ -15,7 +15,7 @@ from floor.backends.base import (
     RuntimeCatalogue,
     RuntimeChoice,
 )
-from floor.profiles import BackendRuntime
+from machinome.studio.profiles import BackendRuntime
 
 
 class FakeBackend:

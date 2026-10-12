@@ -66,12 +66,15 @@ Development environment
 
 Requirements: Python 3.11 or newer, as the framework's
 ``packages/machinome/pyproject.toml`` requires. Node.js 22 or newer and npm
-build and test the two members of the repository's npm workspace, the
-browser viewer's widget and the movie package's Node side, installed by one
-``npm ci`` at the root, which ``make sync`` and ``make widget`` run, and
-which installs each member's direct dependencies beside it, as the root's
-``.npmrc`` says; ``machinome movie setup`` is for an installed copy of the
-movie package, not for the checkout. The suite and the viewer's tests
+build and test the three members of the repository's npm workspace, the
+browser viewer's widget, the movie package's Node side and the studio's
+frontend, installed by one ``npm ci`` at the root, which ``make sync`` and
+``make widget`` run, and which installs each member's direct dependencies
+beside it, as the root's ``.npmrc`` says; ``machinome movie setup`` is for an
+installed copy of the movie package, not for the checkout. The studio's
+tests run the OpenSpec CLI, the studio's runtime prerequisite, which npm
+installs once for the user (``npm install -g @fission-ai/openspec@1.6.0``).
+The suite and the viewer's tests
 photograph through the widget's built bundle, and the viewer's browser tests
 need Chromium for the installed Playwright (``playwright install
 chromium``, which ``make sync`` runs), as the movie's browser and pipeline
@@ -129,6 +132,7 @@ dependencies::
         -e packages/machinome-mechanics \
         -e packages/machinome-skills \
         -e packages/machinome-movie \
+        -e packages/machinome-studio \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
@@ -179,14 +183,30 @@ keeps its tests in its own directory: ``make test PKG=machinome-movie`` runs
 ``pure`` and ``stage`` projects, which open no browser, as CI does; its whole
 Node suite is ``npm test --workspace
 packages/machinome-movie/machinome/movie/js`` from the root, after ``npm
-ci`` there; the browser and pipeline tests need Chromium and FFmpeg.
+ci`` there; the browser and pipeline tests need Chromium and FFmpeg. The
+studio keeps its tests in its own directory: ``make test
+PKG=machinome-studio`` type-checks and builds its frontend from the root, by
+``--workspace packages/machinome-studio/machinome/studio/frontend``, then
+runs ``python -m pytest`` from ``packages/machinome-studio``, with the
+OpenSpec CLI on the PATH; run by hand, ``python -m pytest`` there needs
+``npm ci`` at the root and the frontend's build first. Its browser tests run
+when ``MACHINOME_STUDIO_E2E=1`` is set, with Chromium installed::
+
+    $ MACHINOME_STUDIO_E2E=1 make test PKG=machinome-studio
+
+The studio's browser surface, ``machinome/studio/static/`` in its package
+directory, is built from the root by ``npm run build --workspace
+packages/machinome-studio/machinome/studio/frontend``, or with the widget's
+bundle by ``make widget``; it is not tracked, and the studio's archives build
+it for themselves.
 
 ``make check`` builds every package's sdist and wheel from the tree and from
 a clean copy of its tracked files, checks, installs and smokes them outside
 the repository, and keeps nothing: run it before a pull request that
 touches packaging. ``make clean`` removes what the targets wrote (the docs
 environment ``.docs-venv``, the manual's build, the packages' build scratch,
-the widget's bundle), never ``.venv``, an npm install or ``dist/``.
+the widget's bundle, the studio's browser surface), never ``.venv``, an npm
+install or ``dist/``.
 
 Notes:
 

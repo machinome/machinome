@@ -159,6 +159,21 @@ Unreleased
   targets; the framework's own ``Makefile`` is gone. Change
   ``release-tooling`` (ADR-192).
 
+* **The studio joins the repository.** Machinome Studio, developed in a
+  repository of its own, is the package ``machinome-studio`` at
+  ``packages/machinome-studio/``, its history kept: its Python package is
+  ``machinome.studio`` (formerly ``floor``) and its command is ``machinome
+  studio``, contributed through ``machinome.commands``; the console script
+  ``machinome-studio`` is gone. Its frontend is the third member of the
+  repository's npm workspace and its wheel carries the built surface, the
+  profiles and the skills, ``machinome-simulate`` linked from the skills
+  package. It is numbered with the set, installed by ``machinome[studio]``,
+  licensed as every package of the repository, keeps its changelog,
+  specs, decision log and tests in its directory, and its manual is part
+  of this one; ``machinome vet`` refuses a model that reaches it. Its test
+  tool and its skills take the engines' and the node package's 0.8
+  spellings. Change ``join-studio`` (ADR-193).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

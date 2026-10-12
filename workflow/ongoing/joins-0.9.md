@@ -445,3 +445,69 @@ plan; recorded so the line's head reads whole.
    highlights measured, the storyboard looked at, the Curta posed across
    the film's shots. The universe sweep after the move, on the bench: 63 repositories, 130 rows, 122 ok, 0 expected, 2 unexpected, 0 timeout, 6 no-model, identical to `join-mechanics`'s row for row (the two unexpected rows wall clock 41 and fender-bender's, as before); the catalogue's self-referencing link `machinome-projects` excluded with `--only '^(?!machinome-projects/)'`, 24 directories skipped Evidence:
    `packages/machinome/openspec/changes/archive/2026-10-12-join-movie/evidence.md`.
+
+6. `join-studio`. **Done** (12 October 2026): branch
+   `v0.9-joins-join-studio`, planning commit e08b5539 on feb1b46e (after
+   `join-movie` and `release-tooling`), ratified by the orchestrator's
+   review with every recommendation of its Open Questions accepted, with
+   the pilot's decisions of 12 October 2026 (`release-0.9.md`, decisions
+   1, 2, 3, 4, 6, 7 and 9); the join, the merge commit d291bc8b of
+   machinome-studio's `main` rewritten by `git filter-repo` to its final
+   paths (738 files, 318 commits, `main` at fd139a5; `git log` on
+   `machinome/studio/app.py` reaches a3ca3e5d of 20 July 2026 without
+   `--follow`); its other branches held in its former repository. ADR-193,
+   the studio is a product of the set reached by `machinome studio`,
+   accepted; ADR-182, ADR-188 and ADR-189 amended. The package is
+   `packages/machinome-studio/` (the package directory `machinome/studio/`
+   with `backends/`, its frontend, its profiles and its shop skills inside
+   it, no `__init__.py` at `machinome/`), at 0.8.1 with the set, requiring
+   `machinome~=0.8.1`, `machinome-viewer[snapshot]~=0.8.1` and fastapi from
+   0.111, under the set's licence (88 SPDX lines rewritten), keeping its
+   changelog, tests, specs, decision log (`workflow/adrs/`), architecture
+   overview, design reference and spikes in its directory; no module
+   `floor` and no console script `machinome-studio`. Its command `machinome
+   studio`, the third contributor of `machinome.commands`, starts the hub
+   as the launcher did, printing its address and opening no browser; its
+   root reads `create_app` on first use, so `machinome studio -h` takes 78
+   ms and `machinome -h` is unchanged within the spread. Its resources are
+   found in its package directory, in a checkout and in an installed wheel
+   alike; its MCP server runs as `machinome.studio.mcp_server`, the
+   backends and the Codex worker reaching it from the directory that holds
+   the package's `machinome/`. `machinome-simulate` is linked from the
+   skills package into its shop skills, a profile's skill link read one
+   level, and the builder, the designer and the machinist allowlist it;
+   its test tool takes `engine` (`brep`, `mesh`) and its skills import each
+   node name from its module, as the set's gates require. The core's extra
+   `studio` pins `machinome-studio~=0.8.1`, the root's default group
+   installs it, and `machinome vet` denies the package. The frontend,
+   `@machinome/studio`, is the npm workspace's third member with no lock of
+   its own, its 133 resolutions seeded into the root lock unchanged. The
+   manual folds in as three how-tos ("Open a project in the studio", "Work
+   in a project's workspace", "Choose and steer the studio's agents") and
+   the reference section `reference/studio/`, with the CLI reference's
+   section `machinome studio`, the studio's facts the manual's release
+   facts held to its source. The specs modified are `cli`,
+   `cli-startup-cost`, `framework-identity`, `user-documentation`,
+   `framework-contributor-guidance` and `vet`; `studio-distribution` is
+   created; the product's own specs brought current in place (26 valid).
+   `uv lock` resolves 200 packages. The suite green on the bench's uv venv
+   (4916 passed, 9 skipped, the line's 4909 and seven); `make test` green
+   for every package, the studio's 485 passed and 24 skipped after its
+   frontend's typecheck and build, and once with `MACHINOME_STUDIO_E2E=1`
+   508 passed, its browser tests included; CI installs the OpenSpec CLI its
+   tests run. The manual built with warnings as errors from
+   `docs/requirements.txt` alone. `scripts/check-dist` green on the tree
+   and on a clean copy: seventeen members built, 34 archives `twine check
+   --strict` passed, the studio's wheel (113 entries, sdist 1172) installed
+   by its path, both profiles loaded from it and its hub answering on a
+   scratch catalogue; the clean copy's framework sdist holds 1093 entries
+   and its wheel 114; nothing uploaded. The originating check, from the
+   bench's venv: `machinome studio` on a scratch catalogue holding a fresh
+   clone of gear-shift, the hub photographed with its card and three
+   backends; the project opened without agents by `python -m
+   machinome.studio`, its floor page photographed with the gearbox in the
+   viewer and its assembly navigator. No universe sweep: no project
+   repository imports the studio or names its launcher (0 files on 12
+   October 2026), and the core's one change a model could reach is the
+   vet's denial. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-12-join-studio/evidence.md`.

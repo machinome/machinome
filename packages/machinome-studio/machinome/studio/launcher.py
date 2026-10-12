@@ -1,9 +1,10 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Resolve the project folder and port every way of starting the hub shares.
 
-Each entry point (``machinome-studio``, ``python -m floor.orchestrator`` and
-``python -m floor``) parses its own options and then calls
+Each entry point (``machinome studio``, ``python -m
+machinome.studio.orchestrator`` and ``python -m machinome.studio``) parses
+its own options and then calls
 :func:`resolve_launch`, which applies one precedence rule per setting:
 the command-line option, then the environment, then the studio configuration
 file, then a built-in default. The configuration file's location and every

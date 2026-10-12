@@ -400,10 +400,9 @@ class RegistryConformanceTest(TestCase):
         """Every command a package installed in this environment contributes
         meets the contract, as the table's are walked above.
 
-        The workspace installs the skills package and the movie package, so
-        this walks their entries `skills` (change `join-skills`) and `movie`
-        (change `join-movie`); it is the walk that holds the studio once the
-        workspace installs it."""
+        The workspace installs the skills package, the movie package and the
+        studio, so this walks their entries `skills` (change `join-skills`),
+        `movie` (change `join-movie`) and `studio` (change `join-studio`)."""
         group = importlib.metadata.entry_points(group=CONTRIBUTED_GROUP)
         for entry in group:
             with self.subTest(command=entry.name, dist=entry.dist.name):

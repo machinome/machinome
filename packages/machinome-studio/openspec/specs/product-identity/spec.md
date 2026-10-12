@@ -8,9 +8,11 @@ domain language.
 ## Requirements
 ### Requirement: The product exposes one canonical identity
 The system SHALL identify the customer-facing product as `Machinome Studio` and
-SHALL use `machinome-studio` wherever package, plugin, repository, service,
-agent, project-configuration, or temporary-resource syntax requires a
-machine-readable identifier. Current material SHALL describe *machinome* as the
+SHALL use `machinome-studio` wherever distribution, service, agent,
+project-configuration, configuration-directory or temporary-resource syntax
+requires a machine-readable identifier. Its Python package SHALL be
+`machinome.studio` and its command `machinome studio`, a command of
+`machinome`. Current material SHALL describe *machinome* as the
 source code of one machine and, collectively, the body of source code for
 machines, and SHALL identify the Machinome organization as the home for machine
 source repositories, resources, and the framework.
@@ -28,7 +30,8 @@ make the transition legible without rewriting those records.
 - **WHEN** an integration reads package metadata, project configuration, or a
   product-derived runtime identifier
 - **THEN** the identifier is `machinome-studio` or is prefixed by
-  `machinome-studio-`
+  `machinome-studio-`, the package imports as `machinome.studio`, and the
+  command is `machinome studio`
 
 #### Scenario: A reader follows the rename history
 - **WHEN** a reader opens a past ADR, archived change, or release record that

@@ -41,10 +41,15 @@ record, its specification the framework's `skills-distribution` (change
 decision log and working record, whose JavaScript directory is the npm
 workspace's second member, its direct dependencies installed beside it by the
 root's `.npmrc`, with a lock of its own for an installed copy (change
-`join-movie`, ADR-191). The repository's steps are the targets of the root
-`Makefile`, which declares every package and the packages with tests of their
-own, and the CI's jobs call those targets (change `release-tooling`,
-ADR-192); the framework keeps no Makefile of its own.
+`join-movie`, ADR-191), and the studio `machinome-studio`, the package
+`machinome.studio`, numbered with the set, with its changelog, tests, specs,
+decision log and working record, whose frontend is the npm workspace's third
+member, with no lock of its own (change `join-studio`, ADR-193). The
+repository's steps are the targets of the root `Makefile`, which declares
+every package and the packages with tests of their own, and the CI's jobs
+call those targets (change `release-tooling`, ADR-192), the test job
+installing the OpenSpec CLI the studio's tests run (`join-studio`); the
+framework keeps no Makefile of its own.
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -133,14 +138,20 @@ PRODUCTS = {
                          'LICENSES', 'MANIFEST.in', 'README.md',
                          'experiments', 'machinome', 'openspec',
                          'pyproject.toml', 'tests', 'workflow')),
+    'machinome-studio': ('machinome.studio', 'studio',
+                         ('.gitignore', 'CHANGELOG.md', 'LICENSE',
+                          'LICENSES', 'MANIFEST.in', 'README.md',
+                          'machinome', 'openspec', 'pyproject.toml',
+                          'scripts', 'tests', 'workflow')),
 }
 
 #: The npm workspace's members: the repository's JavaScript projects, each
 #: by its directory, in the root's order, and the name its `package.json`
-#: gives it (`join-viewer`, `join-movie`).
+#: gives it (`join-viewer`, `join-movie`, `join-studio`).
 NODE_MEMBERS = {
     'packages/machinome-viewer/machinome/viewer/web/widget': '@machinome/viewer',
     'packages/machinome-movie/machinome/movie/js': '@machinome/movie',
+    'packages/machinome-studio/machinome/studio/frontend': '@machinome/studio',
 }
 
 #: The members that keep a lock of their own beside the root's, from which
@@ -337,10 +348,12 @@ class TheWorkspaceTest(unittest.TestCase):
         # environment, so it carries the mechanics package the catalogue's
         # projects import; `join-skills`: and the skills package, whose
         # tests run from its directory and whose command the suite's
-        # conformance walk reads; `join-movie`: and the movie package, alike.
+        # conformance walk reads; `join-movie`: and the movie package, alike;
+        # `join-studio`: and the studio, alike.
         self.assertEqual(self.root['dependency-groups']['dev'],
                          ['machinome[dev]', 'machinome[mechanics]',
-                          'machinome[skills]', 'machinome[movie]'])
+                          'machinome[skills]', 'machinome[movie]',
+                          'machinome[studio]'])
 
 
 class TheIndexTest(unittest.TestCase):
@@ -396,6 +409,10 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         'pytest': r'\bpytest\b',
     }
 
+    #: The one setup step a job spells with npm: the OpenSpec CLI the
+    #: studio's tests run, installed as a maker installs it (`join-studio`).
+    OPENSPEC = 'npm install -g @fission-ai/openspec@1.6.0'
+
     @staticmethod
     def calls(job):
         return [line.strip() for step in job['steps']
@@ -409,6 +426,9 @@ class TheContinuousIntegrationTest(unittest.TestCase):
                 for step in job['steps']:
                     if name == 'browser-snapshot' and step.get('env', {}).get(
                             'MACHINOME_WEB_SNAPSHOT_E2E'):
+                        continue
+                    if name == 'test' and step.get('run', '').strip() == (
+                            self.OPENSPEC):
                         continue
                     for command, pattern in self.SPELLED.items():
                         self.assertIsNone(
@@ -514,6 +534,37 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         node = recipe.index('$(NPM) test --workspace $(MOVIE_JS) -- '
                             '--project pure --project stage')
         self.assertLess(python, node)
+
+    def test_the_test_job_installs_the_openspec_cli_before_the_tests(self):
+        # The studio's tests run the OpenSpec CLI, the studio's runtime
+        # prerequisite, which `make test` finds on the PATH (`join-studio`).
+        steps = self.jobs['test']['steps']
+        node = self.index(
+            steps, lambda step: step.get('uses', '').startswith(
+                'actions/setup-node@'), 'sets up Node')
+        openspec = self.index(
+            steps, lambda step: step.get('run', '').strip() == self.OPENSPEC,
+            'installs the OpenSpec CLI')
+        tests = self.index(
+            steps, lambda step: step.get('run', '').strip() == 'make test',
+            'runs make test')
+        self.assertLess(node, openspec)
+        self.assertLess(openspec, tests)
+
+    def test_the_studio_s_rule_builds_its_frontend_before_its_tests(self):
+        # The studio's tests serve the built surface; its browser tests skip
+        # unless MACHINOME_STUDIO_E2E=1 (`join-studio`).
+        self.assertEqual(make_variable('STUDIO_FRONTEND'),
+                         [list(NODE_MEMBERS)[2]])
+        recipe = make_rules()['test-machinome-studio'][1]
+        at = [recipe.index(command) for command in (
+            '$(NPM) test --workspace $(STUDIO_FRONTEND)',
+            '$(NPM) run build --workspace $(STUDIO_FRONTEND)',
+            'cd packages/machinome-studio && $(PYTHON) -m pytest')]
+        self.assertEqual(at, sorted(at), "the studio's rule runs its steps "
+                         'out of order')
+        self.assertIn('packages/machinome-studio/machinome/studio/static',
+                      make_variable('CLEAN'))
 
     def test_the_dist_job_sets_up_node_before_checking(self):
         # The viewer's source distribution builds its bundle with npm.
@@ -840,7 +891,9 @@ class TheProductsTest(unittest.TestCase):
                     ['git', 'ls-files', '--cached', '--others',
                      '--exclude-standard', '--', f'packages/{name}'],
                     cwd=REPOSITORY, capture_output=True, text=True,
-                    check=True).stdout.split()
+                    check=True).stdout.splitlines()
+                # One path a line: the studio's design reference holds a
+                # file whose name has a space (`join-studio`).
                 self.assertEqual(
                     sorted({path.removeprefix(f'packages/{name}/')
                             .split('/')[0] for path in listed}),
@@ -877,9 +930,16 @@ class TheProductsTest(unittest.TestCase):
                 self.assertEqual(project['license'], core['license'])
                 self.assertEqual(project['license-files'],
                                  core['license-files'])
-                self.assertEqual(
-                    manifest['tool']['setuptools']['packages']['find'],
-                    {'include': [address], 'namespaces': True})
+                # The package directory at its address, then any subpackage
+                # beneath it: the studio's `backends` (`join-studio`).
+                find = manifest['tool']['setuptools']['packages']['find']
+                self.assertEqual(sorted(find), ['include', 'namespaces'])
+                self.assertIs(find['namespaces'], True)
+                self.assertEqual(find['include'][0], address)
+                for include in find['include'][1:]:
+                    self.assertTrue(include.startswith(f'{address}.'),
+                                    f'{name} finds {include}, outside '
+                                    f'{address}')
 
     def test_each_product_readme_names_its_install_and_the_licence(self):
         licence = conf_value('framework_licence')
@@ -923,7 +983,8 @@ class TheNodeWorkspaceTest(unittest.TestCase):
     `node_modules/` ignored (`join-viewer`); its second member, the movie's
     JavaScript directory, keeps a lock of its own for an installed copy, and
     the root's `.npmrc` installs each member's direct dependencies beside it
-    (`join-movie`)."""
+    (`join-movie`); its third, the studio's frontend, keeps no lock of its
+    own, its wheel carrying the built surface (`join-studio`)."""
 
     def tracked(self):
         return subprocess.run(['git', 'ls-files'], cwd=REPOSITORY,

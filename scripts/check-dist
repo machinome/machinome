@@ -17,12 +17,15 @@ there, from a table keyed by distribution name.
 It uploads nothing. Installing the wheels' dependencies needs a package
 index. It needs `build` and `twine` importable by the interpreter that runs
 it, and Node 22 and npm on the PATH: the browser viewer's source
-distribution builds its bundle with npm (change `join-viewer`), and the
+distribution builds its bundle with npm (change `join-viewer`), the
 movie's smoke installs its Node side from npm's registry or cache and runs
-it (change `join-movie`). It writes
+it (change `join-movie`), and the studio's source distribution builds its
+browser surface with npm (change `join-studio`). It writes
 nothing inside the repository but the build's own scratch (`build/`,
 `*.egg-info`), the root's `node_modules/` that `npm ci` installs and the
-widget's `dist/`, which each member's `.gitignore`, or the root's, ignores.
+members' `node_modules/` beside them, the widget's `dist/` and the studio's
+`machinome/studio/static/`, which each member's `.gitignore`, or the
+root's, ignores.
 
 With `--out DIR` it also keeps the archives: it refuses, before it builds
 anything, a `DIR` that exists and is not an empty folder, and once every
@@ -722,6 +725,94 @@ print('machinome-movie', distribution.version, 'module', movie.__file__,
 ''',
         'commands': [['machinome', 'movie', '-h']],
     },
+    'machinome-studio': {
+        # Installed from its wheel by path; the smoke reads the extra's
+        # requirement from the core's metadata, loads both profiles from the
+        # installed package and opens the hub on a scratch catalogue.
+        'extras': [],
+        'code': '''
+import importlib.metadata as metadata
+import os
+import socket
+import subprocess
+import tempfile
+import time
+import urllib.request
+from pathlib import Path
+import machinome.studio as studio
+from machinome.studio.preparation import shop_resource_root
+from machinome.studio.profiles import load_profile
+distribution = metadata.distribution('machinome-studio')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+shipped = [path for path in files if path.startswith('machinome/')
+           and '__pycache__' not in path]
+assert 'machinome/studio/cli.py' in shipped, shipped
+assert 'machinome/studio/static/index.html' in shipped, shipped
+assert ('machinome/studio/shop-skills/machinome-simulate/SKILL.md'
+        in shipped), shipped
+assert not [path for path in shipped if '/frontend/' in path
+            or 'node_modules' in path or path == 'machinome/__init__.py'], shipped
+root = shop_resource_root()
+assert root == Path(studio.__file__).resolve().parent, root
+assert root.is_relative_to(Path(VENV).resolve()), root
+assert f'machinome~={version}' in distribution.requires, distribution.requires
+assert (f'machinome-viewer[snapshot]~={version}'
+        in distribution.requires), distribution.requires
+core = metadata.requires('machinome')
+assert any(line.startswith(f'machinome-studio~={version}')
+           and 'studio' in line.partition(';')[2] for line in core), core
+(entry,) = [entry for entry in metadata.entry_points(group='machinome.commands')
+            if entry.name == 'studio']
+assert entry.value == 'machinome.studio.cli:Studio', entry.value
+for name in ('openspec-builder', 'fordesmac'):
+    profile = load_profile(name, shop_root=root)
+    assert profile.agents, name
+builder = load_profile('openspec-builder', shop_root=root).agent('builder')
+assert [skill.name for skill in builder.skills] == [
+    'machinome-api', 'machinome', 'machinome-simulate'], builder.skills
+# The hub refuses to start without an OpenSpec CLI, which no wheel carries:
+# a stand-in that answers its version stands for it here.
+scratch = Path(tempfile.mkdtemp())
+stand_in = scratch / 'bin' / 'openspec'
+stand_in.parent.mkdir()
+stand_in.write_text('#!/bin/sh\\necho 1.6.0\\n')
+stand_in.chmod(0o755)
+(scratch / 'catalogue').mkdir()
+with socket.socket() as probe:
+    probe.bind(('127.0.0.1', 0))
+    port = probe.getsockname()[1]
+hub = subprocess.Popen(
+    [str(Path(VENV) / 'bin' / 'machinome'), 'studio', '--projects-dir',
+     str(scratch / 'catalogue'), '--port', str(port)],
+    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    env={**{key: value for key, value in os.environ.items()
+            if key not in ('MACHINOME_STUDIO_CONFIG', 'FLOOR_PORT')},
+         'PATH': f"{stand_in.parent}:{os.environ['PATH']}",
+         'HOME': str(scratch), 'XDG_CONFIG_HOME': str(scratch)})
+try:
+    for _ in range(100):
+        try:
+            page = urllib.request.urlopen(f'http://127.0.0.1:{port}/').read()
+            break
+        except OSError:
+            time.sleep(0.1)
+    else:
+        raise AssertionError('the hub did not answer')
+    assert b'Machinome Studio' in page, page[:200]
+finally:
+    hub.terminate()
+    output = hub.communicate(timeout=10)[0]
+assert f'shop-floor open at http://127.0.0.1:{port}' in output, output
+'''
+        + LICENCES.substitute(name='machinome-studio')
+        + '''
+print('machinome-studio', distribution.version, 'module', studio.__file__,
+      'hub answered')
+''',
+        'commands': [['machinome', 'studio', '-h']],
+    },
     'machinome-skills': {
         # Installed from its wheel by path: the smoke reads the extra's
         # requirement from the core's metadata.
@@ -938,6 +1029,10 @@ def main(argv=None):
                 and None in (shutil.which('node'), shutil.which('npm')):
             raise Failure("machinome-movie's smoke installs and runs its "
                           'Node side; put Node 22 and npm on the PATH')
+        if any(name == 'machinome-studio' for _, name in listed) \
+                and shutil.which('npm') is None:
+            raise Failure("machinome-studio's browser surface is built by "
+                          'npm; put Node 22 and npm on the PATH')
         print('Members:', ', '.join(name for _, name in listed))
         wheels = {name: build(directory, name, scratch)
                   for directory, name in listed}

@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import asyncio
@@ -22,8 +22,8 @@ from typing import cast
 from unittest.mock import patch
 from urllib.request import urlopen
 
-from floor.app import Broker
-from floor.backends.base import (
+from machinome.studio.app import Broker
+from machinome.studio.backends.base import (
     AgentActivity,
     AgentBackend,
     BackendEvent,
@@ -35,7 +35,7 @@ from floor.backends.base import (
     RuntimeChoice,
     session_tool_names,
 )
-from floor.orchestrator import (
+from machinome.studio.orchestrator import (
     LocalBrokerControl,
     ShopOrchestrator,
     _route_backend_events,
@@ -43,13 +43,13 @@ from floor.orchestrator import (
     _shutdown_runtime,
     _wait_for_runtime,
 )
-from floor.preparation import PreparationError, ProjectAgentRuntime, ProjectRuntimeSelection, prepare_project
-from floor.profiles import load_profile, resolve_profile_runtime
+from machinome.studio.preparation import PreparationError, ProjectAgentRuntime, ProjectRuntimeSelection, prepare_project
+from machinome.studio.profiles import load_profile, resolve_profile_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_machinome.py"
 def _resolved_profile(profile_id: str, backend: str = "claude"):
-    profile = load_profile(profile_id, shop_root=ROOT)
+    profile = load_profile(profile_id, shop_root=ROOT / "machinome" / "studio")
     agents = {}
     if backend != "claude":
         for agent in profile.agents:
@@ -65,7 +65,7 @@ FORDESMAC = _resolved_profile("fordesmac")
 def _context(role: str, *, backend: str = "claude", project: Path | None = None) -> RoleContext:
     profile = _resolved_profile("fordesmac", backend)
     return RoleContext(
-        shop_root=str(ROOT),
+        shop_root=str(ROOT / "machinome" / "studio"),
         active_project=str((project or ROOT / "projects" / "snowman").resolve()),
         agent=profile.agent(role),
         profile_id=profile.id,
@@ -231,7 +231,7 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.backend = FakeMultiplexBackend()
         self.broker = FakeBroker()
-        self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await self.orchestrator.open()
 
     async def test_open_owns_exactly_the_three_role_threads(self) -> None:
@@ -272,7 +272,7 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                     self.backend,
                     self.broker,
                     profile=_resolved_profile("fordesmac", backend),
-                    shop_root=ROOT,
+                    shop_root=ROOT / "machinome" / "studio",
                     active_project=ROOT,
                 )
                 message = orchestrator._message(
@@ -479,7 +479,7 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 self.close_count += 1
                 await super().close()
 
-        profile = load_profile("fordesmac", shop_root=ROOT)
+        profile = load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio")
         selection = ProjectRuntimeSelection(
             ROOT,
             ROOT / "pyproject.toml",
@@ -498,7 +498,7 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             },
             FakeBroker(),
             profile=profile,
-            shop_root=ROOT,
+            shop_root=ROOT / "machinome" / "studio",
             active_project=ROOT,
         )
 
@@ -525,7 +525,7 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         first, second = FakeBackend(), FailingStartBackend()
         orchestrator = ShopOrchestrator(
             {agent.id: (second if agent.id == "designer" else first) for agent in FORDESMAC.agents},
-            FakeBroker(), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT,
+            FakeBroker(), profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT,
         )
         with self.assertRaisesRegex(RuntimeError, "second backend failed"):
             await orchestrator.open()
@@ -558,7 +558,7 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         profile = FORDESMAC
         orchestrator = RecordingOrchestrator(
             {agent.id: (claude if agent.id == "designer" else opencode) for agent in profile.agents},
-            FakeBroker(), profile=profile, shop_root=ROOT, active_project=ROOT,
+            FakeBroker(), profile=profile, shop_root=ROOT / "machinome" / "studio", active_project=ROOT,
         )
         tasks = [
             asyncio.create_task(_route_backend_events(orchestrator, backend))
@@ -598,7 +598,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             cast(AgentBackend, racing),
             LocalBrokerControl(broker),
             profile=profile,
-            shop_root=ROOT,
+            shop_root=ROOT / "machinome" / "studio",
             active_project=ROOT,
         )
         racing.orchestrator = orchestrator
@@ -637,7 +637,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             cast(AgentBackend, racing),
             LocalBrokerControl(broker),
             profile=profile,
-            shop_root=ROOT,
+            shop_root=ROOT / "machinome" / "studio",
             active_project=ROOT,
         )
         racing.orchestrator = orchestrator
@@ -660,7 +660,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             backend,
             FakeBroker(),
             profile=profile,
-            shop_root=ROOT,
+            shop_root=ROOT / "machinome" / "studio",
             active_project=project,
         )
         await orchestrator.open()
@@ -674,7 +674,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         profile = _resolved_profile("fordesmac")
         backend = FakeMultiplexBackend()
         broker = FakeBroker()
-        orchestrator = ShopOrchestrator(backend, broker, profile=profile, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, broker, profile=profile, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         self.assertEqual(backend.started_threads, ["foreman", "designer", "machinist", "librarian"])
@@ -686,7 +686,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         profile = _resolved_profile("openspec-builder")
         broker = Broker(profile=profile)
         backend = FakeMultiplexBackend()
-        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         await broker.record_conversation("user", "Build")
@@ -702,7 +702,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         profile = _resolved_profile("openspec-builder")
         broker = Broker(profile=profile)
         backend = FakeMultiplexBackend()
-        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         await broker.record_conversation("user", "Build")
@@ -732,7 +732,7 @@ class BrokerPipelineRoutingTest(unittest.IsolatedAsyncioTestCase):
     async def test_broker_routes_maker_specialist_and_parallel_pipeline_messages(self) -> None:
         broker = Broker(FORDESMAC)
         backend = FakeMultiplexBackend()
-        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
 
@@ -776,7 +776,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "floor.orchestrator",
+                "machinome.studio.orchestrator",
                 "--port",
                 str(port),
                 "--projects-dir",
@@ -823,7 +823,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
 
 class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        from floor.sessions import SessionRegistry
+        from machinome.studio.sessions import SessionRegistry
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name) / "projects"
@@ -849,7 +849,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
 
         self.registry = SessionRegistry(
             self.home,
-            shop_root=ROOT,
+            shop_root=ROOT / "machinome" / "studio",
             machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             backend_factory=factory,
         )
@@ -858,7 +858,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         # authenticated native owner. Missing optional login must not poison
         # the existing Claude/OpenCode catalogue.
         from unittest.mock import AsyncMock
-        from floor.codex_auth import CodexAuthError
+        from machinome.studio.codex_auth import CodexAuthError
         self.registry.codex_service.acquire = AsyncMock(side_effect=CodexAuthError("Dedicated Studio login unavailable in this fixture"))
 
     async def test_open_resolves_prepares_builds_and_starts_agents_inside_one_session(self) -> None:
@@ -930,7 +930,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
 
         subscriber, _snapshot = await self.registry.subscribe_hub()
         try:
-            with patch("floor.sessions.prepare_project", side_effect=slow_prepare):
+            with patch("machinome.studio.sessions.prepare_project", side_effect=slow_prepare):
                 response = await self.registry.create("", "new_project", "openspec-builder")
                 self.assertEqual(response, {"state": "opening"})
                 self.assertTrue(await asyncio.to_thread(started.wait, 2))
@@ -950,7 +950,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_profile_failure_is_fatal_before_preparation_and_leaves_no_session(self) -> None:
         (self.project / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "missing-profile"\n')
-        with patch("floor.sessions.prepare_project") as prepare:
+        with patch("machinome.studio.sessions.prepare_project") as prepare:
             await self.registry.request_open("engine")
             self.assertIsNone(await self.registry.wait_until_settled("engine"))
         prepare.assert_not_called()
@@ -959,7 +959,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_preparation_and_agent_start_failures_leave_no_partial_session(self) -> None:
         failure = PreparationError("repository", "engine", self.project, "broken")
-        with patch("floor.sessions.prepare_project", side_effect=failure):
+        with patch("machinome.studio.sessions.prepare_project", side_effect=failure):
             await self.registry.request_open("engine")
             self.assertIsNone(await self.registry.wait_until_settled("engine"))
         self.assertIsNone(self.registry.by_entry("engine"))
@@ -998,7 +998,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
         self.backend = FB()
         self.broker = FakeBroker()
-        self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await self.orchestrator.open()
 
     async def test_open_owns_exactly_the_three_role_sessions(self) -> None:
@@ -1042,7 +1042,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 )
 
         backend = NewIdentityBackend()
-        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         await orchestrator.deliver(
             {"sequence": 30, "recipient": "designer", "body": "Begin"}
@@ -1086,7 +1086,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
         backend = DeadSessionBackend()
         broker = FakeBroker()
-        orchestrator = ShopOrchestrator(backend, broker, profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, broker, profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         backend.failed_handle = orchestrator.roles["machinist"].handle
         await orchestrator.handle_event(
@@ -1121,7 +1121,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
         backend = UnavailableBackend()
         broker = FakeBroker()
-        orchestrator = ShopOrchestrator(backend, broker, profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, broker, profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         backend.unavailable = True
         await orchestrator.handle_event(
@@ -1168,7 +1168,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                     raise RuntimeError("role close failed")
 
         backend = FailingBackend()
-        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         await orchestrator.open()
         await orchestrator.deliver(
             {"sequence": 20, "recipient": "foreman", "body": "Work"}
@@ -1205,7 +1205,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 raise RuntimeError("cleanup failed")
 
         backend = FailingOpenBackend()
-        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_root=ROOT / "machinome" / "studio", active_project=ROOT)
         with self.assertRaisesRegex(RuntimeError, "designer open failed"):
             await orchestrator.open()
         self.assertEqual(
@@ -1253,7 +1253,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 class BackendFlagAcceptanceTest(unittest.TestCase):
     def test_backend_command_overrides_are_keyed_per_backend(self) -> None:
-        from floor.backends import create_backend, parse_backend_command_overrides
+        from machinome.studio.backends import create_backend, parse_backend_command_overrides
 
         overrides = parse_backend_command_overrides(("opencode=/tmp/fake-opencode", "claude=/tmp/fake-claude"))
         opencode = create_backend("opencode", shop_root=Path("/tmp"), command_overrides=overrides)
@@ -1262,19 +1262,19 @@ class BackendFlagAcceptanceTest(unittest.TestCase):
         self.assertEqual(claude.command, ("/tmp/fake-claude",))
 
     def test_a_shared_tool_server_is_built_with_the_profiles_skills(self) -> None:
-        from floor.backends import create_backend
+        from machinome.studio.backends import create_backend
 
         skills = FORDESMAC.agent("machinist").skills
         self.assertTrue(skills)
-        opencode = create_backend("opencode", shop_root=ROOT, skills=skills)
+        opencode = create_backend("opencode", shop_root=ROOT / "machinome" / "studio", skills=skills)
         self.assertEqual(opencode.skills, {skill.name: skill.path for skill in skills})
         # Claude configures a tool server per role, so it registers each
         # agent's own skills from its role context instead.
-        create_backend("claude", shop_root=ROOT, skills=skills)
+        create_backend("claude", shop_root=ROOT / "machinome" / "studio", skills=skills)
 
     def test_unknown_backend_rejected(self) -> None:
         from pathlib import Path
-        from floor.backends import create_backend
+        from machinome.studio.backends import create_backend
 
         with self.assertRaises(ValueError) as cm:
             create_backend("unknown", shop_root=Path("/tmp"))
@@ -1282,7 +1282,7 @@ class BackendFlagAcceptanceTest(unittest.TestCase):
 
     def test_retired_backends_rejected(self) -> None:
         from pathlib import Path
-        from floor.backends import create_backend
+        from machinome.studio.backends import create_backend
 
         for retired in ("hermes",):
             with self.subTest(backend=retired):
@@ -1301,7 +1301,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     """ClaudeBackend exercising AgentBackend operations through a fake CLI."""
 
     async def asyncSetUp(self) -> None:
-        from floor.backends.claude import ClaudeBackend
+        from machinome.studio.backends.claude import ClaudeBackend
 
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -1314,7 +1314,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.project = Path(self.temporary.name) / "project"
         self.project.mkdir()
         self.claude = ClaudeBackend(
-            ROOT,
+            ROOT / "machinome" / "studio",
             project=self.project,
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
             machinome_command=("/work/.venv/bin/machinome",),
@@ -1364,7 +1364,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
         argv = next(i for i in captured if i["kind"] == "environment")["argv"]
         contract = argv[argv.index("--append-system-prompt") + 1]
-        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "machinist.md"), contract)
+        self.assertIn(str(ROOT / "machinome" / "studio" / "profiles" / "fordesmac" / "machinist.md"), contract)
         self.assertIn("trusted control plane", contract)
 
         user_messages = [
@@ -1418,7 +1418,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         be unreachable rather than merely undeclared: `--tools` does not filter
         MCP tools, so only a denylist removes them from the session.
         """
-        from floor.mcp_server import TOOL_NAMES
+        from machinome.studio.mcp_server import TOOL_NAMES
 
         librarian = FORDESMAC.agent("librarian")
         declared = session_tool_names(librarian.skills, librarian.runtime.tools)
@@ -1491,11 +1491,11 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await self.claude.close()
 
     async def test_first_delivery_waits_through_pending_mcp_until_connected(self) -> None:
-        from floor.backends.claude import ClaudeBackend
+        from machinome.studio.backends.claude import ClaudeBackend
 
         await self.claude.close()
         self.claude = ClaudeBackend(
-            ROOT,
+            ROOT / "machinome" / "studio",
             project=self.project,
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
             machinome_command=("/work/.venv/bin/machinome",),
@@ -1519,11 +1519,11 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await self.claude.close()
 
     async def test_first_delivery_reports_last_pending_status_on_readiness_timeout(self) -> None:
-        from floor.backends.claude import ClaudeBackend
+        from machinome.studio.backends.claude import ClaudeBackend
 
         await self.claude.close()
         self.claude = ClaudeBackend(
-            ROOT,
+            ROOT / "machinome" / "studio",
             project=self.project,
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
             session_id="opaque-session",
@@ -1688,14 +1688,14 @@ class ClaudeBackendStartupFailureTest(unittest.IsolatedAsyncioTestCase):
     """
 
     async def test_startup_exit_reports_stderr(self) -> None:
-        from floor.backends.claude import ClaudeBackend
+        from machinome.studio.backends.claude import ClaudeBackend
 
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         project = Path(temporary.name) / "project"
         project.mkdir()
         claude = ClaudeBackend(
-            ROOT,
+            ROOT / "machinome" / "studio",
             project=project,
             command=(
                 sys.executable,
@@ -1717,7 +1717,7 @@ class ClaudeBackendShutdownTest(unittest.IsolatedAsyncioTestCase):
     """close() must release every owned process, bounded, even a stubborn one."""
 
     async def test_close_forces_a_process_that_ignores_sigterm(self) -> None:
-        from floor.backends.claude import ClaudeBackend
+        from machinome.studio.backends.claude import ClaudeBackend
 
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -1725,7 +1725,7 @@ class ClaudeBackendShutdownTest(unittest.IsolatedAsyncioTestCase):
         project.mkdir()
         with patch.dict(os.environ, {"FAKE_CLAUDE_IGNORE_SIGNALS": "1"}):
             claude = ClaudeBackend(
-                ROOT,
+                ROOT / "machinome" / "studio",
                 project=project,
                 command=(sys.executable, str(FAKE_CLAUDE_CLI)),
                 stop_timeout=0.5,
@@ -1745,8 +1745,8 @@ class ClaudeBackendShutdownTest(unittest.IsolatedAsyncioTestCase):
 class ClaudeBackendFlagTest(unittest.TestCase):
     def test_claude_backend_selected(self) -> None:
         from pathlib import Path
-        from floor.backends import create_backend
-        from floor.backends.claude import ClaudeBackend
+        from machinome.studio.backends import create_backend
+        from machinome.studio.backends.claude import ClaudeBackend
 
         backend = create_backend("claude", shop_root=Path("/tmp"))
         self.assertIsInstance(backend, ClaudeBackend)

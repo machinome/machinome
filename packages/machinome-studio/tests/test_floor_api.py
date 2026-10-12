@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import io
@@ -33,7 +33,7 @@ class FloorAPITest(unittest.TestCase):
         self.shop = self.enterContext(isolated_launch_directory())
         self.process = subprocess.Popen(
             [
-                "python", "-m", "floor", "--port", str(self.port),
+                "python", "-m", "machinome.studio", "--port", str(self.port),
                 "--projects-dir", str(self.project_home),
                 "--machinome-command", str(FAKE_MACHINOME),
             ],

@@ -1,17 +1,17 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from pathlib import Path
 import unittest
 
-from floor.preparation import _parse_agent_runtime, ProjectRuntimeError, ProjectRuntimeSelection
-from floor.profiles import load_profile, resolve_profile_runtime
+from machinome.studio.preparation import _parse_agent_runtime, ProjectRuntimeError, ProjectRuntimeSelection
+from machinome.studio.profiles import load_profile, resolve_profile_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class CodexSelectionTests(unittest.TestCase):
     def test_explicit_choices_derive_profile_tools_without_new_tables(self):
-        profile = load_profile("openspec-builder", shop_root=ROOT)
+        profile = load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")
         source = Path("/tmp/synthetic/pyproject.toml")
         for model in ("gpt-6-sol", "gpt-6-astra"):
             choice = _parse_agent_runtime("builder", f"codex:{model}", source)

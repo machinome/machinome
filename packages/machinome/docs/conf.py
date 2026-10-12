@@ -47,6 +47,23 @@ document_versions = '1 to 13'    # supported by the paired viewer
 # which tests/test_release_records.py holds to it.
 mechanics_version = '0.1.0'
 framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'
+# The studio's, held to its source by the studio's documentation test
+# (packages/machinome-studio/tests/test_documentation.py, change
+# `join-studio`): the viewer API it requires, the Claude models and efforts
+# a project may select, the qualified Codex and its models and efforts, and
+# the build volume its Build area shows.
+studio_viewer_api = '20'
+studio_claude_models = ('sonnet', 'opus', 'fable')
+studio_claude_efforts = ('low', 'medium', 'high')
+studio_codex_version = 'codex-cli 0.157.1'
+studio_codex_models = ('gpt-6-astra', 'gpt-6-sol')
+studio_codex_efforts = ('low', 'medium', 'high', 'xhigh', 'max', 'ultra')
+studio_build_volume = '250 × 210 × 220 mm'
+
+
+def literals(names):
+    return ', '.join(f'``{name}``' for name in names)
+
 
 rst_prolog = f'''
 .. |release_date| replace:: {release_date}
@@ -55,6 +72,13 @@ rst_prolog = f'''
 .. |document_versions| replace:: {document_versions}
 .. |mechanics_version| replace:: {mechanics_version}
 .. |framework_licence| replace:: {framework_licence}
+.. |studio_viewer_api| replace:: {studio_viewer_api}
+.. |studio_claude_models| replace:: {literals(studio_claude_models)}
+.. |studio_claude_efforts| replace:: {literals(studio_claude_efforts)}
+.. |studio_codex_version| replace:: {studio_codex_version}
+.. |studio_codex_models| replace:: {literals(studio_codex_models)}
+.. |studio_codex_efforts| replace:: {literals(studio_codex_efforts)}
+.. |studio_build_volume| replace:: {studio_build_volume}
 '''
 
 # -- General configuration ---------------------------------------------------

@@ -81,6 +81,9 @@ EXTRAS = {
     # `join-movie`: the films, a product numbered with the set, not a
     # kernel.
     'movie': {f'machinome-movie~={VERSION}'},
+    # `join-studio`: the studio, a product numbered with the set, not a
+    # kernel.
+    'studio': {f'machinome-studio~={VERSION}'},
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
             'openscad,solid2,jscad,stl,freecad]'},
 }

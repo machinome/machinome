@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """HTTP, SSE, and static browser surface for the local shop floor."""
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from watchdog.observers import Observer
 from .backends.base import AgentActivity
 from .build_package import BuildPackageError, open_build_package, package_filename
 from .profiles import BackendRuntime, RuntimeProfile, load_profile, resolve_profile_runtime
-from .preparation import PreparationError, resolve_entry, verified_project_root
+from .preparation import PreparationError, resolve_entry, shop_resource_root, verified_project_root
 from .screenshots import is_safe_screenshot, screenshot_path
 from .source_files import SourceConflict, SourceUnavailable
 from .watcher import ArtifactWatcher, ModelWatcher
@@ -183,7 +183,7 @@ class Broker:
 
     def __init__(self, profile: RuntimeProfile | None = None, *, session_id: str = "unbound", event_history_limit: int = 20) -> None:
         self.profile = profile or resolve_profile_runtime(
-            load_profile(None, shop_root=Path(__file__).resolve().parents[1])
+            load_profile(None, shop_root=shop_resource_root())
         )
         self.session_id = session_id
         self.agents: dict[str, Agent] = {}

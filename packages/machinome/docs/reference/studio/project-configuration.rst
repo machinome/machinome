@@ -34,15 +34,15 @@ table is neither read nor written by the studio.
     joined by ``:``.
 
     * ``claude:<model>`` or ``claude:<model>:<reasoning>``, where the model
-      is one of |claude-models| and the reasoning level one of
-      |claude-efforts|;
+      is one of |studio_claude_models| and the reasoning level one of
+      |studio_claude_efforts|;
     * ``opencode:<provider>:<model>`` or
       ``opencode:<provider>:<model>:<reasoning>``, where the provider and
       model are identifiers from the OpenCode installation's connected
       catalogue and the reasoning level is one of that model's variants.
     * ``codex:<model>`` or ``codex:<model>:<reasoning>``, where the model
-      is one of |codex-models| and the reasoning level one of
-      |codex-efforts|. Its provider is fixed to OpenAI.
+      is one of |studio_codex_models| and the reasoning level one of
+      |studio_codex_efforts|. Its provider is fixed to OpenAI.
 
     An agent the table does not name opens on Claude with the model and
     effort its profile declares. A value that omits the reasoning level

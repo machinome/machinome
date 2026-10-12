@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Synthetic auth responses; never revoke or inspect a provisioned user login."""
 import json
 from pathlib import Path
@@ -7,10 +7,10 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from floor.backends.codex_service import CodexService
-from floor.backends.codex_policy import digest
-from floor.backends.codex_wire import CodexProtocolError
-from floor.codex_auth import CodexAuthError, LOGIN_COMMAND
+from machinome.studio.backends.codex_service import CodexService
+from machinome.studio.backends.codex_policy import digest
+from machinome.studio.backends.codex_wire import CodexProtocolError
+from machinome.studio.codex_auth import CodexAuthError, LOGIN_COMMAND
 from tests.test_codex_service import NativeFixture
 
 
@@ -40,9 +40,9 @@ class CodexRefreshTests(unittest.IsolatedAsyncioTestCase):
                 return await original(method, params)
             native.rpc = rpc
             service._qualified = {"binary": str(binary), "binary_digest": digest(binary), "contract": "synthetic"}
-            with patch("floor.backends.codex_service.controlled_catalogue", return_value={"models": []}), \
-                 patch("floor.backends.codex_service.check_policy", AsyncMock()), \
-                 patch("floor.backends.codex_service.CodexConnection.start", AsyncMock(return_value=native)):
+            with patch("machinome.studio.backends.codex_service.controlled_catalogue", return_value={"models": []}), \
+                 patch("machinome.studio.backends.codex_service.check_policy", AsyncMock()), \
+                 patch("machinome.studio.backends.codex_service.CodexConnection.start", AsyncMock(return_value=native)):
                 try:
                     if revoked:
                         with self.assertRaises(CodexAuthError) as caught:

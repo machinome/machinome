@@ -1,13 +1,13 @@
-=========================
-Profiles and their agents
-=========================
+====================================
+Choose and steer the studio's agents
+====================================
 
 A profile is the team a project opens with: which agents stand ready,
 which one speaks with you, who assigns work to whom, what each may do, the
 prompt each follows and the skills it may load. The studio ships two. The
 choice is made when a project is created, recorded in its
 ``pyproject.toml`` and read every time the project opens; a project that
-records none opens under ``openspec-builder``, the shop default. :doc:`reference/profiles`
+records none opens under ``openspec-builder``, the shop default. :doc:`/reference/studio/profiles`
 lists what each declares.
 
 OpenSpec Builder
@@ -80,10 +80,13 @@ profile and cannot be widened by a project or a prompt, and no agent runs
 with permission checking disabled.
 
 An agent may also load the skills its profile allows: ``machinome-api``,
-the framework's complete public contract, and ``machinome``, the craft of
+the framework's complete public contract, ``machinome``, the craft of
 building a part that is one connected body, meshes that are proven to
-drive, and contracts that measure geometry rather than trust it. Agents
-never read the framework's source and never look into another project.
+drive, and contracts that measure geometry rather than trust it, and
+``machinome-simulate``, the skills package's guide to giving an existing
+design a simulation layer, which OpenSpec Builder, Designer and Machinist
+may load. Agents never read the framework's source and never look into
+another project.
 
 Where the work is recorded
 ==========================
@@ -104,7 +107,7 @@ with the model and effort its profile declares; **OpenCode**, which a
 project selects by naming a connected provider and a model, and which
 otherwise inherits the model the OpenCode installation is logged in with;
 or **Codex**, explicitly selected after qualification and separate Studio
-login (:doc:`installation`).
+login (`Using Codex`_ below).
 On all three, the agent's native file, shell and network tools are replaced by
 the studio's bounded operations above, and the profile's prompt and skill
 list travel with every session. Under OpenCode, a regular ``AGENTS.md`` at
@@ -125,3 +128,31 @@ builds and tests execute project code on the host; only open projects you
 trust. Codex preserves plain Git author identity but refuses commit and
 spec-setup operations when signed commits are required, rather than
 silently creating unsigned commits.
+
+Using Codex
+===========
+
+The studio supports |studio_codex_version| on Linux x86_64. Install that
+exact Codex CLI on ``PATH``; the studio does not install it. The studio
+checks its actual executable, model metadata and tool policy before
+offering it. Unsupported installations remain unavailable rather than using
+another backend or weakening permissions. Projects using other backends do
+not need Codex.
+
+With the hub stopped, provision a separate Studio login on your ChatGPT
+account from the studio's Python environment:
+
+.. code-block:: console
+
+   $ python -m machinome.studio.codex_auth login
+
+Follow the device-authorization instructions. The studio stores this login
+in ``$XDG_STATE_HOME/machinome-studio/codex`` when that variable is an
+absolute path, otherwise in ``$HOME/.local/state/machinome-studio/codex``.
+It never copies or changes your ordinary Codex credentials. Closing
+projects removes their conversations, not this login. Only one hub or login
+command can own the store at a time.
+
+Select Codex explicitly using :doc:`/reference/studio/project-configuration`
+or the Agents controls. Claude remains the default. Supported models depend
+on account access as well as the studio's qualified catalogue.

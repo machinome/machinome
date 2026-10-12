@@ -185,25 +185,27 @@ spec record is unavailable.
 - **THEN** startup proceeds normally
 
 ### Requirement: The shop starts from an installed command
-Installing the studio SHALL put a `machinome-studio` command on the `PATH`
-of the environment it is installed into. Running it SHALL start the shop
-exactly as `python -m floor.orchestrator` does, with the same options,
-defaults and failures. `python -m floor.orchestrator` SHALL keep working,
-and `python -m floor` SHALL keep serving the hub without agents; all three
-SHALL resolve their project folder and port by the same rule.
+Installing the studio SHALL make `machinome studio` a command of
+`machinome` in the environment it is installed into, contributed through
+the entry-point group `machinome.commands`; no console script and no module
+`floor` is installed. Running it SHALL start the shop exactly as `python -m
+machinome.studio.orchestrator` does, with the same options, defaults and
+failures. `python -m machinome.studio.orchestrator` SHALL keep working, and
+`python -m machinome.studio` SHALL keep serving the hub without agents; all
+three SHALL resolve their project folder and port by the same rule.
 
 #### Scenario: The maker starts the shop by name
-- **WHEN** the maker runs `machinome-studio --projects-dir PATH` from an
+- **WHEN** the maker runs `machinome studio --projects-dir PATH` from an
   environment the studio is installed into
 - **THEN** the shop reports its browser location on port 9000 with no
   project prepared, no model built and no agent running, as
-  `python -m floor.orchestrator --projects-dir PATH` does
+  `python -m machinome.studio.orchestrator --projects-dir PATH` does
 
 #### Scenario: The module entry points still start the shop
-- **WHEN** the maker runs `python -m floor.orchestrator` or `python -m floor`
+- **WHEN** the maker runs `python -m machinome.studio.orchestrator` or `python -m machinome.studio`
   with the same options and the same configuration file
 - **THEN** each starts on the same project folder and port the
-  `machinome-studio` command would use
+  `machinome studio` command would use
 
 ### Requirement: A studio configuration file supplies the project folder and port
 The shop SHALL read a studio configuration file, a TOML file at the path
@@ -246,14 +248,14 @@ and SHALL be reported on standard error prefixed `error:` with exit status
 
 #### Scenario: The configuration file names the project folder and port
 - **WHEN** the configuration file sets `projects = "~/machines"` and
-  `port = 9100`, and the maker runs `machinome-studio` with no option and
+  `port = 9100`, and the maker runs `machinome studio` with no option and
   no `FLOOR_PORT`
 - **THEN** the hub lists `machines` under the directory `HOME` names, and
   the shop reports its browser location on port 9100
 
 #### Scenario: Options override the configuration file
 - **WHEN** the configuration file sets `projects` and `port`, and the maker
-  runs `machinome-studio --projects-dir OTHER --port 9200`
+  runs `machinome studio --projects-dir OTHER --port 9200`
 - **THEN** the hub lists `OTHER` and the shop listens on port 9200
 
 #### Scenario: The environment overrides the file's port
@@ -263,12 +265,12 @@ and SHALL be reported on standard error prefixed `error:` with exit status
 
 #### Scenario: No configuration file exists
 - **WHEN** no file exists at the default location and the maker runs
-  `machinome-studio --projects-dir PATH`
+  `machinome studio --projects-dir PATH`
 - **THEN** the shop starts on `PATH` and port 9000 exactly as before the
   configuration file existed
 
 #### Scenario: Nothing names the project folder
-- **WHEN** the maker runs `machinome-studio` with no `--projects-dir` and no
+- **WHEN** the maker runs `machinome studio` with no `--projects-dir` and no
   configuration file sets `projects`
 - **THEN** startup fails with exit status 1 and an `error:` line naming
   `--projects-dir` and the `projects` key, and either naming the
@@ -285,8 +287,8 @@ and SHALL be reported on standard error prefixed `error:` with exit status
   setting
 
 #### Scenario: The port option is out of range
-- **WHEN** the maker runs `machinome-studio --port 0` or
-  `machinome-studio --port 70000`
+- **WHEN** the maker runs `machinome studio --port 0` or
+  `machinome studio --port 70000`
 - **THEN** startup fails with exit status 1 and an `error:` line naming
   `--port` and the accepted range, and no listener is bound
 

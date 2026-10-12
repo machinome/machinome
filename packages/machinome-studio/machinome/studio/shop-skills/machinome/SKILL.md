@@ -19,9 +19,9 @@ Commands (run from the project directory, with the project's venv):
     machinome build                 # build once and publish the model
     machinome test <pkg>/<node>.py  # run tests for one node (passing the
                                 # test_*.py path works too)
-    machinome test --faceted        # the same run decided on meshes: the
+    machinome test --mesh           # the same run decided on meshes: the
                                 # fast loop, never commit evidence
-    machinome test --exact          # the certified run (the default when
+    machinome test --brep           # the certified run (the default when
                                 # neither flag nor the project's .env
                                 # says otherwise)
     machinome test --no-verdict-store  # compute every pair again: a
@@ -56,7 +56,8 @@ Declare a node in its class body. Parameters are typed declarations from
 are constructed in the class body and realized per instance:
 
 ```python
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.parameters import Length
 
 class Shaft(CadQueryNode):
@@ -808,8 +809,8 @@ model is an assembly — do not report it as coverage before then.
 
 0. Work on the faceted kernel. Every `machinome test` you run while
    building — the red run, the green run, the regression, the mutation
-   check — is `machinome test --faceted` (on the floor, `machinome_test` with
-   `kernel="faceted"`). It decides the same assertions on the parts'
+   check — is `machinome test --mesh` (on the floor, `machinome_test` with
+   `engine="mesh"`). It decides the same assertions on the parts'
    meshes, about twenty times faster on exact parts and thirty on
    springs and belts, and it labels its own output. Only the last step
    below runs exact. Verdicts are kept between runs (`_build/.verdicts`,
@@ -889,10 +890,10 @@ model is an assembly — do not report it as coverage before then.
    deterministically, at any scale, without a framing guess. Snapshots
    answer whether the component is wired and posed as intended.
 7. The exact run, once, at the end. Repeat the full regression of step
-   3 on the exact kernel — `machinome test --exact` (`kernel="exact"`) for
+   3 on the exact kernel — `machinome test --brep` (`engine="brep"`) for
    every node file including the root — and only that run certifies the
    contracts and evidences the commit: a summary line that ends in
-   `(faceted kernel, ...)` is not evidence. When the two kernels
+   `(mesh engine, ...)` is not evidence. When the two kernels
    disagree the exact verdict stands. A faceted failure the exact run
    clears is a clearance thinner than the 0.1 mm tessellation reading
    as overlap on meshes; a faceted pass the exact run fails is a thin

@@ -1,13 +1,13 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 import unittest
 
-from floor.backends.codex import CodexBackend
-from floor.backends.base import ContextUnrecoverable, InactiveTurn, RoleContext, session_tool_names
-from floor.profiles import BackendRuntime, load_profile, resolve_profile_runtime
+from machinome.studio.backends.codex import CodexBackend
+from machinome.studio.backends.base import ContextUnrecoverable, InactiveTurn, RoleContext, session_tool_names
+from machinome.studio.profiles import BackendRuntime, load_profile, resolve_profile_runtime
 from tests import test_codex_service as service_fixtures
 from tests.test_orchestrator import ROOT
 
@@ -16,10 +16,10 @@ class CodexBackendTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         await service_fixtures.CodexServiceTests.asyncSetUp(self)
         self.reference = await self.service.acquire("synthetic", [])
-        agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT)).user_agent
+        agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")).user_agent
         agent = replace(agent, runtime=BackendRuntime("gpt-6-sol", "medium", agent.runtime.tools, backend="codex"))
-        self.context = RoleContext(str(ROOT), self.temporary.name, agent, "openspec-builder", "Maker", "OpenSpec Builder")
-        self.worker_patch = patch("floor.backends.codex.FloorWorker")
+        self.context = RoleContext(str(ROOT / "machinome" / "studio"), self.temporary.name, agent, "openspec-builder", "Maker", "OpenSpec Builder")
+        self.worker_patch = patch("machinome.studio.backends.codex.FloorWorker")
         self.worker = self.worker_patch.start().return_value
         self.worker.start = AsyncMock()
         self.worker.close = AsyncMock()
@@ -27,7 +27,7 @@ class CodexBackendTests(unittest.IsolatedAsyncioTestCase):
         self.worker.names = session_tool_names(agent.skills, agent.runtime.tools)
         self.worker.context = self.context
         self.addCleanup(self.worker_patch.stop)
-        self.backend = CodexBackend(shop_root=ROOT, project=Path(self.temporary.name), model=None, broker_url="http://unused",
+        self.backend = CodexBackend(shop_root=ROOT / "machinome" / "studio", project=Path(self.temporary.name), model=None, broker_url="http://unused",
             machinome_command="machinome", session_id="synthetic", codex_service=self.service, codex_reference=self.reference)
         original = self.native.rpc
         self.calls = []
@@ -112,7 +112,7 @@ class CodexBackendTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_nondefault_codex_command_is_explicitly_refused(self):
         with self.assertRaisesRegex(ValueError, "overrides are unsupported"):
-            CodexBackend(shop_root=ROOT, command="alternate-codex", codex_service=self.service,
+            CodexBackend(shop_root=ROOT / "machinome" / "studio", command="alternate-codex", codex_service=self.service,
                          codex_reference=self.reference)
 
     async def test_already_yielded_pristine_failure_is_stale_after_shared_recovery(self):

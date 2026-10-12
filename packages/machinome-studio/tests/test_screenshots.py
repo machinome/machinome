@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import base64
@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.screenshots import refresh_project_screenshot, screenshot_path
+from machinome.studio.screenshots import refresh_project_screenshot, screenshot_path
 
 
 PNG = base64.b64decode(
@@ -29,7 +29,7 @@ class WebScreenshotTest(unittest.TestCase):
                 Path(command[command.index("-o") + 1]).write_bytes(PNG)
                 return subprocess.CompletedProcess(command, 0, "", "")
 
-            with patch("floor.screenshots.subprocess.run", side_effect=render):
+            with patch("machinome.studio.screenshots.subprocess.run", side_effect=render):
                 result = refresh_project_screenshot(project, ("machinome",))
 
             self.assertTrue(result.updated)
@@ -50,7 +50,7 @@ class ModelScreenshotTest(unittest.TestCase):
             Path(command[command.index("-o") + 1]).write_bytes(payload)
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch("floor.screenshots.subprocess.run", side_effect=render):
+        with patch("machinome.studio.screenshots.subprocess.run", side_effect=render):
             result = refresh_project_screenshot(project, ("machinome",), model=model)
         return result, observed
 

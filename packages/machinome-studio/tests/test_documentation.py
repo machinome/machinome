@@ -1,50 +1,53 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
-"""The manual is a reader-facing part of the studio, pinned to its source.
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+"""The studio's pages are part of the Machinome manual, pinned to its source.
 
-These checks hold the shape the user-documentation spec describes: the
-pages a reader is sent to, release facts derived from the package and
-stated once, no publication caveat outside the status page, no project name
-and no development checkout on a page that teaches, every launcher option
-documented, sibling-manual links only to pages that exist, and a build that
-imports nothing of the runtime.
+The studio's manual folds into the framework's (change ``join-studio``):
+three how-to guides, ``howto/open-a-studio-project``,
+``howto/studio-workspace`` and ``howto/studio-agents``, and the reference
+section ``reference/studio/``, built with the manual from
+``packages/machinome/docs/``. The package keeps its changelog and its
+working record; it carries no manual of its own. These checks hold what the
+pages state to the package: the release facts the manual's configuration
+declares equal the source constants they state, every launcher option and
+configuration key is documented, the command is ``machinome studio``, and no
+page a reader lands on names a catalogue project, a development checkout, the
+former launcher or the former module.
 """
 
 from __future__ import annotations
 
 import ast
 import re
-import runpy
 import tomllib
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCS = ROOT / "docs"
+REPOSITORY = Path(__file__).resolve().parents[3]
+MANUAL = REPOSITORY / "packages" / "machinome" / "docs"
+PACKAGE = ROOT / "machinome" / "studio"
 
 PAGES = (
-    "index",
-    "installation",
-    "opening-a-project",
-    "the-floor",
-    "working-with-agents",
-    "troubleshooting",
-    "reference/cli",
-    "reference/project-configuration",
-    "reference/profiles",
-    "project/status",
+    "howto/open-a-studio-project.rst",
+    "howto/studio-workspace.rst",
+    "howto/studio-agents.rst",
+    "reference/studio/index.rst",
+    "reference/studio/command.rst",
+    "reference/studio/project-configuration.rst",
+    "reference/studio/profiles.rst",
+    "reference/studio/troubleshooting.rst",
 )
 
-# Phrases that describe a publication state. They belong on the status page
-# and nowhere a reader lands to learn how the studio works.
+# Phrases that describe a publication state. They belong on the framework's
+# status page and nowhere a reader lands to learn how the studio works.
 CAVEATS = re.compile(
     r"in preparation|not yet published|awaiting publication|"
     r"release preparation|still unpublished|is unreleased|unpublished|"
     r"not published|package index",
     re.IGNORECASE,
 )
-STATUS_PAGE = "project/status.rst"
 
 # The projects the studio was exercised on. A reader learns nothing from a
 # name and everything from the kind of machine; the names stay in the
@@ -63,28 +66,29 @@ CHECKOUTS = re.compile(
     r"\bmolejo/|\.\./machinome|dev-env|sprint-\d"
 )
 
-# Sibling-manual pages this manual may link to. Each was opened in the
-# sibling's built HTML before it was added here; add a target the same way.
-SIBLING_LINKS = {
-    "https://machinome.readthedocs.io/",
-    "https://machinome.readthedocs.io/en/latest/start/install.html",
-    "https://machinome-viewer.readthedocs.io/",
-    "https://machinome-viewer.readthedocs.io/en/latest/using-the-viewer.html",
-}
-SIBLING_URL = re.compile(r"https://machinome(?:-viewer)?\.readthedocs\.io[^\s>`)]*")
+# The ways the studio was run before it joined the repository: its console
+# script, its former module, its setup script, its checkout's paths and its
+# former repository. The command is ``machinome studio``.
+FORMER = re.compile(
+    r"python -m floor|\$ machinome-studio|machinome-studio --|"
+    r"``machinome-studio \[|scripts/setup|floor/static|floor/frontend|"
+    r"npm --prefix|github\.com/machinome/machinome-studio"
+)
+
+
+def page(name: str) -> str:
+    return (MANUAL / name).read_text()
 
 
 def pages() -> list[tuple[str, str]]:
-    return [
-        (path.relative_to(DOCS).as_posix(), path.read_text())
-        for path in sorted(DOCS.rglob("*.rst"))
-        if "_build" not in path.parts
-    ]
+    return [(name, page(name)) for name in PAGES]
 
 
 def module_docstrings() -> list[tuple[str, str]]:
     documents = []
-    for module in sorted((ROOT / "floor").rglob("*.py")):
+    for module in sorted(PACKAGE.rglob("*.py")):
+        if "frontend" in module.relative_to(PACKAGE).parts:
+            continue
         docstring = ast.get_docstring(ast.parse(module.read_text())) or ""
         documents.append((module.relative_to(ROOT).as_posix(), docstring))
     return documents
@@ -93,13 +97,12 @@ def module_docstrings() -> list[tuple[str, str]]:
 def reader_facing() -> list[tuple[str, str]]:
     documents = pages()
     documents.append(("README.md", (ROOT / "README.md").read_text()))
-    documents.append(("CHANGELOG.md", (ROOT / "CHANGELOG.md").read_text()))
     documents.extend(module_docstrings())
     return documents
 
 
 def source_constant(module: str, name: str):
-    tree = ast.parse((ROOT / module).read_text())
+    tree = ast.parse((PACKAGE / module).read_text())
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
@@ -108,150 +111,145 @@ def source_constant(module: str, name: str):
     raise AssertionError(f"{module} declares no {name}")
 
 
-def conf() -> dict:
-    return runpy.run_path(str(DOCS / "conf.py"))
+def conf_literal(name: str):
+    """A literal the manual's configuration assigns at its top level, read
+    without running it."""
+    tree = ast.parse((MANUAL / "conf.py").read_text())
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == name:
+                    return ast.literal_eval(node.value)
+    raise AssertionError(f"docs/conf.py assigns no {name}")
 
 
 class ManualShapeTest(unittest.TestCase):
-    def test_every_page_exists_and_is_in_the_navigation(self) -> None:
-        index = (DOCS / "index.rst").read_text()
-        for page in PAGES:
-            with self.subTest(page=page):
-                self.assertTrue((DOCS / f"{page}.rst").is_file(), page)
-                if page != "index":
-                    self.assertIsNotNone(
-                        re.search(rf"^\s+{re.escape(page)}\s*$", index, re.M),
-                        f"{page} is not in the navigation",
-                    )
-
-    def test_manual_and_hosting_configuration_exist(self) -> None:
-        for name in (
-            "docs/conf.py", "docs/requirements.txt", ".readthedocs.yaml",
-            "workflow/README.md", "workflow/documentation.md", "CHANGELOG.md",
-        ):
+    def test_the_pages_are_in_the_manual(self) -> None:
+        for name in PAGES:
+            with self.subTest(page=name):
+                self.assertTrue((MANUAL / name).is_file(), name)
+        for name in ("docs", ".readthedocs.yaml"):
+            with self.subTest(absent=name):
+                self.assertFalse((ROOT / name).exists(), name)
+        for name in ("workflow/README.md", "workflow/documentation.md", "CHANGELOG.md"):
             with self.subTest(name=name):
                 self.assertTrue((ROOT / name).is_file(), name)
 
+    def test_the_pages_are_in_the_navigation(self) -> None:
+        index = (MANUAL / "index.rst").read_text()
+        for entry in ("howto/open-a-studio-project", "howto/studio-workspace",
+                      "howto/studio-agents", "reference/studio/index"):
+            with self.subTest(entry=entry):
+                self.assertRegex(index, rf"(?m)^\s+{re.escape(entry)}\s*$")
+        section = page("reference/studio/index.rst")
+        for entry in ("command", "project-configuration", "profiles", "troubleshooting"):
+            with self.subTest(section=entry):
+                self.assertRegex(section, rf"(?m)^\s+{entry}\s*$")
+
     def test_records_are_not_in_the_manual(self) -> None:
-        self.assertFalse((DOCS / "shop-history.md").exists())
-        self.assertFalse((DOCS / "foreman-listener.md").exists())
         self.assertTrue((ROOT / "workflow/archive/shop-history.md").is_file())
         self.assertTrue((ROOT / "workflow/foreman-listener.md").is_file())
-        excluded = conf()["exclude_patterns"]
-        for record in ("adrs", "design", "product"):
-            with self.subTest(record=record):
-                self.assertIn(record, excluded)
+        self.assertTrue((ROOT / "workflow/adrs/README.md").is_file())
+        for name in ("shop-history.md", "foreman-listener.md", "architecture-overview.md"):
+            with self.subTest(record=name):
+                self.assertEqual(list(MANUAL.rglob(name)), [])
+        for name in ("design", "product", "spikes"):
+            with self.subTest(record=name):
+                self.assertTrue((ROOT / "workflow" / name).is_dir(), name)
+                self.assertFalse((MANUAL / name).exists(), name)
 
-    def test_the_build_imports_nothing_of_the_runtime(self) -> None:
-        text = (DOCS / "conf.py").read_text()
-        self.assertNotRegex(text, r"^\s*(import|from)\s+floor\b", )
-        for module in ("fastapi", "uvicorn", "watchdog", "tomlkit", "machinome"):
-            with self.subTest(module=module):
-                self.assertNotRegex(text, rf"^\s*(import|from)\s+{module}\b")
+    def test_the_manual_imports_nothing_of_the_studio(self) -> None:
+        text = (MANUAL / "conf.py").read_text()
+        self.assertNotRegex(text, r"(?m)^\s*(import|from)\s+(floor|machinome\.studio)\b")
 
-    def test_readthedocs_builds_from_requirements_alone(self) -> None:
-        text = (ROOT / ".readthedocs.yaml").read_text()
-        self.assertIn("requirements: docs/requirements.txt", text)
-        self.assertIn("configuration: docs/conf.py", text)
-        self.assertIn("fail_on_warning: true", text)
-        for forbidden in ("pre_build", "apt_packages", "nodejs", "pip install", "submodules"):
-            with self.subTest(forbidden=forbidden):
-                self.assertNotIn(forbidden, text)
-
-    def test_docs_extra_matches_requirements(self) -> None:
+    def test_the_package_declares_no_manual_of_its_own(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-        requirements = (ROOT / "docs/requirements.txt").read_text().split()
-        self.assertTrue(requirements)
-        self.assertEqual(project["optional-dependencies"]["docs"], requirements)
+        self.assertNotIn("docs", project.get("optional-dependencies", {}))
+        self.assertEqual(project["urls"], {"Homepage": "https://github.com/machinome/machinome"})
 
     def test_the_package_describes_itself(self) -> None:
-        docstring = ast.get_docstring(ast.parse((ROOT / "floor/__init__.py").read_text()))
-        self.assertIn("Machinome Studio", docstring or "")
-        self.assertIn("--projects-dir", docstring or "")
+        docstring = ast.get_docstring(ast.parse((PACKAGE / "__init__.py").read_text())) or ""
+        self.assertIn("Machinome Studio", docstring)
+        self.assertIn("machinome studio", docstring)
 
 
 class ReleaseFactsTest(unittest.TestCase):
-    def test_version_comes_from_the_package(self) -> None:
+    def test_the_studio_is_numbered_with_the_manual(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-        namespace = conf()
-        self.assertEqual(namespace["release"], project["version"])
-        self.assertNotIn(project["version"], (DOCS / "conf.py").read_text())
+        self.assertEqual(conf_literal("release"), project["version"])
         for relative, text in pages():
             with self.subTest(page=relative):
                 self.assertNotIn(project["version"], text)
 
-    def test_derived_facts_match_the_source(self) -> None:
-        namespace = conf()
-        self.assertEqual(
-            namespace["required_viewer_api"],
-            str(source_constant("floor/preparation.py", "REQUIRED_VIEWER_API")),
-        )
-        self.assertEqual(
-            set(namespace["claude_models"]),
-            source_constant("floor/preparation.py", "CLAUDE_MODELS"),
-        )
-        self.assertEqual(
-            set(namespace["claude_efforts"]),
-            source_constant("floor/preparation.py", "CLAUDE_EFFORTS"),
-        )
-        volume = source_constant("floor/build_package.py", "BUILD_VOLUME")
-        self.assertEqual(namespace["build_volume"], " × ".join(map(str, volume)) + " mm")
-        for name in (
-            "machinome-version", "required-viewer-api", "claude-models",
-            "claude-efforts", "build-volume",
-        ):
+    def test_the_stated_facts_are_the_source_s(self) -> None:
+        facts = {
+            "studio_viewer_api": str(source_constant("preparation.py", "REQUIRED_VIEWER_API")),
+            "studio_codex_version": source_constant("codex_auth.py", "PINNED_VERSION"),
+            "studio_codex_efforts": source_constant("backends/codex_policy.py", "EFFORTS"),
+            "studio_build_volume": " × ".join(map(str, source_constant("build_package.py", "BUILD_VOLUME"))) + " mm",
+        }
+        for name, value in facts.items():
+            with self.subTest(fact=name):
+                self.assertEqual(conf_literal(name), value)
+        sets = {
+            "studio_claude_models": source_constant("preparation.py", "CLAUDE_MODELS"),
+            "studio_claude_efforts": source_constant("preparation.py", "CLAUDE_EFFORTS"),
+            "studio_codex_models": set(source_constant("backends/codex_policy.py", "MODEL_FINGERPRINTS")),
+        }
+        for name, value in sets.items():
+            with self.subTest(fact=name):
+                self.assertEqual(set(conf_literal(name)), value)
+        conf = (MANUAL / "conf.py").read_text()
+        for name in (*facts, *sets):
             with self.subTest(substitution=name):
-                self.assertIn(f".. |{name}| replace::", namespace["rst_prolog"])
+                self.assertIn(f".. |{name}| replace::", conf)
 
     def test_pages_use_the_substitutions(self) -> None:
-        namespace = conf()
+        volume = conf_literal("studio_build_volume")
         for relative, text in pages():
             with self.subTest(page=relative):
-                self.assertNotIn(namespace["machinome_version"], text)
-                self.assertNotIn(namespace["build_volume"], text)
+                self.assertNotIn(volume, text)
                 self.assertIsNone(re.search(r"API \d", text), "a literal viewer API number")
-        index = (DOCS / "index.rst").read_text()
-        for name in ("|release|", "|machinome-version|", "|required-viewer-api|"):
+                self.assertNotIn("|machinome-version|", text)
+        index = page("reference/studio/index.rst")
+        for name in ("|release|", "|studio_viewer_api|"):
             with self.subTest(substitution=name):
                 self.assertIn(name, index)
-        self.assertIn("|build-volume|", (DOCS / "the-floor.rst").read_text())
-        configuration = (DOCS / "reference/project-configuration.rst").read_text()
-        self.assertIn("|claude-models|", configuration)
-        self.assertIn("|claude-efforts|", configuration)
+        self.assertIn("|studio_build_volume|", page("howto/studio-workspace.rst"))
+        configuration = page("reference/studio/project-configuration.rst")
+        self.assertIn("|studio_claude_models|", configuration)
+        self.assertIn("|studio_claude_efforts|", configuration)
 
-    def test_readme_and_changelog_state_the_version(self) -> None:
-        project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-        namespace = conf()
-        readme = (ROOT / "README.md").read_text()
-        self.assertIn(f"Machinome Studio {project['version']}", readme)
-        self.assertIn(f"Machinome {namespace['machinome_version']}", readme)
-        self.assertIn("docs/project/status.rst", readme)
-        self.assertIn("docs/index.rst", readme)
+    def test_the_changelog_records_the_join(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
         sections = re.split(r"^## ", changelog, flags=re.M)[1:]
         self.assertTrue(sections and sections[0].startswith("Unreleased"), changelog[:80])
-        self.assertIn(f"Machinome Studio {project['version']}", sections[0])
-        self.assertIn(f"Machinome {namespace['machinome_version']}", sections[0])
+        unreleased = " ".join(sections[0].split())
+        self.assertIn("### Joined to the Machinome repository", sections[0])
+        self.assertIn("numbered with Machinome", unreleased)
+        self.assertIn("`machinome studio`", unreleased)
 
 
 class CaveatTest(unittest.TestCase):
-    def test_no_caveat_outside_the_status_page(self) -> None:
+    def test_no_caveat_on_a_reader_facing_page(self) -> None:
         for relative, text in reader_facing():
-            if relative == STATUS_PAGE:
-                continue
             with self.subTest(document=relative):
                 found = CAVEATS.search(text)
                 if found is not None:
                     self.fail(
                         f"{relative} says {found.group(0)!r}; "
-                        "publication state belongs on the status page"
+                        "publication state belongs on the framework's status page"
                     )
 
-    def test_the_status_page_states_where_the_studio_stands(self) -> None:
-        text = (DOCS / STATUS_PAGE).read_text()
-        for needed in ("|release|", "|machinome-version|", "|required-viewer-api|", "clone", "Linux", "CHANGELOG.md"):
+    def test_the_section_states_where_the_studio_stands(self) -> None:
+        text = " ".join(page("reference/studio/index.rst").split())
+        for needed in ("``machinome-studio``", '``machinome[studio]``', "``machinome studio``",
+                       "|studio_viewer_api|", "Linux"):
             with self.subTest(needed=needed):
                 self.assertIn(needed, text)
+        status = " ".join((MANUAL / "project/status.rst").read_text().split())
+        self.assertIn("``machinome-studio``", status)
+        self.assertIn("experimental", status)
 
     def test_no_project_name_or_checkout_on_a_reader_facing_page(self) -> None:
         for relative, text in reader_facing():
@@ -261,44 +259,47 @@ class CaveatTest(unittest.TestCase):
                 found = CHECKOUTS.search(text)
                 self.assertIsNone(found, f"{relative} mentions {found and found.group(0)!r}")
 
-    def test_no_page_names_the_old_viewer_grant(self) -> None:
+    def test_no_page_runs_the_studio_the_former_way(self) -> None:
         for relative, text in reader_facing():
             with self.subTest(document=relative):
-                self.assertNotIn("AGPL-3.0-only", text)
+                found = FORMER.search(text)
+                self.assertIsNone(found, f"{relative} says {found and found.group(0)!r}")
+        # A page of the manual links its siblings with :doc:, never a URL.
+        for relative, text in pages():
+            with self.subTest(page=relative):
+                self.assertNotIn("readthedocs.io", text)
 
 
 class ReferenceTest(unittest.TestCase):
     def test_hub_documents_all_supported_backends_as_detection_only(self) -> None:
-        page = (DOCS / "opening-a-project.rst").read_text()
-        self.assertIn("Claude Code, OpenCode and Codex", page)
-        self.assertIn("detected", page)
-        self.assertIn("does not qualify it", page)
+        text = page("howto/open-a-studio-project.rst")
+        self.assertIn("Claude Code, OpenCode and Codex", text)
+        self.assertIn("detected", text)
+        self.assertIn("does not qualify it", text)
 
     def test_codex_reference_matches_the_qualified_runtime(self) -> None:
-        namespace = conf()
-        self.assertEqual(namespace["codex_version"], source_constant("floor/codex_auth.py", "PINNED_VERSION"))
-        self.assertEqual(set(namespace["codex_models"]), set(source_constant("floor/backends/codex_policy.py", "MODEL_FINGERPRINTS")))
-        self.assertEqual(tuple(namespace["codex_efforts"]), source_constant("floor/backends/codex_policy.py", "EFFORTS"))
-        configuration = (DOCS / "reference/project-configuration.rst").read_text()
-        for value in ("codex:<model>", "|codex-models|", "|codex-efforts|", "medium"):
-            self.assertIn(value, configuration)
+        configuration = page("reference/studio/project-configuration.rst")
+        for value in ("codex:<model>", "|studio_codex_models|", "|studio_codex_efforts|", "medium"):
+            with self.subTest(value=value):
+                self.assertIn(value, configuration)
 
     def test_codex_login_recovery_and_limits_are_documented(self) -> None:
-        for page in ("installation.rst", "reference/cli.rst", "troubleshooting.rst"):
-            with self.subTest(page=page):
-                self.assertIn("python -m floor.codex_auth login", (DOCS / page).read_text())
-        status = (DOCS / "project/status.rst").read_text()
+        for name in ("howto/studio-agents.rst", "reference/studio/command.rst",
+                     "reference/studio/troubleshooting.rst"):
+            with self.subTest(page=name):
+                self.assertIn("python -m machinome.studio.codex_auth login", page(name))
+        status = page("reference/studio/index.rst")
         self.assertNotIn("Codex was retired", status)
-        self.assertIn("|codex-version|", status)
+        self.assertIn("|studio_codex_version|", status)
         self.assertIn("Linux x86_64", status)
-        self.assertIn("not an OS sandbox", (DOCS / "working-with-agents.rst").read_text())
-        self.assertIn("never silently replaces", (DOCS / "troubleshooting.rst").read_text())
+        self.assertIn("not an OS sandbox", page("howto/studio-agents.rst"))
+        self.assertIn("never silently replaces", page("reference/studio/troubleshooting.rst"))
 
     def test_every_launcher_option_is_documented(self) -> None:
-        reference = (DOCS / "reference/cli.rst").read_text()
+        reference = page("reference/studio/command.rst")
         options: set[str] = set()
-        for module in ("floor/__main__.py", "floor/orchestrator.py"):
-            tree = ast.parse((ROOT / module).read_text())
+        for module in ("__main__.py", "orchestrator.py", "cli.py"):
+            tree = ast.parse((PACKAGE / module).read_text())
             for node in ast.walk(tree):
                 if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
                     continue
@@ -322,53 +323,54 @@ class ReferenceTest(unittest.TestCase):
         for option in sorted(options):
             with self.subTest(option=option):
                 self.assertIn(f"``{option}", reference)
-        self.assertIn("FLOOR_PORT", reference)
-        self.assertIn("python -m floor.orchestrator", reference)
-        self.assertIn("python -m floor ", reference)
+        for needed in ("FLOOR_PORT", "machinome studio [--projects-dir PATH] [--port PORT]",
+                       "python -m machinome.studio.orchestrator", "python -m machinome.studio "):
+            with self.subTest(needed=needed):
+                self.assertIn(needed, reference)
 
     def test_the_configuration_file_is_documented(self) -> None:
-        reference = (DOCS / "reference/cli.rst").read_text()
+        reference = page("reference/studio/command.rst")
         for needed in ("machinome-studio", "MACHINOME_STUDIO_CONFIG", "config.toml", "[studio]"):
             with self.subTest(needed=needed):
                 self.assertIn(needed, reference)
-        for key in source_constant("floor/launcher.py", "STUDIO_KEYS"):
+        for key in source_constant("launcher.py", "STUDIO_KEYS"):
             with self.subTest(key=key):
                 self.assertIn(key, reference)
 
     def test_pages_that_start_the_hub_show_the_command(self) -> None:
         for name, text in (
-            ("docs/opening-a-project.rst", (DOCS / "opening-a-project.rst").read_text()),
+            ("howto/open-a-studio-project.rst", page("howto/open-a-studio-project.rst")),
             ("README.md", (ROOT / "README.md").read_text()),
         ):
             with self.subTest(page=name):
-                self.assertIn("machinome-studio", text)
+                self.assertIn("machinome studio --projects-dir", text)
 
     def test_project_configuration_reference_names_the_table(self) -> None:
-        page = (DOCS / "reference/project-configuration.rst").read_text()
+        text = page("reference/studio/project-configuration.rst")
         for needed in (
             "[tool.machinome-studio]", "[tool.machinome-studio.agents]",
             "libresolid-studio", "[tool.machinome]", "openspec-builder", "fordesmac",
         ):
             with self.subTest(needed=needed):
-                self.assertIn(needed, page)
+                self.assertIn(needed, text)
 
     def test_profiles_reference_matches_the_shipped_profiles(self) -> None:
-        page = (DOCS / "reference/profiles.rst").read_text()
-        for profile_dir in sorted(path for path in (ROOT / "profiles").iterdir() if path.is_dir()):
+        text = page("reference/studio/profiles.rst")
+        for profile_dir in sorted(path for path in (PACKAGE / "profiles").iterdir() if path.is_dir()):
             profile = tomllib.loads((profile_dir / "profile.toml").read_text())
             with self.subTest(profile=profile_dir.name):
                 heading = re.compile(rf"^``{re.escape(profile_dir.name)}``\n=+$", re.M)
                 self.assertRegex(
-                    page, heading,
+                    text, heading,
                     f"{profile_dir.name!r} must have its own section heading, "
                     "not merely a mention",
                 )
-                self.assertIn(profile["work_mode"], page)
+                self.assertIn(profile["work_mode"], text)
             for agent in profile["agents"]:
                 with self.subTest(profile=profile_dir.name, agent=agent["id"]):
                     row = f"* - ``{agent['id']}``"
-                    self.assertIn(row, page)
-                    window = page[page.index(row):page.index(row) + 700]
+                    self.assertIn(row, text)
+                    window = text[text.index(row):text.index(row) + 700]
                     self.assertIn(agent["label"], window)
                     claude = agent["backends"]["claude"]
                     self.assertIn(f"``{claude['model']}``", window)
@@ -379,19 +381,13 @@ class ReferenceTest(unittest.TestCase):
                     declared = re.search(r"^skills:\s*\[(.*)\]", prompt, re.M)[1]
                     for skill in filter(None, (name.strip() for name in declared.split(","))):
                         self.assertIn(f"``{skill}``", window)
-        for capability in source_constant("floor/profiles.py", "_PROFILE_TOOLS"):
+        for capability in source_constant("profiles.py", "_PROFILE_TOOLS"):
             with self.subTest(capability=capability):
-                self.assertIn(f"``{capability}``", page)
+                self.assertIn(f"``{capability}``", text)
 
-    def test_sibling_links_are_verified_pages(self) -> None:
-        seen = set()
-        for relative, text in reader_facing():
-            for url in SIBLING_URL.findall(text):
-                url = url.rstrip(".,)")
-                seen.add(url)
-                with self.subTest(document=relative, url=url):
-                    self.assertIn(url, SIBLING_LINKS)
-        self.assertTrue(seen, "the manual links to no sibling manual")
+    def test_the_readme_sends_the_reader_to_the_manual(self) -> None:
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("<https://machinome.readthedocs.io>", readme)
 
 
 if __name__ == "__main__":

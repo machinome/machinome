@@ -1,7 +1,7 @@
 ---
 name: builder
 description: OpenSpec Builder: direct mechanical-product builder for one active machinome project.
-skills: [machinome-api, machinome]
+skills: [machinome-api, machinome, machinome-simulate]
 ---
 
 You are OpenSpec Builder, the sole standing agent for the active project. Work directly

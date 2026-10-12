@@ -72,6 +72,9 @@ ORDINARY = {
     'machinome/movie/names.py': {'ex' 'act_seconds'},
     'machinome/movie/document.py': {'ex' 'act_seconds'},
     'machinome/movie/take.py': {'ex' 'act_seconds'},
+    # The exact root of a project repository the studio resolves, the
+    # ordinary adjective (change `join-studio`).
+    'machinome/studio/preparation.py': {'_require_ex' 'act_repository'},
 }
 
 #: Phrases, by module, in which `exact` before a noun of SPLIT_NOUNS is
@@ -82,6 +85,11 @@ ORDINARY_TEXT = {
     'machinome/simulation/driver.py': ('ex' 'act comparison rather',),
     'machinome/manager/test.py': ('ex' 'act operations list',),
     'machinome/node/base.py': ('Ex' 'act artifact equality',),
+    # The exact paths given to stage and the exact root of a project
+    # repository, the ordinary adjective (change `join-studio`).
+    'machinome/studio/mcp_server.py': ('ex' 'act paths given',
+                                       'Ex' 'act paths to stage'),
+    'machinome/studio/preparation.py': ('ex' 'act project repository',),
 }
 
 #: The nouns after which `exact` names the split.

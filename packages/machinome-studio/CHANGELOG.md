@@ -6,14 +6,38 @@ and a new `Unreleased` section opens above it.
 
 ## Unreleased
 
-Machinome Studio 0.1.0 runs against Machinome 0.7.0 installed with its
-`viewer` extra, on Linux, with Claude Code, OpenCode or qualified Codex as the agent
-backend.
+Machinome Studio, numbered with Machinome, runs against the framework and
+the browser viewer of its own release, on Linux, with Claude Code, OpenCode
+or qualified Codex as the agent backend.
+
+### Joined to the Machinome repository
+
+- Machinome Studio is part of the Machinome repository,
+  <https://github.com/machinome/machinome>, at `packages/machinome-studio/`,
+  with its history. Its Python package is `machinome.studio` (formerly
+  `floor`), a portion of the `machinome` package, and its command is
+  `machinome studio`; the `machinome-studio` command is gone, `python -m
+  machinome.studio` serves the hub without agents, and the configuration
+  file, its keys and the project's `[tool.machinome-studio]` table are
+  unchanged. It is numbered with Machinome, installed by
+  `pip install "machinome[studio]"`, and licensed as every package of the
+  repository, GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
+  recipient's choice. Its manual is part of Machinome's,
+  <https://machinome.readthedocs.io>. Its frontend builds from the
+  repository's npm workspace and its wheel carries the built surface, the
+  profiles and the skills.
+- The profiles' agents may load `machinome-simulate`, the skills package's
+  skill for reconstructing an existing design; the builder, the designer
+  and the machinist allowlist it.
+- The `machinome_test` tool takes `engine` (`brep` or `mesh`), the
+  framework's flags since 0.8, in place of `kernel`; the two skills import
+  each node name from its module.
 
 ### What a maker gets
 
-- **A `machinome-studio` command**, on `PATH` wherever the studio is
-  installed, starting the same hub as `python -m floor.orchestrator`. A
+- **The command `machinome studio`**, a command of `machinome` wherever
+  `pip install "machinome[studio]"` installed the studio, starting the same
+  hub as `python -m machinome.studio.orchestrator`. A
   studio configuration file, TOML at
   `$XDG_CONFIG_HOME/machinome-studio/config.toml` or
   `$HOME/.config/machinome-studio/config.toml` (or the file
@@ -70,5 +94,5 @@ backend.
 - **Sessions that keep nothing**: several projects open at once, each
   isolated; a session ends with everything it held, and the project's
   repository is the record.
-- **A manual** under `docs/`, built with Sphinx, whose facts are derived
-  from the package.
+- **A manual**, part of Machinome's, whose facts are held to the
+  package.

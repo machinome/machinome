@@ -2297,8 +2297,9 @@ declare runs neither; an absent extra is answered by it, an unmet contract
 refused, other failures propagate, and the help lists each as unavailable.
 The first is `machinome movie`, from the repository's distribution
 `machinome-movie` (ADR-191); `machinome skills`, from the repository's
-distribution `machinome-skills`, is the second (ADR-190); the studio's
-follows at its join.
+distribution `machinome-skills`, is the second (ADR-190); `machinome
+studio`, from the repository's distribution `machinome-studio`, is the
+third (ADR-193).
 `models` lists a project's models from the manifest and their build
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk
@@ -3290,6 +3291,32 @@ numbers, `workflow/adrs/`), its specs, its changelog, its working record and
 its tests in its directory; its manual is the framework's. The framework
 never imports it, and `machinome vet` refuses a model that reaches it.
 
+### Studio (STUDIO · specs `studio-distribution`, `cli`)
+
+The repository's `packages/machinome-studio/`, imported as
+`machinome.studio`, numbered with the set and installed by
+`machinome[studio]`, is Machinome Studio, the project hub and workspace in
+which a team of agents builds a machinome project with its maker (ADR-193).
+It is a product that reaches the framework and the viewer only as processes
+of its own: it runs the `machinome` command beside its interpreter for every
+build, test and snapshot and reads the viewer's bundle from the report of
+`machinome viewer`, importing no framework module. Its command `machinome
+studio`, contributed through `machinome.commands` (ADR-189), starts the
+FastAPI hub on the loopback interface; opening a project starts its session,
+the agents its profile declares (Claude Code, OpenCode or Codex), which
+reach the project through the studio's MCP server, run as `python -m
+machinome.studio.mcp_server`. Its built browser surface, its profiles and its
+shop skills are package data, found in the package directory in a checkout
+and in an installed wheel alike; `machinome-simulate` is the skills
+package's, linked in the checkout and carried as files by the archives. Its
+frontend is the root npm workspace's third member, keeping no lock of its
+own. The package root reads its one name on first use, so `machinome -h`
+loads none of the application. Its architecture and decisions are its own,
+in `workflow/architecture-overview.md` and `workflow/adrs/` (its own ADR
+numbers), with its specs, its changelog and its tests in its directory; its
+manual is the framework's. The framework never imports it, and `machinome
+vet` refuses a model that reaches it.
+
 ## Load-bearing invariants
 
 The short list that changes must not silently break:
@@ -3570,6 +3597,7 @@ pure model closures without rejecting their pure declaration records.
 | Mechanics helpers, the distribution `machinome-mechanics` | the repository's `packages/machinome-mechanics/` (`machinome/mechanics/`: `__init__.py` and the nine family modules; its own `tests/`, `openspec/` and `workflow/`) | `mechanics-distribution` | 022, 076, 132, 187 |
 | Skills package, the distribution `machinome-skills` | the repository's `packages/machinome-skills/` (`machinome/skills/`: `cli.py`, `installer.py`, `tools.toml`, `agent-skills/`; its own `tests/` and `workflow/`) | `skills-distribution` | 187, 189, 190 |
 | Movies, the distribution `machinome-movie` | `packages/machinome-movie/` (`machinome/movie/`: the declarations, the evaluation, `cli.py`, `js/`; its own `tests/`, `openspec/`, `workflow/`) | `movie-distribution` | 189, 191 |
+| Studio, the distribution `machinome-studio` | `packages/machinome-studio/` (`machinome/studio/`: the hub, the floor, `cli.py`, `backends/`, `frontend/`, `profiles/`, `shop-skills/`; its own `tests/`, `openspec/`, `workflow/`) | `studio-distribution`, `cli` | 189, 193 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149, 168, 179, 189 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |

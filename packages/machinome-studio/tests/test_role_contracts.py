@@ -1,11 +1,11 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import unittest
 from pathlib import Path
 
-from floor.profiles import load_profile
+from machinome.studio.profiles import load_profile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class RoleContractTest(unittest.TestCase):
     def test_runtime_prompts_are_profile_owned_and_runtime_skills_are_allowlisted(self) -> None:
         for profile_id in ("openspec-builder", "fordesmac"):
-            profile = load_profile(profile_id, shop_root=ROOT)
+            profile = load_profile(profile_id, shop_root=ROOT / "machinome" / "studio")
             for agent in profile.agents:
                 text = agent.prompt_path.read_text()
                 self.assertNotIn("repository `skills/`", text)
@@ -24,7 +24,7 @@ class RoleContractTest(unittest.TestCase):
         self.assertFalse((ROOT / ".codex" / "agents" / "foreman.toml").exists())
 
     def test_fordesmac_foreman_owns_the_pipeline_and_librarian_edge(self) -> None:
-        foreman = (ROOT / "profiles" / "fordesmac" / "foreman.md").read_text()
+        foreman = (ROOT / "machinome" / "studio" / "profiles" / "fordesmac" / "foreman.md").read_text()
         self.assertIn("Only you dispatch the designer, machinist, and librarian", foreman)
         self.assertIn("`floor_assign` tool", foreman)
         self.assertIn("reports only to you", foreman)
@@ -33,7 +33,7 @@ class RoleContractTest(unittest.TestCase):
         self.assertNotIn("running-the-shop", foreman)
 
     def test_builder_is_direct_and_preserves_disassembled_leaf_first_red(self) -> None:
-        builder = (ROOT / "profiles" / "openspec-builder" / "builder.md").read_text()
+        builder = (ROOT / "machinome" / "studio" / "profiles" / "openspec-builder" / "builder.md").read_text()
         self.assertIn("deliberately\ndisassembled position", builder)
         self.assertIn("already-existing leaf", builder)
         self.assertNotIn("machinome develop --callback", builder)
@@ -41,7 +41,7 @@ class RoleContractTest(unittest.TestCase):
         self.assertIn("You are OpenSpec Builder,", builder)
 
     def test_machinist_uses_finite_builds_not_a_live_model_process(self) -> None:
-        machinist = (ROOT / "profiles" / "fordesmac" / "machinist.md").read_text()
+        machinist = (ROOT / "machinome" / "studio" / "profiles" / "fordesmac" / "machinist.md").read_text()
         self.assertNotIn("machinome develop", machinist)
         self.assertIn("machinome build", machinist)
         self.assertIn('floor_report(sender="machinist", recipient="foreman"', machinist)

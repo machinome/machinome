@@ -1,56 +1,45 @@
-# Building and hosting the user manual
+# Building the studio's pages of the Machinome manual
 
-The manual is `docs/`, built with Sphinx and `sphinx-rtd-theme` like the
-framework, viewer and mechanics manuals. Release facts are read once in
-`docs/conf.py`: the version from `pyproject.toml`; the required viewer API,
-the Claude and Codex model and reasoning sets, the pinned Codex version,
-and the Build volume from the floor's
-source, read as text; and the framework version the studio runs against,
-the one hand-maintained value. Pages use the substitutions and never the
-numbers.
+Since 12 October 2026 (change `join-studio` of the machinome repository)
+the studio's manual is part of the Machinome manual, in the repository's
+`packages/machinome/docs/`, built with it: three how-to guides,
+`howto/open-a-studio-project.rst`, `howto/studio-workspace.rst` and
+`howto/studio-agents.rst`, and the reference section `reference/studio/`
+(`index.rst`, `command.rst`, `project-configuration.rst`, `profiles.rst`,
+`troubleshooting.rst`). The package carries no manual configuration, no
+`docs` extra and no Read the Docs configuration of its own.
+
+## Release facts
+
+The facts the pages state about the studio are release facts of the
+manual's `docs/conf.py`, written there as literals: `studio_viewer_api`,
+`studio_claude_models`, `studio_claude_efforts`, `studio_codex_version`,
+`studio_codex_models`, `studio_codex_efforts` and `studio_build_volume`, each
+with its substitution (`|studio_viewer_api|` and the others). The manual
+reads no file of this package at build time. `tests/test_documentation.py`
+holds each literal to the constant of the floor's source it states
+(`preparation.py`, `codex_auth.py`, `backends/codex_policy.py`,
+`build_package.py`); a change to one of those constants is a change to
+`conf.py` in the same commit. The version the pages document is the
+manual's `|release|`, the set's.
 
 ## Local build
 
-From the repository root, with Python 3.11 or later:
+From the repository root:
 
 ```sh
-python -m venv .venv-docs
-.venv-docs/bin/python -m pip install -r docs/requirements.txt
-.venv-docs/bin/python -m sphinx -b html -n -W --keep-going docs docs/_build/html
-python -m http.server 8023 --bind 127.0.0.1 --directory docs/_build/html
+make docs
 ```
 
-Open <http://localhost:8023/>. The build imports nothing of the floor, the
-framework or the viewer, and needs no CAD tool or backend. The studio's
-own `.venv/` carries the same two pins through the `docs` extra
-(`pip install -e '.[docs]'`), which `tests/test_documentation.py` keeps
-identical to `docs/requirements.txt`.
+or, as the framework's contributor guide says, a venv with
+`packages/machinome/docs/requirements.txt` alone and `sphinx -b html -n -W
+--keep-going docs docs/_build/html` from `packages/machinome`. The build
+imports nothing of the floor and needs no CAD tool or backend.
 
-That test holds the manual's shape: the pages, the derived facts, no
-caveat outside the status page, no project name or checkout path, every
-launcher option documented, sibling links from an allowlist, and the
-records kept out of `docs/`. Run it with the rest of the suite. Before
-adding a link to the framework's or the viewer's manual, open the target
-in that manual's built HTML and add it to the test's allowlist.
-
-Sphinx renders `.rst` only; `docs/adrs/`, `docs/design/` and
-`docs/product/` are excluded by name in `conf.py` and stay where
-`AGENTS.md` names them.
-
-## Read the Docs
-
-Nothing is hosted. The intended project slug is `machinome-studio`, which
-would serve <https://machinome-studio.readthedocs.io/>; `.readthedocs.yaml`
-is ready for it, installing `docs/requirements.txt` alone and failing on
-warnings. Importing the repository into Read the Docs is the pilot's
-decision; the repository is public. When a slug is chosen, add a `Documentation` URL to
-`pyproject.toml`, and list the studio's manual in the framework's
-`reference/manuals.rst` through a framework change.
-
-## A release
-
-A release turns the `Unreleased` section of `CHANGELOG.md` into the
-version's section, edits the status page, and moves `machinome_version` in
-`conf.py` when the framework moved; the studio's own version comes from
-`pyproject.toml`. The three sibling manuals state the framework's release
-date; the studio states none until it releases.
+`tests/test_documentation.py` holds the pages' shape: the pages and their
+place in the navigation, the facts, no publication caveat, no project name
+or checkout path, every launcher option and configuration key documented,
+`machinome studio` and the module forms at `machinome.studio`, no link to a
+manual by its URL, and the records kept under `workflow/`. The framework's
+`tests/test_docs_structure.py` holds the navigation, the installation
+page's `studio` extra and the CLI reference's section `machinome studio`.

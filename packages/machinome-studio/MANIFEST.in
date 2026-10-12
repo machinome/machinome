@@ -1,0 +1,16 @@
+include CHANGELOG.md
+recursive-include scripts *
+recursive-include workflow *
+recursive-include openspec *.md *.yaml
+
+# The frontend travels with its sources so a source distribution can
+# rebuild it, and with its built output so installing needs no npm.
+recursive-include machinome/studio/frontend *
+prune machinome/studio/frontend/node_modules
+recursive-include machinome/studio/static *
+recursive-include machinome/studio/profiles *
+recursive-include machinome/studio/shop-skills *
+
+recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

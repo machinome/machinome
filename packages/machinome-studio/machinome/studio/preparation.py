@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Fail-closed preparation of one named workspace project."""
 
 from __future__ import annotations
@@ -318,14 +318,15 @@ class ProjectRuntimeError(ValueError):
 
 
 def shop_resource_root() -> Path:
-    """Return resources belonging to the loaded shop package or source tree.
+    """Return the package directory, which holds the studio's resources.
 
-    This is deliberately derived from the imported module, not process cwd or
-    Git metadata. A source worktree therefore uses its own files, while an
-    installed plugin uses the files shipped beside its loaded ``floor``
-    package.
+    The directory of ``machinome.studio`` holds ``profiles/``,
+    ``shop-skills/`` and the built ``static/``, in a source checkout and in
+    an installed wheel alike. This is deliberately derived from the imported
+    module, not process cwd or Git metadata, so a checkout uses its own files
+    and an installed package the files shipped inside it.
     """
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parent
 
 
 def default_machinome_command() -> tuple[str, ...]:

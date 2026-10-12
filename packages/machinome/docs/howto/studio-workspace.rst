@@ -1,6 +1,6 @@
-=====================
-The project workspace
-=====================
+=============================
+Work in a project's workspace
+=============================
 
 An open project fills the browser. A title bar names the studio and the
 project. An activity rail on the left offers four areas, **Model**,
@@ -42,8 +42,8 @@ agent, the Code area, or an editor outside the studio. The panel beside it
 is the viewer's own assembly navigator, named **Assembly**: expand the
 tree, hide and show parts, focus a subassembly and return to the full
 assembly. How to orbit the camera, operate the controls a model declares
-and read a running or clocked machine is the viewer's manual: `Using the
-viewer <https://machinome-viewer.readthedocs.io/en/latest/using-the-viewer.html>`_.
+and read a running or clocked machine is the viewer's guide:
+:doc:`/howto/browser-viewer`.
 Below the assembly, the panel lists the profile's agents with their live
 state.
 
@@ -93,7 +93,7 @@ OpenCode offers the providers it is connected to and the models
 of the one you select; with none connected, it offers nothing. **Apply**
 takes effect at once and, unless you untick it, records the selection in
 the project's ``pyproject.toml`` for later sessions;
-:doc:`reference/project-configuration` gives the grammar. A Claude agent
+:doc:`/reference/studio/project-configuration` gives the grammar. A Claude agent
 that has already worked keeps its model: the runtime is shown, read-only.
 
 Build
@@ -103,7 +103,7 @@ Build reads the distinct printed pieces the framework published with the
 last complete model: each piece once, with the number of copies required,
 its size, its volume, whether its mesh is watertight, and where in the
 source it comes from. The selected piece is shown at true scale on a fixed
-virtual bed of |build-volume|, with orbit, zoom and reset, and the facts say
+virtual bed of |studio_build_volume|, with orbit, zoom and reset, and the facts say
 whether its bounding box fits that volume in some orientation, labelled as
 an envelope fit and nothing more. The studio does not slice, orient,
 support, arrange, or estimate time or material.

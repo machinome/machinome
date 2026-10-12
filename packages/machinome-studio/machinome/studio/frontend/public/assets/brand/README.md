@@ -22,5 +22,5 @@ characters of `Machinome` and is not a typeface for text.
 The identity's artwork carries no public licence. Machinome, the linkage
 symbol and the wordmark are trademarks of Poiesis Tecnologia da Informação
 LTDA, and their presence here grants no right to use them (see the
-repository's NOTICE); the derived font alone is under the SIL Open Font
-License 1.1.
+framework's `CREDITS.md`, "Carried by the studio"); the derived font alone
+is under the SIL Open Font License 1.1.

@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import asyncio
@@ -12,9 +12,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.backends import create_backend
-from floor.backends.base import InactiveTurn, RoleContext
-from floor.profiles import BackendRuntime, ProfileAgent, ProfileSkill
+from machinome.studio.backends import create_backend
+from machinome.studio.backends.base import InactiveTurn, RoleContext
+from machinome.studio.profiles import BackendRuntime, ProfileAgent, ProfileSkill
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +23,7 @@ FIXTURE = ROOT / "tests" / "fixtures" / "fake_opencode_server.py"
 
 class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        from floor.backends.opencode import OpenCodeBackend
+        from machinome.studio.backends.opencode import OpenCodeBackend
 
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -41,7 +41,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.environment.start()
         self.addCleanup(self.environment.stop)
         self.backend = OpenCodeBackend(
-            ROOT,
+            ROOT / "machinome" / "studio",
             project=self.project,
             command=(sys.executable, str(FIXTURE)),
             readiness_timeout=3,
@@ -53,7 +53,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
 
     def context(self, runtime: BackendRuntime | None = None) -> RoleContext:
         return RoleContext(
-            shop_root=str(ROOT),
+            shop_root=str(ROOT / "machinome" / "studio"),
             active_project=str(self.project),
             agent=ProfileAgent(
                 "builder",
@@ -104,6 +104,8 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
             server["command"][server["command"].index("--floor-session") + 1],
             "opaque-session",
         )
+        # The directory holding the package's `machinome/`, from which the
+        # MCP server runs at its address (change `join-studio`).
         self.assertIn(str(ROOT), startup["pythonPath"].split(os.pathsep))
         event_request = next(
             item for item in self.captured()
@@ -425,14 +427,14 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
 
 class OpenCodeSelectionTest(unittest.TestCase):
     def test_projects_select_opencode_without_profile_manifest_tables(self) -> None:
-        from floor.preparation import ProjectAgentRuntime, ProjectRuntimeSelection
-        from floor.profiles import load_profile, resolve_profile_runtime
+        from machinome.studio.preparation import ProjectAgentRuntime, ProjectRuntimeSelection
+        from machinome.studio.profiles import load_profile, resolve_profile_runtime
 
         for profile_id, expected_roles in (
             ("openspec-builder", ["builder"]),
             ("fordesmac", ["foreman", "designer", "machinist", "librarian"]),
         ):
-            loaded = load_profile(profile_id, shop_root=ROOT)
+            loaded = load_profile(profile_id, shop_root=ROOT / "machinome" / "studio")
             choices = {
                 agent.id: ProjectAgentRuntime(
                     "opencode", "anthropic", "claude-sonnet-4-5", None,
@@ -454,12 +456,12 @@ class OpenCodeSelectionTest(unittest.TestCase):
             )
 
     def test_factory_selects_opencode(self) -> None:
-        backend = create_backend("opencode", shop_root=ROOT, project=ROOT, command="opencode")
+        backend = create_backend("opencode", shop_root=ROOT / "machinome" / "studio", project=ROOT, command="opencode")
         self.assertEqual(type(backend).__name__, "OpenCodeBackend")
 
     def test_cli_has_no_run_wide_backend_selector(self) -> None:
         result = subprocess.run(
-            [sys.executable, "-m", "floor.orchestrator", "--help"],
+            [sys.executable, "-m", "machinome.studio.orchestrator", "--help"],
             cwd=ROOT,
             env={**os.environ, "PYTHONPATH": str(ROOT)},
             text=True,

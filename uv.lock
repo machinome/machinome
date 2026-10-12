@@ -23,9 +23,9 @@ members = [
     "machinome-node-step",
     "machinome-node-stl",
     "machinome-skills",
+    "machinome-studio",
     "machinome-viewer",
 ]
-excludes = ["machinome-studio"]
 
 [manifest.dependency-groups]
 dev = [
@@ -33,6 +33,7 @@ dev = [
     { name = "machinome", extras = ["mechanics"], editable = "packages/machinome" },
     { name = "machinome", extras = ["movie"], editable = "packages/machinome" },
     { name = "machinome", extras = ["skills"], editable = "packages/machinome" },
+    { name = "machinome", extras = ["studio"], editable = "packages/machinome" },
 ]
 
 [[package]]
@@ -2020,6 +2021,9 @@ step = [
 stl = [
     { name = "machinome-node-stl" },
 ]
+studio = [
+    { name = "machinome-studio" },
+]
 viewer = [
     { name = "machinome-viewer" },
 ]
@@ -2056,7 +2060,7 @@ requires-dist = [
     { name = "machinome-node-step", marker = "extra == 'step'", editable = "packages/machinome-node-step" },
     { name = "machinome-node-stl", marker = "extra == 'stl'", editable = "packages/machinome-node-stl" },
     { name = "machinome-skills", marker = "extra == 'skills'", editable = "packages/machinome-skills" },
-    { name = "machinome-studio", marker = "extra == 'studio'" },
+    { name = "machinome-studio", marker = "extra == 'studio'", editable = "packages/machinome-studio" },
     { name = "machinome-viewer", marker = "extra == 'viewer'", editable = "packages/machinome-viewer" },
     { name = "machinome-viewer", extras = ["snapshot"], marker = "extra == 'web-snapshot'", editable = "packages/machinome-viewer" },
     { name = "numpy", specifier = "==2.2.*" },
@@ -2306,6 +2310,29 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
+
+[[package]]
+name = "machinome-studio"
+version = "0.8.1"
+source = { editable = "packages/machinome-studio" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "machinome" },
+    { name = "machinome-viewer", extra = ["snapshot"] },
+    { name = "tomlkit" },
+    { name = "uvicorn" },
+    { name = "watchdog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.111,<1" },
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "machinome-viewer", extras = ["snapshot"], editable = "packages/machinome-viewer" },
+    { name = "tomlkit", specifier = ">=0.13,<1" },
+    { name = "uvicorn", specifier = ">=0.30,<1" },
+    { name = "watchdog", specifier = ">=6,<7" },
+]
 
 [[package]]
 name = "machinome-viewer"
@@ -4550,6 +4577,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/10/56/d7d66a84f96d804155f6ff2873d065368b25a07222a6fd51c4f24ef6d764/termcolor-2.4.0.tar.gz", hash = "sha256:aab9e56047c8ac41ed798fa36d892a37aca6b3e9159f3e0c24bc64a9b3ac7b7a", size = 12664, upload-time = "2023-12-01T11:04:51.66Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/5f/8c716e47b3a50cbd7c146f45881e11d9414def768b7cd9c5e6650ec2a80a/termcolor-2.4.0-py3-none-any.whl", hash = "sha256:9297c0df9c99445c2412e832e882a7884038a25617c60cea2ad69488d4040d63", size = 7719, upload-time = "2023-12-01T11:04:50.019Z" },
+]
+
+[[package]]
+name = "tomlkit"
+version = "0.15.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/96/e07752635b98536177fa1f37671c8f3cdde2e724c6bcf6034b2cfb571565/tomlkit-0.15.1.tar.gz", hash = "sha256:e25bbf38843005246210a12982776f27f99cb9be67160e14434d0c0d21ee1e97", size = 180129, upload-time = "2026-07-17T01:48:04.562Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/bc/8c13eb66537dce1d2bd3a57132902f38d0e7f5bb46fa9f4daed9fe9d76ee/tomlkit-0.15.1-py3-none-any.whl", hash = "sha256:177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304", size = 49449, upload-time = "2026-07-17T01:48:05.728Z" },
 ]
 
 [[package]]

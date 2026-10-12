@@ -58,7 +58,8 @@ Work mode: direct. One agent, speaking with the maker.
        the project's OpenSpec record.
      - ``sonnet``, medium
      - ``Bash``, ``Read``, ``Write``, ``Edit``, ``Glob``, ``Grep``,
-       ``OpenSpec``; skills ``machinome-api``, ``machinome``.
+       ``OpenSpec``; skills ``machinome-api``, ``machinome``,
+       ``machinome-simulate``.
 
 ``fordesmac``
 =============
@@ -86,14 +87,14 @@ three specialists, who report only to Foreman.
      - Designer
      - Owns the design record and releases increment drawings.
      - ``opus``, medium
-     - ``Bash``, ``Read``, ``Write``, ``Edit``, ``Glob``, ``Grep``; skill
-       ``machinome-api``.
+     - ``Bash``, ``Read``, ``Write``, ``Edit``, ``Glob``, ``Grep``; skills
+       ``machinome-api``, ``machinome-simulate``.
    * - ``machinist``
      - Machinist
      - Builds the released slice test first; owns code and tests.
      - ``sonnet``, medium
      - ``Bash``, ``Read``, ``Write``, ``Edit``, ``Glob``, ``Grep``; skills
-       ``machinome-api``, ``machinome``.
+       ``machinome-api``, ``machinome``, ``machinome-simulate``.
    * - ``librarian``
      - Librarian
      - Researches external libraries into ``docs/notes/``; provisionally
@@ -103,4 +104,5 @@ three specialists, who report only to Foreman.
        ``WebFetch``; skills ``machinome-api``, ``machinome``.
 
 Every agent's prompt is the profile's, not the project's, and a prompt may
-name only skills its profile allows.
+name only skills its profile allows. ``machinome-simulate`` is the skills
+package's skill, which the studio carries.

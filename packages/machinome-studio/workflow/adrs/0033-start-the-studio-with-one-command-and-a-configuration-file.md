@@ -1,6 +1,6 @@
 # ADR 0033: Start the studio with one command and a configuration file
 
-**Status:** Accepted
+**Status:** Accepted; command superseded by framework ADR-193 (12 October 2026, change `join-studio`): the studio starts with `machinome studio`
 
 **Date:** 2026-09-26
 

@@ -1,8 +1,8 @@
 {
-  "name": "shop-floor-frontend",
+  "name": "@machinome/studio",
   "private": true,
-  "version": "0.0.0",
-  "license": "AGPL-3.0-or-later",
+  "version": "0.8.1",
+  "license": "GPL-2.0-or-later OR CERN-OHL-S-2.0+",
   "type": "module",
   "scripts": {
     "build": "tsc -b && vite build",

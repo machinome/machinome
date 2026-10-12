@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from dataclasses import replace
 import os
 from pathlib import Path
@@ -8,9 +8,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from floor.backends.base import RoleContext
-from floor.backends.codex_tools import FloorWorker
-from floor.profiles import load_profile, resolve_profile_runtime
+from machinome.studio.backends.base import RoleContext
+from machinome.studio.backends.codex_tools import FloorWorker
+from machinome.studio.profiles import load_profile, resolve_profile_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,9 +28,9 @@ class CodexGitIdentityTests(unittest.IsolatedAsyncioTestCase):
             (project / "openspec").mkdir()
             (project / "openspec" / "planning.md").write_text("Synthetic planning record\n")
             subprocess.run(["git", "-C", str(project), "add", "openspec/planning.md"], check=True)
-            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT)).user_agent
+            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")).user_agent
             agent = replace(agent, skills=())
-            context = RoleContext(str(ROOT), str(project), agent, "openspec-builder", "Maker", "OpenSpec Builder")
+            context = RoleContext(str(ROOT / "machinome" / "studio"), str(project), agent, "openspec-builder", "Maker", "OpenSpec Builder")
             worker = FloorWorker(context, machinome_command=("unused",), broker_url="http://unused", session_id="synthetic")
             with patch.dict(os.environ, {"HOME": str(operator), "PATH": os.environ["PATH"]}, clear=True):
                 await worker.start()
@@ -55,7 +55,7 @@ class CodexGitIdentityTests(unittest.IsolatedAsyncioTestCase):
         await self.exercise(signed=True)
 
     async def test_signed_openspec_setup_refuses_before_initialization(self):
-        from floor.mcp_server import ProjectTools
+        from machinome.studio.mcp_server import ProjectTools
         from unittest.mock import Mock
         with tempfile.TemporaryDirectory() as temporary:
             tools = ProjectTools(Path(temporary), git_signing_required=True)

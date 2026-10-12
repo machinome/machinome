@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "packages/machinome-viewer/machinome/viewer/web/widget",
-    "packages/machinome-movie/machinome/movie/js"
+    "packages/machinome-movie/machinome/movie/js",
+    "packages/machinome-studio/machinome/studio/frontend"
   ]
 }

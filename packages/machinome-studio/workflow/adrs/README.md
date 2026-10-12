@@ -4,8 +4,15 @@ Each ADR records a single consequential architectural decision—what was
 decided, why, and the consequences accepted. ADRs are **deltas**: they capture
 the context and reasoning at a point in time.
 
+(12 October 2026, change `join-studio`) The studio joined the machinome
+repository at `packages/machinome-studio/`; this log stays its own, numbered
+`0001` on, beside the framework's `packages/machinome/docs/adrs/`. A number
+of four digits names this log's ADR; the framework's are cited as
+'framework ADR-nnn'. ADR 0033's command is superseded by framework ADR-193:
+the studio starts with `machinome studio`.
+
 The **reference architecture** that incorporates all accepted decisions is
-`docs/architecture-overview.md` — read that first. When an ADR and the
+`../architecture-overview.md` — read that first. When an ADR and the
 overview disagree during a transition, the ADR says *why* the change was made;
 the overview says *what is true now*.
 
@@ -45,7 +52,7 @@ the overview says *what is true now*.
 | `0030` | [The Model panel is the viewer's navigator](./0030-the-model-panel-is-the-viewers-navigator.md) | Accepted | 2026-09-14 |
 | `0031` | [Use Machinome as the product and framework identity](./0031-use-machinome-as-the-product-and-framework-identity.md) | Accepted | 2026-09-18 |
 | `0032` | [Restore Codex only with a qualified exact floor-tool surface](./0032-restore-scoped-codex-backend.md) | Accepted | 2026-09-26 |
-| `0033` | [Start the studio with one command and a configuration file](./0033-start-the-studio-with-one-command-and-a-configuration-file.md) | Accepted | 2026-09-26 |
+| `0033` | [Start the studio with one command and a configuration file](./0033-start-the-studio-with-one-command-and-a-configuration-file.md) | Accepted (command superseded by framework ADR-193) | 2026-09-26 |
 | `0034` | [Ship the OpenSpec Builder profile as the default](./0034-ship-the-openspec-profile-as-the-default.md) | Accepted | 2026-10-03 |
 
 ## Conventions

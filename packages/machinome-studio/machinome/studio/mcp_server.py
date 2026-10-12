@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Project-scoped MCP tools exposed to runtime agents over stdio.
 
 The server deliberately implements the small MCP JSON-RPC surface it needs
@@ -142,7 +142,7 @@ def mcp_command(
     command = [
         python or sys.executable,
         "-m",
-        "floor.mcp_server",
+        "machinome.studio.mcp_server",
         "--project",
         str(project.resolve()),
         "--machinome-command-json",
@@ -966,23 +966,24 @@ class ProjectTools:
         self,
         path: str | None = None,
         failfast: bool = False,
-        kernel: str | None = None,
+        engine: str | None = None,
     ) -> dict[str, Any]:
         """Run `machinome test`, returning its exit status and output.
 
-        `kernel` selects the comparison kernel for this run -- "faceted" for
-        the fast development loop on meshes, "exact" for the certified run --
-        and is passed through as the framework's own flag. Omitted, the run
-        takes the framework's default: the project's `.env`, else exact.
+        `engine` selects the comparison engine for this run -- "mesh"
+        decides every geometric assertion on meshes (fast, not commit
+        evidence), "brep" on the boundary-representation solids -- and is
+        passed through as the framework's own flag, `--mesh` or `--brep`.
+        Omitted, the project's `.env` decides, else brep.
         """
-        if kernel is not None and kernel not in ("exact", "faceted"):
-            raise ValueError(f"kernel must be 'exact' or 'faceted', not {kernel!r}")
+        if engine is not None and engine not in ("brep", "mesh"):
+            raise ValueError(f"engine must be 'brep' or 'mesh', not {engine!r}")
         reference = self._reference(path)
         command = [*self.machinome_command, "test"]
         if failfast:
             command.append("--failfast")
-        if kernel is not None:
-            command.append(f"--{kernel}")
+        if engine is not None:
+            command.append(f"--{engine}")
         if reference:
             command.append(reference)
         return self._run(command)
@@ -1257,14 +1258,14 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "machinome_test": _schema({
         "path": STR("Test file or node reference to run. Defaults to the whole suite."),
         "failfast": BOOL("Stop at the first failing test."),
-        "kernel": {
+        "engine": {
             "type": "string",
-            "enum": ["exact", "faceted"],
+            "enum": ["brep", "mesh"],
             "description": (
-                "Comparison kernel for this run: 'faceted' decides every "
+                "Comparison engine for this run: 'mesh' decides every "
                 "geometric assertion on meshes (fast, not commit evidence); "
-                "'exact' on the boundary-representation solids (the certified "
-                "run). Omitted: the project's .env decides, else exact."
+                "'brep' on the boundary-representation solids. Omitted: the "
+                "project's .env decides, else brep."
             ),
         },
     }),

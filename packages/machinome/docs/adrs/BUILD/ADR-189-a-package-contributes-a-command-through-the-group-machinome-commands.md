@@ -1,6 +1,6 @@
 # ADR-189: A Package Contributes a Command Through the Group `machinome.commands`
 
-**Status:** Accepted
+**Status:** Accepted; its third contributor, `machinome studio`, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md)
 **Date:** 2026-10-12
 **Change:** [`commands-contributed-by-packages`](../../../openspec/changes/archive/2026-10-12-commands-contributed-by-packages/)
 **Amends:**
@@ -164,6 +164,9 @@ Measured on the bench on 12 October 2026, the page cache warm, the base's
 - Bad: every `machinome -h` imports every contributor's module.
 - Neutral: no version is checked on a contributed command; ADR-162's pattern
   applies when one is needed.
+- Neutral (2026-10-12, `join-studio`): `machinome studio` is the group's
+  third contributor, after `machinome movie` and `machinome skills`; its
+  module imports the standard library alone (ADR-193).
 
 ## References
 

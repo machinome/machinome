@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Coordinator-owned adversarial regressions for Codex resource ownership."""
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from floor.backends.codex_service import CodexService
-from floor.codex_auth import AuthLease, CodexAuthError
+from machinome.studio.backends.codex_service import CodexService
+from machinome.studio.codex_auth import AuthLease, CodexAuthError
 from tests.test_codex_service import NativeFixture
 
 
@@ -25,8 +25,8 @@ class CodexAdversarialOwnershipTests(unittest.IsolatedAsyncioTestCase):
         for item in (
             patch.object(self.service, "_launch", AsyncMock(return_value=self.native)),
             patch.object(self.service.qualifier, "qualify", AsyncMock(return_value={})),
-            patch("floor.backends.codex_service.validate_home"),
-            patch("floor.backends.codex_service.check_policy", AsyncMock()),
+            patch("machinome.studio.backends.codex_service.validate_home"),
+            patch("machinome.studio.backends.codex_service.check_policy", AsyncMock()),
         ):
             item.start()
             self.addCleanup(item.stop)

@@ -8,22 +8,22 @@ The hub does not start
 ======================
 
 **An error naming openspec.** The ``openspec`` command is missing or will
-not run. Install it, ``npm install -g @fission-ai/openspec``, or run
-``scripts/setup``, which installs it when it is absent. There is no reduced
-mode.
+not run. Install it, ``npm install -g @fission-ai/openspec``. There is
+no reduced mode.
 
 **The address is already in use.** Another process holds the port. Start
-with ``--port`` or set ``FLOOR_PORT``; :doc:`reference/cli`.
+with ``--port`` or set ``FLOOR_PORT``; :doc:`command`.
 
-**A blank page.** The browser surface has not been built:
-``npm --prefix floor/frontend run build``, or ``scripts/setup``.
+**A blank page.** The browser surface is missing from the installed
+package: reinstall it, ``pip install --force-reinstall machinome-studio``.
+In a checkout of the repository, build it as ``CONTRIBUTING.rst`` says.
 
 **An error naming the configuration file.** The studio configuration file
 is present but malformed, or ``MACHINOME_STUDIO_CONFIG`` names a file that
 does not exist. The message names the file and the key; fix it or remove
 the file. A missing project folder, with no ``--projects-dir`` and no
 ``projects`` key in the file, is reported the same way.
-:doc:`reference/cli` gives the file's location, keys and precedence.
+:doc:`command` gives the file's location, keys and precedence.
 
 A project cannot be opened
 ==========================
@@ -44,7 +44,7 @@ the default in place of a declared profile.
 retired backend, a Claude or Codex model or reasoning level the studio does not
 accept, or has the wrong number of parts; or the table carries a key the
 studio does not define, such as ``effort`` or ``tools``.
-:doc:`reference/project-configuration` gives the grammar. A selection for
+:doc:`project-configuration` gives the grammar. A selection for
 an agent the profile does not declare is ignored and reported, not
 refused.
 
@@ -53,9 +53,9 @@ refused.
 ``[tool.machinome-studio]``; its contents are unchanged.
 
 **No usable browser viewer.** The framework installed beside the studio
-reports no viewer, or one older than API |required-viewer-api|. Install or
+reports no viewer, or one older than API |studio_viewer_api|. Install or
 upgrade it in the studio's environment, ``pip install --upgrade
-"machinome[viewer]"``, and check with ``machinome viewer``.
+"machinome[studio]"``, and check with ``machinome viewer``.
 
 **An agent would not start.** The backend is not installed, not on
 ``PATH``, or not logged in. The hub's Backends panel reports Claude Code
@@ -84,8 +84,8 @@ No preview on a card
 A project that has never been built has no preview. A preview is rendered
 after a build that changed what is published, and only through the
 viewer's headless capture: Playwright's Chromium must be installed in the
-studio's environment, ``python -m playwright install chromium``, which
-``scripts/setup`` does. A render that fails is logged and changes nothing.
+studio's environment, ``playwright install chromium``. A render that
+fails is logged and changes nothing.
 
 An agent stopped answering
 ==========================
@@ -117,12 +117,12 @@ Codex is unavailable
 ====================
 
 Use the reason shown in Agents or on the failed project card. Studio
-requires its qualified pinned installation (:doc:`installation`), not
+requires its qualified pinned installation (:doc:`/howto/studio-agents`), not
 just any executable named ``codex``. Do not enable dangerous permissions
 or relax the tool policy to bypass qualification.
 
 For a missing, expired or rejected Studio login, stop the hub and run
-``python -m floor.codex_auth login`` in the studio's Python environment,
+``python -m machinome.studio.codex_auth login`` in the studio's Python environment,
 then reopen the project. An ownership error means another hub or login
 command still holds the same store; close that owner before trying again.
 An ordinary Codex CLI login does not provision Studio's separate login.

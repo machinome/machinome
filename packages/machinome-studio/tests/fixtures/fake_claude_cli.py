@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Small process-local stand-in for `claude -p --input-format stream-json`.
 
 Speaks the newline-delimited stream-json frames the Claude backend consumes:
@@ -158,7 +158,7 @@ def main() -> None:
             "pythonpath": os.environ.get("PYTHONPATH", ""),
             "floor_url": os.environ.get("FLOOR_URL", ""),
             "floor_session": os.environ.get("FLOOR_SESSION", ""),
-            "floorImportable": importlib.util.find_spec("floor") is not None,
+            "floorImportable": importlib.util.find_spec("machinome.studio") is not None,
         }
     )
 

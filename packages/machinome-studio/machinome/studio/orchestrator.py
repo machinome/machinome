@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Pluggable agent-backend orchestration for a live shop run."""
 
 from __future__ import annotations
@@ -790,7 +790,12 @@ def main() -> None:
     )
     parser.add_argument("--machinome-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)
-    arguments = parser.parse_args()
+    run(parser.parse_args())
+
+
+def run(arguments: argparse.Namespace) -> None:
+    """Start the studio from parsed options: ``main``'s, and ``machinome
+    studio``'s, which parses the same options (``machinome.studio.cli``)."""
     try:
         arguments.projects_dir, arguments.port = resolve_launch(arguments, os.environ)
         asyncio.run(_serve(arguments))

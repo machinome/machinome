@@ -294,12 +294,20 @@ The tool set SHALL provide `git_status`, `git_diff`, `git_log`, `git_show`,
 ### Requirement: machinome build and test tools
 The tool set SHALL provide `machinome_build` and `machinome_test`, matching the
 `machinome build` and `machinome test` CLI commands' arguments and exit semantics.
+`machinome_test` SHALL take the comparison engine as `engine`, `brep` or `mesh`,
+passed as the framework's own flag, `--brep` or `--mesh`, and SHALL refuse any
+other value naming both.
 
 #### Scenario: Build failure is reported, not swallowed
 - **WHEN** `machinome_build` is called against a project whose model fails to
   build
 - **THEN** the tool reports nonzero/failed status and the failure detail,
   without publishing a broken model over a previous good one
+
+#### Scenario: Tests run on the engine the agent names
+- **WHEN** `machinome_test` is called with `engine` `mesh`
+- **THEN** the project runs `machinome test --mesh`, and a call naming another
+  engine, such as `faceted` or `exact`, is refused naming `brep` and `mesh`
 
 ### Requirement: machinome snapshot tool returns image content directly
 The tool set SHALL provide `machinome_snapshot`, accepting the same rendering

@@ -40,18 +40,21 @@ PACKAGES := \
 	machinome-node-step \
 	machinome-node-stl \
 	machinome-skills \
+	machinome-studio \
 	machinome-viewer
 
 # The packages with tests of their own, in the order `make test` runs them;
 # the core's suite tests the extension packages.
 TESTED := machinome machinome-mechanics machinome-skills machinome-viewer \
-	machinome-movie
+	machinome-movie machinome-studio
 UNTESTED := $(filter-out $(TESTED),$(PACKAGES))
 
-# The npm member that builds the browser viewer's bundle, and the movie's
-# Node side, whose tests CI runs by project.
+# The npm member that builds the browser viewer's bundle, the movie's Node
+# side, whose tests CI runs by project, and the studio's frontend, which
+# builds the studio's browser surface.
 WIDGET := packages/machinome-viewer/machinome/viewer/web/widget
 MOVIE_JS := packages/machinome-movie/machinome/movie/js
+STUDIO_FRONTEND := packages/machinome-studio/machinome/studio/frontend
 
 # The npm members that keep a lock of their own, which npm reads only
 # outside the workspace.
@@ -64,7 +67,7 @@ RELEASE := dist/v$(CURRENT)
 # What the targets write and `make clean` removes: never .venv/, an npm
 # install, a release folder under dist/ or a tracked file.
 CLEAN := $(DOCS_VENV) packages/machinome/docs/_build packages/*/build \
-	$(WIDGET)/dist
+	$(WIDGET)/dist packages/machinome-studio/machinome/studio/static
 
 .PHONY: help version bump sync test lint docs widget dist upload check clean \
 	bundle $(addprefix test-,$(PACKAGES))
@@ -118,6 +121,13 @@ test-machinome-viewer:
 test-machinome-movie:
 	cd packages/machinome-movie && $(PYTHON) -m pytest
 	$(NPM) test --workspace $(MOVIE_JS) -- --project pure --project stage
+
+# The studio's tests serve its built surface; its browser tests run when
+# MACHINOME_STUDIO_E2E=1 is set (change `join-studio`).
+test-machinome-studio:
+	$(NPM) test --workspace $(STUDIO_FRONTEND)
+	$(NPM) run build --workspace $(STUDIO_FRONTEND)
+	cd packages/machinome-studio && $(PYTHON) -m pytest
 
 $(addprefix test-,$(UNTESTED)):
 	@echo 'make test: $(@:test-%=%) keeps no tests of its own; the core'"'"'s suite tests it: make test PKG=machinome' >&2; exit 2

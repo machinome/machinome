@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import json
@@ -13,7 +13,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.preparation import (
+from machinome.studio.preparation import (
     REQUIRED_VIEWER_API,
     FolderListing,
     HubEntry,
@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class FrameworkCommandTest(unittest.TestCase):
     def test_default_uses_the_solid_cli_from_the_shop_python_environment(self) -> None:
-        with patch("floor.preparation.sys.executable", "/opt/shop-env/bin/python"):
+        with patch("machinome.studio.preparation.sys.executable", "/opt/shop-env/bin/python"):
             self.assertEqual(default_machinome_command(), ("/opt/shop-env/bin/machinome",))
 
 
@@ -415,7 +415,7 @@ class ProjectPreparationTest(unittest.TestCase):
         project = self.home / "unphotographed"
         _make_repository(project)
 
-        with self.assertLogs("floor.preparation", level="WARNING") as logged:
+        with self.assertLogs("machinome.studio.preparation", level="WARNING") as logged:
             self.prepare("unphotographed")
 
         self.assertFalse((project / "screenshot.png").exists())
@@ -545,7 +545,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertFalse((project / "_build").exists(), "no build may run without a usable viewer")
 
     def test_required_viewer_api_matches_the_declared_widget_interface(self) -> None:
-        declaration = (ROOT / "floor" / "frontend" / "src" / "machinome-viewer.d.ts").read_text()
+        declaration = (ROOT / "machinome" / "studio" / "frontend" / "src" / "machinome-viewer.d.ts").read_text()
         self.assertIn(f"MACHINOME_VIEWER_API_VERSION: {REQUIRED_VIEWER_API}", declaration)
         self.assertIn("mountNavigator", declaration)
         self.assertIn("NavigatorHandle", declaration)
@@ -564,7 +564,7 @@ class ProjectPreparationTest(unittest.TestCase):
                     raise subprocess.CalledProcessError(12, command, stderr="git commit failed")
                 return real_run(command, *args, **kwargs)
 
-            with self.subTest(stage=stage), patch("floor.preparation.subprocess.run", side_effect=controlled_run):
+            with self.subTest(stage=stage), patch("machinome.studio.preparation.subprocess.run", side_effect=controlled_run):
                 with self.assertRaises(PreparationError) as raised:
                     self.prepare(name)
             self.assertEqual(raised.exception.stage, stage)

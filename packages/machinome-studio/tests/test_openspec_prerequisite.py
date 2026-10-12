@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """The shop refuses to start without a runnable OpenSpec CLI."""
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor import __main__, orchestrator
-from floor.openspec import OpenSpecUnavailable, resolve_openspec_command
+from machinome.studio import __main__, orchestrator
+from machinome.studio.openspec import OpenSpecUnavailable, resolve_openspec_command
 
 
 @contextlib.contextmanager

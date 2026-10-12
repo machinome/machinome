@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """OpenCode backend using one shop-owned HTTP/SSE server."""
 
 from __future__ import annotations
@@ -168,8 +168,10 @@ class OpenCodeBackend:
             "OPENCODE_SERVER_PASSWORD": self.password,
             "FLOOR_URL": self.broker_url,
             **({"FLOOR_SESSION": self.session_id} if self.session_id else {}),
+            # The directory holding the package's `machinome/`, from which the
+            # MCP server runs as `machinome.studio.mcp_server`.
             "PYTHONPATH": os.pathsep.join(
-                item for item in (str(self.shop_root), os.environ.get("PYTHONPATH", "")) if item
+                item for item in (str(self.shop_root.parents[1]), os.environ.get("PYTHONPATH", "")) if item
             ),
         }
         self.process = await asyncio.create_subprocess_exec(

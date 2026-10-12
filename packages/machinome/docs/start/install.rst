@@ -140,9 +140,9 @@ types in packages of their own that its extras install
 ``machinome-node-jscad``, ``machinome-node-stl`` and
 ``machinome-node-freecad``), with the mechanics helpers in
 ``machinome-mechanics``, with the browser viewer in ``machinome-viewer``, the
-machinome skills in ``machinome-skills`` and the films in
-``machinome-movie``, all licensed |framework_licence|, at the recipient's
-choice. The framework reaches the
+machinome skills in ``machinome-skills``, the films in ``machinome-movie``
+and the studio in ``machinome-studio``, all licensed |framework_licence|, at
+the recipient's choice. The framework reaches the
 viewer only as a separate process. The ``viewer`` extra installs it.
 Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes
@@ -192,7 +192,7 @@ and the ``documentVersions`` it reads. This manual matches viewer
 |document_versions|. Without the viewer the command names the extra to
 install and exits 1.
 
-Four more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
+Five more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
 </reference/mechanics/index>`, ``machinome.mechanics``, gear, screw, crank,
 cam, delta, linkage, rolling and belt formulas (the distribution
 ``machinome-mechanics``, version |mechanics_version|); ``skills`` installs
@@ -207,6 +207,17 @@ Chromium and FFmpeg are documented steps of :doc:`/howto/film-a-movie`:
 
     $ python -m pip install "machinome[movie]"
     $ machinome movie setup
+
+``studio`` installs :doc:`Machinome Studio </reference/studio/index>`,
+``machinome.studio`` and the command ``machinome studio`` (the distribution
+``machinome-studio``), which needs the OpenSpec CLI and a logged-in agent
+backend, and whose Chromium is a second step
+(:doc:`/howto/open-a-studio-project`):
+
+.. code-block:: bash
+
+    $ python -m pip install "machinome[studio]"
+    $ playwright install chromium
 
 and ``web-snapshot`` installs the viewer with its headless browser driver
 for transparent photographs; Chromium itself is a second step,

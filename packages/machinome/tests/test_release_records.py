@@ -13,7 +13,8 @@ carries the framework's version, but the mechanics helpers, which carry
 their own (change `join-mechanics`); the viewer's Python package, its widget
 and the root's npm lock carry it too (change `join-viewer`), and the movie's
 JavaScript directory, its own lock and the root lock's entry for it (change
-`join-movie`). Every pin between two of them is `~=` that version, and the
+`join-movie`), and the studio's frontend and the root lock's entry for it
+(change `join-studio`). Every pin between two of them is `~=` that version, and the
 root's `.bumpversion.cfg` moves them all (change `cut-the-engines`), through
 `make bump`, which neither commits nor tags (change `release-tooling`).
 """
@@ -239,6 +240,27 @@ class VersionFilesTest(TestCase):
                             (REPOSITORY / '.bumpversion.cfg').read_text(),
                             flags=re.M)
         self.assertIn(f'{js}/package.json', tables)
+
+    def test_the_studio_s_frontend_version_files_agree(self):
+        """The studio's frontend and the root lock's entry for it state the
+        set's version; `.bumpversion.cfg` moves the `package.json`, and npm
+        the lock. The frontend keeps no lock of its own (change
+        `join-studio`)."""
+        frontend = 'packages/machinome-studio/machinome/studio/frontend'
+        with self.subTest(file='package.json'):
+            self.assertEqual(json.loads(
+                (REPOSITORY / frontend / 'package.json').read_text())[
+                    'version'], self.version)
+        with self.subTest(file='package-lock.json'):
+            root = json.loads((REPOSITORY / 'package-lock.json').read_text())
+            self.assertIn(frontend, root['packages'],
+                          'the root lock holds no entry for the studio')
+            self.assertEqual(root['packages'][frontend]['version'],
+                             self.version)
+        tables = re.findall(r'^\[bumpversion:file(?:\([^)]*\))?:([^\]]+)\]$',
+                            (REPOSITORY / '.bumpversion.cfg').read_text(),
+                            flags=re.M)
+        self.assertIn(f'{frontend}/package.json', tables)
 
     def test_no_release_fact_is_trapped_in_inline_markup(self):
         """A substitution inside ``**...**`` is not resolved: the 0.7.0

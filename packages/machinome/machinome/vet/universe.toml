@@ -42,6 +42,9 @@ deny = [
   # their own; a project's movie declarations are not vetted (change
   # `join-movie`).
   "machinome.movie",
+  # The studio's package, which serves the project hub, spawns agents and
+  # writes into projects (change `join-studio`).
+  "machinome.studio",
 ]
 
 [kernels]                   # allowed, minus the denylists below

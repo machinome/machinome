@@ -1,15 +1,16 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
 
-from floor.preparation import ProjectRuntimeError, ProjectRuntimeSelection
-from floor.profiles import ProfileError, load_profile
+from machinome.studio.preparation import ProjectRuntimeError, ProjectRuntimeSelection
+from machinome.studio.profiles import ProfileError, load_profile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class RuntimeProfileTest(unittest.TestCase):
     def test_builtin_profiles_have_the_ratified_topologies_and_backend_matrix(self) -> None:
-        openspec = load_profile("openspec-builder", shop_root=ROOT)
+        openspec = load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")
         self.assertEqual(openspec.id, "openspec-builder")
         self.assertEqual(openspec.user_label, "Maker")
         self.assertEqual(openspec.user_agent.id, "builder")
@@ -26,7 +27,7 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(openspec.user_agent.backends["claude"].model, "sonnet")
         self.assertEqual(openspec.user_agent.backends["claude"].effort, "medium")
 
-        fordesmac = load_profile("fordesmac", shop_root=ROOT)
+        fordesmac = load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio")
         self.assertEqual(fordesmac.work_mode, "delegated")
         self.assertEqual(fordesmac.user_agent.id, "foreman")
         self.assertEqual(
@@ -40,17 +41,17 @@ class RuntimeProfileTest(unittest.TestCase):
 
     def test_openspec_and_builder_are_no_longer_shippable_profiles(self) -> None:
         with self.assertRaisesRegex(ProfileError, r"openspec.*unavailable"):
-            load_profile("openspec", shop_root=ROOT)
+            load_profile("openspec", shop_root=ROOT / "machinome" / "studio")
         with self.assertRaisesRegex(ProfileError, r"builder.*unavailable"):
-            load_profile("builder", shop_root=ROOT)
+            load_profile("builder", shop_root=ROOT / "machinome" / "studio")
 
     def test_requested_project_and_default_profile_precedence(self) -> None:
         source_path = ROOT / "projects" / "sample" / "pyproject.toml"
         declared = ProjectRuntimeSelection(source_path.parent, source_path, {}, "fordesmac")
 
-        self.assertEqual(load_profile("openspec-builder", shop_root=ROOT, selection=declared).id, "openspec-builder")
-        self.assertEqual(load_profile(None, shop_root=ROOT, selection=declared).id, "fordesmac")
-        self.assertEqual(load_profile(None, shop_root=ROOT).id, "openspec-builder")
+        self.assertEqual(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio", selection=declared).id, "openspec-builder")
+        self.assertEqual(load_profile(None, shop_root=ROOT / "machinome" / "studio", selection=declared).id, "fordesmac")
+        self.assertEqual(load_profile(None, shop_root=ROOT / "machinome" / "studio").id, "openspec-builder")
 
     def test_project_profile_resolution_errors_name_the_source_and_explicit_requests_still_validate(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -61,26 +62,66 @@ class RuntimeProfileTest(unittest.TestCase):
                 ProjectRuntimeError,
                 r"pyproject\.toml.*missing-profile",
             ):
-                load_profile(None, shop_root=ROOT, selection=declared)
+                load_profile(None, shop_root=ROOT / "machinome" / "studio", selection=declared)
 
             self.assertEqual(
-                load_profile("openspec-builder", shop_root=ROOT, selection=declared).id,
+                load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio", selection=declared).id,
                 "openspec-builder",
             )
 
     def test_skills_are_profile_allowlisted(self) -> None:
-        profile = load_profile("openspec-builder", shop_root=ROOT)
+        profile = load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio")
         agent = profile.user_agent
-        self.assertEqual({skill.path.name for skill in agent.skills}, {"machinome", "machinome-api"})
+        self.assertEqual(
+            {skill.path.name for skill in agent.skills}, {"machinome", "machinome-api", "machinome-simulate"}
+        )
         for skill in agent.skills:
             self.assertTrue((skill.path / "SKILL.md").is_file())
             self.assertTrue(skill.path.is_symlink())
-            self.assertEqual(skill.path.resolve().parent, ROOT / "shop-skills")
+            # The profile's link names the shop's skill, read one level; the
+            # shop's machinome-simulate links the skills package's (change
+            # `join-studio`).
+            self.assertEqual(os.readlink(skill.path), f"../../../shop-skills/{skill.path.name}")
+
+    def test_the_builder_s_skills_include_the_skills_package_s_simulate(self) -> None:
+        builder = load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio").agent("builder")
+        self.assertEqual([skill.name for skill in builder.skills], ["machinome-api", "machinome", "machinome-simulate"])
+        simulate = builder.skills[-1]
+        package = (
+            ROOT.parent / "machinome-skills" / "machinome" / "skills" / "agent-skills" / "machinome-simulate"
+        ).resolve()
+        self.assertEqual(simulate.path.resolve(), package)
+        self.assertIn(simulate.description, (package / "SKILL.md").read_text())
+        fordesmac = load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio")
+        for role, expected in (("foreman", False), ("designer", True), ("machinist", True), ("librarian", False)):
+            with self.subTest(role=role):
+                names = {skill.name for skill in fordesmac.agent(role).skills}
+                self.assertEqual("machinome-simulate" in names, expected)
+
+    def test_a_profile_skill_may_reach_another_package_through_shop_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            shop = Path(temporary) / "shop"
+            elsewhere = Path(temporary) / "elsewhere" / "machinome"
+            shop.mkdir()
+            elsewhere.parent.mkdir()
+            shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
+            shutil.move(shop / "shop-skills" / "machinome", elsewhere)
+            (shop / "shop-skills" / "machinome").symlink_to(Path("..") / ".." / "elsewhere" / "machinome")
+
+            agent = load_profile("openspec-builder", shop_root=shop).user_agent
+            self.assertIn("machinome", {skill.name for skill in agent.skills})
+
+            skills = shop / "profiles" / "openspec-builder" / "skills"
+            (skills / "machinome").unlink()
+            (skills / "machinome").symlink_to(Path("..") / ".." / ".." / ".." / "elsewhere" / "machinome")
+            with self.assertRaisesRegex(ProfileError, "openspec-builder.*machinome"):
+                load_profile("openspec-builder", shop_root=shop)
 
     def test_allowlisted_skills_carry_the_announcement_their_skill_file_declares(self) -> None:
-        agent = load_profile("openspec-builder", shop_root=ROOT).user_agent
+        agent = load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio").user_agent
         self.assertEqual(
-            {skill.name for skill in agent.skills}, {"machinome", "machinome-api"}
+            {skill.name for skill in agent.skills}, {"machinome", "machinome-api", "machinome-simulate"}
         )
         for skill in agent.skills:
             self.assertEqual(skill.name, skill.path.name)
@@ -99,15 +140,15 @@ class RuntimeProfileTest(unittest.TestCase):
         for label, content in cases.items():
             with self.subTest(broken=label), tempfile.TemporaryDirectory() as temporary:
                 shop = Path(temporary)
-                shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-                shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+                shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+                shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
                 (shop / "shop-skills" / "machinome" / "SKILL.md").write_text(content)
                 with self.assertRaisesRegex(ProfileError, "openspec.*skills.*machinome"):
                     load_profile("openspec-builder", shop_root=shop)
 
     def test_builtin_profiles_declare_only_profile_explicit_backends(self) -> None:
         for profile_id in ("openspec-builder", "fordesmac"):
-            with (ROOT / "profiles" / profile_id / "profile.toml").open("rb") as source:
+            with (ROOT / "machinome" / "studio" / "profiles" / profile_id / "profile.toml").open("rb") as source:
                 manifest = tomllib.load(source)
             for agent in manifest["agents"]:
                 self.assertEqual(set(agent["backends"]), {"claude"})
@@ -115,8 +156,8 @@ class RuntimeProfileTest(unittest.TestCase):
     def test_retired_backends_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
-            shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-            shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
             manifest = shop / "profiles" / "openspec-builder" / "profile.toml"
             original = manifest.read_text()
             for retired in ("hermes", "codex"):
@@ -130,11 +171,11 @@ class RuntimeProfileTest(unittest.TestCase):
 
     def test_invalid_selection_and_unknown_schema_key_fail_with_actionable_errors(self) -> None:
         with self.assertRaisesRegex(ProfileError, "profile.*lowercase kebab-case"):
-            load_profile("../builder", shop_root=ROOT)
+            load_profile("../builder", shop_root=ROOT / "machinome" / "studio")
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
-            shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-            shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
             profile = shop / "profiles" / "openspec-builder" / "profile.toml"
             profile.write_text(profile.read_text() + "\nmisspelled = true\n")
             with self.assertRaisesRegex(ProfileError, "openspec.*unknown key.*misspelled"):
@@ -143,8 +184,8 @@ class RuntimeProfileTest(unittest.TestCase):
     def test_skill_links_and_prompt_paths_cannot_escape_the_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
-            shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-            shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
             (shop / "skills").mkdir()
             skills = shop / "profiles" / "openspec-builder" / "skills"
             (skills / "machinome").unlink()
@@ -155,8 +196,8 @@ class RuntimeProfileTest(unittest.TestCase):
     def test_selected_backends_reject_controls_their_adapters_cannot_enforce(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
-            shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-            shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+            shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
             manifest = shop / "profiles" / "openspec-builder" / "profile.toml"
             value = manifest.read_text()
             manifest.write_text(value.replace('model = "sonnet"', 'model = "not-a-claude-model"'))

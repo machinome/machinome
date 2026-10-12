@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import base64
@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-from floor.preparation import REQUIRED_VIEWER_API
+from machinome.studio.preparation import REQUIRED_VIEWER_API
 from tests.fixtures.shop_process import isolated_launch_directory, subprocess_environment
 
 
@@ -27,6 +27,13 @@ PNG_1X1 = base64.b64decode(
 )
 
 
+# The browser tests open Chromium and run the hub for seconds each; they run
+# when asked for, as `scripts/test-e2e` and `make test` with the variable set
+# ask (change `join-studio`).
+OPT_IN = "MACHINOME_STUDIO_E2E"
+
+
+@unittest.skipUnless(os.environ.get(OPT_IN) == "1", f"the browser tests run when {OPT_IN}=1 is set")
 class ShopLifecycleE2E(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -68,7 +75,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.port = _free_port()
         self.process = subprocess.Popen(
             [
-                "python", "-m", "floor", "--port", str(self.port),
+                "python", "-m", "machinome.studio", "--port", str(self.port),
                 "--projects-dir", str(self.project_home),
                 "--machinome-command", str(FAKE_MACHINOME),
             ],
@@ -93,8 +100,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         """The real viewer bundle a behavioural test proves the navigator
         against (design D4). `SHOP_E2E_VIEWER_BUNDLE` first -- a value
         naming no file is a hard failure, not a skip, because the pilot
-        asked for that exact bundle -- then the installed
-        `machinome_viewer` package if it is new enough, else a named skip.
+        asked for that exact bundle -- then the installed viewer,
+        `machinome.viewer.web`, if it is new enough, else a named skip.
         A skipped run is not evidence; the caller must actually be run with
         the environment variable exported to prove anything red or green."""
         supplied = os.environ.get("SHOP_E2E_VIEWER_BUNDLE")
@@ -109,7 +116,7 @@ class ShopLifecycleE2E(unittest.TestCase):
             return path, int(match.group(1))
         installed_version: int | None = None
         try:
-            from machinome_viewer import bundle as installed_bundle
+            from machinome.viewer.web import bundle as installed_bundle
         except ImportError:
             installed_bundle = None
         if installed_bundle is not None and installed_bundle.has_bundle():

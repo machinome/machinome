@@ -544,8 +544,8 @@ of the framework's own commands always runs the framework's command. When
 two installed packages add the same name, neither runs, and ``machinome
 <name>`` names both; a command whose package lacks an extra, or cannot be
 loaded, is listed as unavailable with the reason. The movie package adds
-``machinome movie`` and the skills package ``machinome skills``, below; the
-studio (``machinome studio``) is to add its own.
+``machinome movie``, the skills package ``machinome skills`` and the studio
+``machinome studio``, below.
 
 .. _movie-command:
 
@@ -650,6 +650,39 @@ is left as it is. The exit status is 0 when the verb did what was asked, 1
 when a target was refused, a path is not a directory or the prompt's input
 ended, and 2 for a value of ``--tools`` that is not valid, whose error
 names the valid ones.
+
+.. _studio-command:
+
+machinome studio
+================
+
+::
+
+    machinome studio [--projects-dir PATH] [--port PORT]
+
+Open Machinome Studio, the project hub and its agents, in the browser
+(``pip install "machinome[studio]"``). It serves the hub over the folder of
+projects on ``127.0.0.1``, prints ``shop-floor open at
+http://127.0.0.1:PORT`` once the hub listens, and runs until interrupted;
+it opens no browser. It refuses to start without the OpenSpec CLI on the
+``PATH``.
+
+``--projects-dir PATH``
+    The folder whose entries the hub lists, used exactly as given. When it
+    is not given, the studio configuration file's ``projects`` key is used.
+
+``--port PORT``
+    The local port. When it is not given, ``FLOOR_PORT``, then the studio
+    configuration file's ``port`` key, then ``9000``.
+
+``python -m machinome.studio.orchestrator`` starts the same studio, and
+``python -m machinome.studio`` the same hub without agents. The exit status
+is 1 for a failed prerequisite, with one line beginning ``error:`` on
+standard error, including a project folder that neither the option nor the
+configuration file supplies, and 2 for an unknown option.
+:doc:`/reference/studio/command` gives the configuration file's location,
+its keys and the order in which the option, the environment, the file and
+the default apply.
 
 .. _several-models:
 

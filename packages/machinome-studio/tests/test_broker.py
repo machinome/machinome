@@ -1,14 +1,14 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import asyncio
 from datetime import datetime
 import unittest
 
-from floor.app import Broker
-from floor.backends.base import AgentActivity
-from floor.profiles import load_profile
+from machinome.studio.app import Broker
+from machinome.studio.backends.base import AgentActivity
+from machinome.studio.profiles import load_profile
 
 
 ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
@@ -16,7 +16,7 @@ ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
 
 class BrokerTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.broker = Broker(load_profile("fordesmac", shop_root=ROOT), event_history_limit=20)
+        self.broker = Broker(load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio"), event_history_limit=20)
         for agent in self.broker.profile.agents:
             self.broker.manifest(agent.id, agent.label)
 
@@ -36,7 +36,7 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
     async def test_run_snapshot_carries_the_profiles_work_mode(self) -> None:
         self.assertEqual(self.broker.run()["work_mode"], "delegated")
 
-        direct_broker = Broker(load_profile("openspec-builder", shop_root=ROOT))
+        direct_broker = Broker(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"))
         direct_broker.manifest("builder", "OpenSpec Builder")
         self.assertEqual(direct_broker.run()["work_mode"], "direct")
 
@@ -194,7 +194,7 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
 
 class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_profile_routes_user_and_turn_state_without_assignment_ceremony(self) -> None:
-        broker = Broker(profile=load_profile("openspec-builder", shop_root=ROOT))
+        broker = Broker(profile=load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"))
         builder = broker.manifest("builder", "OpenSpec Builder")
         entry = await broker.record_conversation("user", "Build a bracket.")
         direction = broker.pending_for("builder")[0]
@@ -218,7 +218,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
                 operation()
 
     async def test_direct_role_failure_ends_only_the_failed_turn(self) -> None:
-        broker = Broker(profile=load_profile("openspec-builder", shop_root=ROOT))
+        broker = Broker(profile=load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"))
         builder = broker.manifest("builder", "OpenSpec Builder")
         broker.register_direct_delivery("builder", "turn-1")
         broker.turn_started("builder", "turn-1")
@@ -230,7 +230,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(builder.failure, "quota exhausted")
 
     async def test_delegated_profile_enforces_declared_edges_and_keeps_completion_assignment_based(self) -> None:
-        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT))
+        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio"))
         for agent in broker.profile.agents:
             broker.manifest(agent.id, agent.label)
         with self.assertRaisesRegex(ValueError, "assignment edge"):
@@ -246,7 +246,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.agents["librarian"].state, "waiting")
 
     async def test_only_declared_user_agent_output_reaches_the_conversation(self) -> None:
-        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT))
+        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio"))
         await broker.record_conversation("foreman", "Public update")
         self.assertEqual(broker.conversation[-1].author, "foreman")
         with self.assertRaisesRegex(ValueError, "user-facing"):

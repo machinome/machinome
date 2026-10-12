@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import os
@@ -10,10 +10,10 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from floor.app import Broker
-from floor.profiles import load_profile
-from floor.sessions import Session
-from floor.source_files import (
+from machinome.studio.app import Broker
+from machinome.studio.profiles import load_profile
+from machinome.studio.sessions import Session
+from machinome.studio.source_files import (
     SourceConflict,
     SourceUnavailable,
     SourceWorkspace,
@@ -150,7 +150,7 @@ class SessionSourceSaveTest(unittest.IsolatedAsyncioTestCase):
         source.write_text("before = True\n")
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "model.py"], check=True)
-        root = Path(__file__).resolve().parents[1]
+        root = Path(__file__).resolve().parents[1] / "machinome" / "studio"
         profile = load_profile("openspec-builder", shop_root=root)
         broker = Broker(profile=profile, session_id="source-session")
         broker.manifest("builder", "OpenSpec Builder")

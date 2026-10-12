@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Native synthetic callbacks through actual owned workers, no model/auth."""
 import asyncio
 from dataclasses import replace
@@ -9,9 +9,9 @@ from pathlib import Path
 import threading
 import unittest
 
-from floor.backends.base import RoleContext
-from floor.backends.codex import CodexBackend
-from floor.profiles import load_profile, resolve_profile_runtime
+from machinome.studio.backends.base import RoleContext
+from machinome.studio.backends.codex import CodexBackend
+from machinome.studio.profiles import load_profile, resolve_profile_runtime
 from tests import test_codex_service as fixtures
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,16 +42,16 @@ class CodexDelegationTests(unittest.IsolatedAsyncioTestCase):
             return await original(method, params)
         self.native.rpc = rpc
         reference = await self.service.acquire("delegated-synthetic", [])
-        backend = CodexBackend(shop_root=ROOT, project=Path(self.temporary.name),
+        backend = CodexBackend(shop_root=ROOT / "machinome" / "studio", project=Path(self.temporary.name),
             broker_url=f"http://127.0.0.1:{server.server_port}", session_id=reference.session_id,
             codex_service=self.service, codex_reference=reference)
         try:
-            profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT))
+            profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio"))
             handles = {}
             for role in ("foreman", "machinist"):
                 agent = profile.agent(role)
                 agent = replace(agent, runtime=replace(agent.runtime, backend="codex", model="gpt-6-sol", effort="medium"))
-                context = RoleContext(str(ROOT), self.temporary.name, agent, profile.id, profile.user_label, profile.user_agent.label)
+                context = RoleContext(str(ROOT / "machinome" / "studio"), self.temporary.name, agent, profile.id, profile.user_label, profile.user_agent.label)
                 handles[role] = await backend.open_role(role, context)
                 await backend.deliver_start(handles[role], "Synthetic lifecycle request")
             async def call(role, tool, arguments, identity):

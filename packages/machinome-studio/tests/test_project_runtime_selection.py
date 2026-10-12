@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import re
@@ -12,14 +12,14 @@ from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.app import Broker
-from floor.backends.base import RoleHandle, RuntimeCatalogue, RuntimeChoice
-from floor.orchestrator import LocalBrokerControl, ShopOrchestrator
-from floor.preparation import ProjectRuntimeError, new_entry, prepare_project, read_project_runtime
-from floor.profiles import BackendRuntime, ProfileError, load_profile, resolve_profile_runtime
-from floor.sessions import Session
+from machinome.studio.app import Broker
+from machinome.studio.backends.base import RoleHandle, RuntimeCatalogue, RuntimeChoice
+from machinome.studio.orchestrator import LocalBrokerControl, ShopOrchestrator
+from machinome.studio.preparation import ProjectRuntimeError, new_entry, prepare_project, read_project_runtime
+from machinome.studio.profiles import BackendRuntime, ProfileError, load_profile, resolve_profile_runtime
+from machinome.studio.sessions import Session
 from tests.fixtures.fake_backend import FakeBackend
-from floor.runtime_config import (
+from machinome.studio.runtime_config import (
     RuntimeConfigConflict,
     config_revision,
     prepare_runtime_edit,
@@ -179,7 +179,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
             'builder = "claude:opus"\n'
             'designer = "claude:sonnet"\n'
         )
-        profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
+        profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"), selection)
         self.assertEqual(profile.user_agent.runtime.backend, "claude")
         self.assertEqual(profile.ignored_agent_ids, ("designer",))
 
@@ -193,7 +193,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
             'machinist = "claude:opus"\n'
             'librarian = "claude:sonnet"\n'
         )
-        profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
+        profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"), selection)
         self.assertEqual(profile.id, "openspec-builder")
         self.assertEqual(
             profile.ignored_agent_ids,
@@ -206,7 +206,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
             ProjectRuntimeError,
             r"pyproject\.toml.*'builder'",
         ):
-            load_profile(None, shop_root=ROOT, selection=selection)
+            load_profile(None, shop_root=ROOT / "machinome" / "studio", selection=selection)
 
     def test_a_project_declaring_openspec_is_refused_and_not_opened_under_the_default(self) -> None:
         selection = self._selection('[tool.machinome-studio]\nprofile = "openspec"\n')
@@ -214,11 +214,11 @@ librarian = "opencode:openai:gpt-5.4:medium"
             ProjectRuntimeError,
             r"pyproject\.toml.*'openspec'",
         ):
-            load_profile(None, shop_root=ROOT, selection=selection)
+            load_profile(None, shop_root=ROOT / "machinome" / "studio", selection=selection)
 
     def test_unnamed_agents_default_to_profile_claude_runtime(self) -> None:
         selection = self._selection('[tool.machinome-studio.agents]\ndesigner = "claude:opus"\n')
-        profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT), selection)
+        profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio"), selection)
         self.assertEqual(profile.agent("foreman").runtime, profile.agent("foreman").backends["claude"])
 
     def test_project_values_override_only_model_and_reasoning(self) -> None:
@@ -227,7 +227,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
             'designer = "claude:sonnet:high"\n'
             'machinist = "claude:opus"\n'
         )
-        profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT), selection)
+        profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT / "machinome" / "studio"), selection)
         designer = profile.agent("designer")
         default = designer.backends["claude"]
         self.assertEqual(designer.runtime.model, "sonnet")
@@ -281,14 +281,14 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             original = '[tool.machinome-studio]\nprofile = "openspec-builder"\n'
             path.write_text(original)
             selection = read_project_runtime(project)
-            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
+            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"), selection)
             broker = Broker(profile, session_id="runtime-test")
             backend = FakeBackend()
             orchestrator = ShopOrchestrator(
                 backend,
                 LocalBrokerControl(broker),
                 profile=profile,
-                shop_root=ROOT,
+                shop_root=ROOT / "machinome" / "studio",
                 active_project=project,
             )
             await orchestrator.open()
@@ -340,7 +340,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             path = project / "pyproject.toml"
             path.write_text('[tool.machinome-studio]\nprofile = "openspec-builder"\n')
             selection = read_project_runtime(project)
-            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
+            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT / "machinome" / "studio"), selection)
             broker = Broker(profile, session_id="runtime-switch")
             original, opencode = FakeBackend(), OpenCodeBackend()
 
@@ -352,7 +352,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
                 original,
                 LocalBrokerControl(broker),
                 profile=profile,
-                shop_root=ROOT,
+                shop_root=ROOT / "machinome" / "studio",
                 active_project=project,
                 backend_resolver=resolve_backend,
             )
@@ -380,8 +380,8 @@ class ProfileRuntimeTableTest(unittest.TestCase):
     def _shop(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary = tempfile.TemporaryDirectory()
         shop = Path(temporary.name)
-        shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
-        shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+        shutil.copytree(ROOT / "machinome" / "studio" / "profiles", shop / "profiles", symlinks=True)
+        shutil.copytree(ROOT / "machinome" / "studio" / "shop-skills", shop / "shop-skills", symlinks=False)
         return temporary, shop
 
     def test_loader_validates_every_backend_table(self) -> None:

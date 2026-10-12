@@ -1,24 +1,68 @@
-===============
-The project hub
-===============
+============================
+Open a project in the studio
+============================
+
+Machinome Studio opens a hub over a folder of projects; from it you create
+a project or open one, and a team of agents builds it with you. This guide
+installs the studio, starts the hub, and opens or creates a project.
+:doc:`/reference/studio/index` says what the studio runs against and its
+limits.
+
+What you need
+=============
+
+* **Linux.** The studio is validated there and nowhere else.
+* **Python 3.11 or later.**
+* **Git.** Every project is its own repository, and the agents commit.
+* **OpenSCAD** on ``PATH``, for the framework's OpenSCAD backend and its
+  snapshots.
+* **The OpenSpec command-line tool**, a Node program the studio keeps each
+  project's design record with: with Node.js 22 or later and npm, ``npm
+  install -g @fission-ai/openspec``.
+* **An agent backend, logged in.** `Claude Code
+  <https://claude.com/claude-code>`_, the ``claude`` command, or `OpenCode
+  <https://opencode.ai/>`_, the ``opencode`` command, or qualified Codex
+  with its separate Studio login (:doc:`/howto/studio-agents`). A project
+  cannot open without one; the hub reports which it finds.
+
+Install
+=======
+
+.. code-block:: console
+
+   $ pip install "machinome[studio]"
+   $ playwright install chromium
+
+The first line installs the studio with the framework and the browser
+viewer with its headless capture, which renders the hub's model previews;
+the second installs the Chromium build that capture uses.
+:doc:`/start/install` covers the CAD backends a model may use.
 
 Start the hub
 =============
 
 .. code-block:: console
 
-   $ machinome-studio --projects-dir ~/machines
+   $ machinome studio --projects-dir ~/machines
 
 ``--projects-dir`` names the folder that holds your projects, exactly as
 given: the studio neither appends a directory name nor guesses one from
 where it was started. The folder may be anywhere and may be empty. Write it
 once in the studio configuration file and the option can be left off on
-later launches; :doc:`reference/cli` describes the file. The command prints
+later launches:
+
+.. code-block:: toml
+
+   # ~/.config/machinome-studio/config.toml
+   [studio]
+   projects = "~/machines"
+
+:doc:`/reference/studio/command` describes the file. The command prints
 the hub's address, ``http://127.0.0.1:9000`` unless ``--port``,
 ``FLOOR_PORT`` or the file says otherwise, and keeps running: it is the
 service that holds every open project's agents, viewer and conversation.
 Stop it with Ctrl-C when you are done; stopping ends every open session.
-:doc:`reference/cli` lists the options.
+:doc:`/reference/studio/command` lists the options.
 
 Before it listens, the studio checks that the ``openspec`` command runs and
 refuses to start when it does not. A project's design record is kept with
@@ -63,14 +107,14 @@ Create a project
 **New project** asks for a name and a profile. The name is a directory
 name: anything the filesystem accepts that no entry of the folder being
 listed already uses, with no naming convention imposed. The profile is
-required; :doc:`working-with-agents` describes the two the studio ships.
+required; :doc:`/howto/studio-agents` describes the two the studio ships.
 The studio creates the project as a direct child of the folder you are
 listing, from the framework's own scaffold, records the profile in the
 project's ``pyproject.toml``, makes the directory an independent Git
 repository with that scaffold as its first commit, and opens it. The card
 shows the project as creating until it is open. No runtime selection is
 written: the agents use their profile's defaults until the project says
-otherwise (:doc:`reference/project-configuration`).
+otherwise (:doc:`/reference/studio/project-configuration`).
 
 Creation is not offered while the hub is listing the models of one
 project.
@@ -99,13 +143,13 @@ The card shows the project as opening, then as open or as failed with the
 reason. A profile that does not resolve, a malformed runtime selection, a
 missing or too-old browser viewer, or an agent that would not start leaves
 no partial session behind, and the hub and every other project remain
-available. :doc:`troubleshooting` lists the reasons and their remedies.
+available. :doc:`/reference/studio/troubleshooting` lists the reasons and their remedies.
 
 Several projects may be open at once, each with its own agents,
 conversation, model and build; two models of one repository are two
 sessions over one checkout. A second browser opening an open project joins
 its session. The open project's address shows its workspace, which
-:doc:`the-floor` describes.
+:doc:`/howto/studio-workspace` describes.
 
 Previews
 ========

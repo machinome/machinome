@@ -71,8 +71,8 @@ documentation tests expect them:
 
 Flat notes on how a part of the studio is built, kept beside the plans:
 
-- `documentation.md` — how the manual under `docs/` is built and checked,
-  and how it would be hosted.
+- `documentation.md` — how the studio's pages of the Machinome manual are
+  built and checked.
 - `foreman-listener.md` — how the user-facing agent receives delivery.
 
 ### Findings
@@ -89,8 +89,11 @@ decides there is a change, they go in a `warts.md` here, in that shape.
 studio material: what the floor was found to lack and what is planned for
 it. It is not agent instructions — a document here is never read as
 authority over `AGENTS.md`, a profile prompt or a runtime skill — and it is
-not the manual. The reader-facing manual is `docs/` (its `.rst` pages),
-`README.md`, `CHANGELOG.md` and the `floor` package's docstrings; the
-architecture overview, ADRs, design reference and product records stay under
-`docs/` where `AGENTS.md` names them; the ratified behaviour is under
-`openspec/`.
+not the manual. Since 12 October 2026 the studio is the package
+`packages/machinome-studio/` of the machinome repository: the reader-facing
+manual is its pages of the Machinome manual (`workflow/documentation.md`),
+with `README.md`, `CHANGELOG.md` and the `machinome.studio` package's
+docstrings; the architecture overview (`architecture-overview.md`), the
+decision log (`adrs/`), the design reference (`design/`), the product records
+(`product/`) and the spikes (`spikes/`) are here, under `workflow/`; the
+ratified behaviour is under `openspec/`.

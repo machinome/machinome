@@ -1,6 +1,6 @@
 # ADR-188: The Browser Viewer Is a Product of the Repository, Numbered with the Set
 
-**Status:** Accepted; the npm workspace's second member, with a lock of its own, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md)
+**Status:** Accepted; the npm workspace's second member, with a lock of its own, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the studio's frontend beside the widget, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md)
 **Date:** 2026-10-12
 **Change:** [`join-viewer`](../../../openspec/changes/archive/2026-10-12-join-viewer/)
 **Supersedes:**
@@ -136,3 +136,7 @@ describe` and `machinome viewer`.
 - Neutral (2026-10-12, `join-movie`): the movie's JavaScript directory is
   the workspace's second member and keeps a lock of its own for an installed
   copy (ADR-191).
+- Neutral (2026-10-12, `join-studio`): the studio's frontend is the
+  workspace's third member, built from the root beside the widget, and the
+  studio, a product numbered with the set, photographs projects through the
+  viewer's capture it requires (ADR-193).

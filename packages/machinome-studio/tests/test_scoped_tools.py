@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import json
@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.mcp_server import ProjectTools, TOOL_NAMES, TOOL_SCHEMAS, mcp_command
+from machinome.studio.mcp_server import ProjectTools, TOOL_NAMES, TOOL_SCHEMAS, mcp_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -304,16 +304,25 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertEqual(self.tools.git_show("HEAD", "new.txt")["stdout"], "new\n")
         self.assertEqual(self.tools.git_rev_parse_toplevel(), str(self.project))
 
-    def test_machinome_test_passes_the_kernel_through_as_the_framework_flag(self) -> None:
-        self.assertTrue(self.tools.machinome_test(kernel="faceted")["ok"])
-        self.assertTrue(self.tools.machinome_test("part.txt", failfast=True, kernel="exact")["ok"])
+    def test_machinome_test_passes_the_engine_through_as_the_framework_flag(self) -> None:
+        # `machinome test` takes the comparison engine as `--brep` or
+        # `--mesh` since Machinome 0.8 (change `join-studio`).
+        self.assertTrue(self.tools.machinome_test(engine="mesh")["ok"])
+        self.assertTrue(self.tools.machinome_test("part.txt", failfast=True, engine="brep")["ok"])
         self.assertTrue(self.tools.machinome_test()["ok"])
         calls = [json.loads(line)["argv"] for line in self.capture.read_text().splitlines()]
-        self.assertEqual(calls[0], ["test", "--faceted"])
-        self.assertEqual(calls[1], ["test", "--failfast", "--exact", "part.txt"])
+        self.assertEqual(calls[0], ["test", "--mesh"])
+        self.assertEqual(calls[1], ["test", "--failfast", "--brep", "part.txt"])
         self.assertEqual(calls[2], ["test"])
-        with self.assertRaises(ValueError):
-            self.tools.machinome_test(kernel="fast")
+        for refused in ("fast", "faceted", "exact"):
+            with self.subTest(engine=refused):
+                with self.assertRaisesRegex(ValueError, "'brep' or 'mesh'"):
+                    self.tools.machinome_test(engine=refused)
+        with self.assertRaises(TypeError):
+            self.tools.machinome_test(kernel="mesh")  # type: ignore[call-arg]
+        schema = TOOL_SCHEMAS["machinome_test"]["properties"]
+        self.assertNotIn("kernel", schema)
+        self.assertEqual(schema["engine"]["enum"], ["brep", "mesh"])
 
     def test_a_model_session_defaults_every_solid_tool_to_its_own_model(self) -> None:
         """Two models of one repository share a checkout, so a tool called
@@ -466,7 +475,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
             self.assertNotIn("url", parameters)
             self.assertNotIn("route", parameters)
 
-        with patch("floor.agent._request", return_value={"accepted": True}) as request:
+        with patch("machinome.studio.agent._request", return_value={"accepted": True}) as request:
             self.assertEqual(
                 tools.floor_assign("foreman", "designer", "draw-1", "Draw it"),
                 {"accepted": True},

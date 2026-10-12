@@ -1,17 +1,21 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
+import argparse
 import contextlib
 import io
+import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor import __main__, orchestrator
+from machinome.studio import __main__, orchestrator
+from tests.fixtures.shop_process import isolated_launch_directory, subprocess_environment
 
 
 def _isolated_environment(*, xdg_config_home: str, path: str | None = None, **extra: str) -> dict[str, str]:
@@ -107,7 +111,7 @@ class FloorEntrypointTest(unittest.TestCase):
         self.assertEqual(registry.call_args.args, (folder,))
         self.assertEqual(
             registry.call_args.kwargs["shop_root"],
-            Path(__main__.__file__).resolve().parents[1],
+            Path(__main__.__file__).resolve().parent,
         )
         self.assertEqual(registry.call_args.kwargs["machinome_command"], "fake-solid")
         self.assertTrue(registry.call_args.kwargs["start_agents"] is False)
@@ -202,6 +206,92 @@ class OrchestratorEntrypointTest(unittest.TestCase):
             self.assertIn("--port must be an integer from 1 to 65535, got 0", stderr.getvalue())
             server.assert_not_called()
             create_app.assert_not_called()
+
+
+class StudioCommandTest(unittest.TestCase):
+    """`machinome studio`, the command the package contributes through
+    `machinome.commands` (change `join-studio`, framework ADR-189)."""
+
+    def parser(self):
+        from machinome.studio.cli import Studio
+
+        command = Studio()
+        parser = argparse.ArgumentParser(prog="machinome studio")
+        command.add_arguments(parser)
+        return command, parser
+
+    def test_the_command_meets_the_contract(self) -> None:
+        from machinome.studio.cli import Studio
+
+        self.assertEqual(Studio.__doc__.strip(), "Open the studio: the project hub and its agents, in the browser")
+        self.assertIs(Studio.needs_node, False)
+        command, parser = self.parser()
+        arguments = parser.parse_args(["--projects-dir", "/work/projects", "--port", "9333"])
+        self.assertEqual(arguments.projects_dir, Path("/work/projects"))
+        self.assertEqual(arguments.port, 9333)
+        self.assertIsNone(arguments.machinome_command)
+        self.assertEqual(arguments.backend_command, [])
+        hidden = parser.parse_args(["--machinome-command", "fake", "--backend-command", "claude=x",
+                                    "--backend-command", "codex=y"])
+        self.assertEqual((hidden.machinome_command, hidden.backend_command), ("fake", ["claude=x", "codex=y"]))
+        help_text = parser.format_help()
+        for shown in ("--projects-dir", "--port"):
+            self.assertIn(shown, help_text)
+        for suppressed in ("--machinome-command", "--backend-command"):
+            self.assertNotIn(suppressed, help_text)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
+            parser.parse_args(["--profile", "builder"])
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_handle_runs_the_launcher_with_its_options(self) -> None:
+        command, parser = self.parser()
+        arguments = parser.parse_args(["--projects-dir", "/work/projects"])
+        with patch.object(orchestrator, "run") as run:
+            command.handle(arguments)
+        run.assert_called_once_with(arguments)
+
+    def test_the_command_refuses_without_a_project_folder(self) -> None:
+        command, parser = self.parser()
+        with tempfile.TemporaryDirectory() as xdg:
+            stderr = io.StringIO()
+            with (
+                patch.dict(os.environ, _isolated_environment(xdg_config_home=xdg, path=os.environ.get("PATH", "")), clear=True),
+                patch.object(orchestrator.uvicorn, "Server") as server,
+                patch.object(orchestrator, "create_app") as create_app,
+                contextlib.redirect_stderr(stderr),
+                self.assertRaises(SystemExit) as raised,
+            ):
+                command.handle(parser.parse_args([]))
+            self.assertEqual(raised.exception.code, 1)
+            self.assertIn("error: no project folder", stderr.getvalue())
+            server.assert_not_called()
+            create_app.assert_not_called()
+
+    def test_listing_the_command_loads_none_of_the_application(self) -> None:
+        probe = (
+            "import json, sys\n"
+            "import machinome.studio.cli\n"
+            "from machinome.studio.cli import Studio\n"
+            "print(json.dumps(sorted(name for name in sys.modules)))\n"
+        )
+        with isolated_launch_directory() as directory:
+            completed = subprocess.run(
+                [sys.executable, "-c", probe], cwd=directory, env=subprocess_environment(),
+                capture_output=True, text=True, check=True,
+            )
+        loaded = json.loads(completed.stdout)
+        heavy = ("fastapi", "starlette", "uvicorn", "watchdog", "tomlkit")
+        self.assertEqual([name for name in loaded if name.split(".")[0] in heavy], [])
+        self.assertEqual(
+            [name for name in loaded if name.startswith("machinome.studio.")], ["machinome.studio.cli"]
+        )
+
+    def test_the_root_reads_create_app_on_first_use(self) -> None:
+        import machinome.studio as studio
+        from machinome.studio.app import create_app
+
+        self.assertEqual(studio.__all__, ["create_app"])
+        self.assertIs(studio.create_app, create_app)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 from __future__ import annotations
 
 import json
@@ -19,18 +19,8 @@ class ProductIdentityTest(unittest.TestCase):
         self.assertEqual(configuration["project"]["name"], "machinome-studio")
         self.assertIn("Machinome Studio", configuration["project"]["description"])
 
-    def test_plugin_uses_machine_and_customer_facing_identities(self) -> None:
-        plugin = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())
-        marketplace = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text())
-
-        self.assertEqual(plugin["name"], "machinome-studio")
-        self.assertEqual(plugin["displayName"], "Machinome Studio")
-        self.assertIn("Machinome Studio", plugin["description"])
-        self.assertEqual(marketplace["plugins"][0]["name"], "machinome-studio")
-        self.assertIn("Machinome Studio", marketplace["plugins"][0]["description"])
-
     def test_browser_document_uses_customer_facing_identity(self) -> None:
-        browser_document = (ROOT / "floor" / "frontend" / "index.html").read_text()
+        browser_document = (ROOT / "machinome" / "studio" / "frontend" / "index.html").read_text()
 
         self.assertIn("<title>Machinome Studio</title>", browser_document)
 
@@ -38,7 +28,7 @@ class ProductIdentityTest(unittest.TestCase):
         """The tab carries the studio's own favicon pack, versioned as the
         identity's application guide asks, because browsers cache favicons
         hard."""
-        browser_document = (ROOT / "floor" / "frontend" / "index.html").read_text()
+        browser_document = (ROOT / "machinome" / "studio" / "frontend" / "index.html").read_text()
 
         self.assertIn(
             '<link rel="icon" href="/assets/favicon/favicon.svg?v=2" type="image/svg+xml" />',
@@ -57,8 +47,8 @@ class ProductIdentityTest(unittest.TestCase):
         """The studio's favicon carries the identity symbol's path verbatim,
         white on a black plate, and ships every raster the links and the
         builder promise."""
-        favicon = ROOT / "floor" / "frontend" / "public" / "assets" / "favicon"
-        symbol = (ROOT / "floor" / "frontend" / "public" / "assets" / "brand" / "v1" / "mark-white.svg").read_text()
+        favicon = ROOT / "machinome" / "studio" / "frontend" / "public" / "assets" / "favicon"
+        symbol = (ROOT / "machinome" / "studio" / "frontend" / "public" / "assets" / "brand" / "v1" / "mark-white.svg").read_text()
         svg = (favicon / "favicon.svg").read_text()
 
         path = re.search(r' d="([^"]+)"', symbol).group(1)
@@ -72,7 +62,7 @@ class ProductIdentityTest(unittest.TestCase):
         """`brand/v1` is the identity's approved release copied intact: every
         asset its manifest lists is present, nothing else is, and the derived
         logo font travels with its licence."""
-        brand = ROOT / "floor" / "frontend" / "public" / "assets" / "brand" / "v1"
+        brand = ROOT / "machinome" / "studio" / "frontend" / "public" / "assets" / "brand" / "v1"
         manifest = json.loads((brand / "manifest.json").read_text())
 
         self.assertEqual(manifest["version"], "1.0")
@@ -85,7 +75,7 @@ class ProductIdentityTest(unittest.TestCase):
         self.assertIn("SIL OPEN FONT LICENSE", (brand / "fonts" / "OFL.txt").read_text())
 
     def test_interface_fonts_ship_with_their_notices(self) -> None:
-        fonts = ROOT / "floor" / "frontend" / "public" / "assets" / "fonts"
+        fonts = ROOT / "machinome" / "studio" / "frontend" / "public" / "assets" / "fonts"
 
         for font, notice in (
             ("SpaceGrotesk.ttf", "SpaceGrotesk-OFL.txt"),
@@ -99,8 +89,8 @@ class ProductIdentityTest(unittest.TestCase):
         text, the accent a token; the wordmark and its `Studio` qualifier in
         the title bar; and the logo-only font never named as a text face, as
         the identity's application guide requires."""
-        styles = (ROOT / "floor" / "frontend" / "src" / "styles.css").read_text()
-        markup = (ROOT / "floor" / "frontend" / "src" / "main.tsx").read_text()
+        styles = (ROOT / "machinome" / "studio" / "frontend" / "src" / "styles.css").read_text()
+        markup = (ROOT / "machinome" / "studio" / "frontend" / "src" / "main.tsx").read_text()
 
         self.assertIn('font-family: "Space Grotesk"', styles)
         self.assertIn('font-family: "IBM Plex Mono"', styles)
@@ -115,7 +105,7 @@ class ProductIdentityTest(unittest.TestCase):
         self.assertIn('aria-label="Machinome Studio"', markup)
 
     def test_chat_children_have_stable_grid_rows_when_failure_list_is_absent(self) -> None:
-        styles = (ROOT / "floor" / "frontend" / "src" / "styles.css").read_text()
+        styles = (ROOT / "machinome" / "studio" / "frontend" / "src" / "styles.css").read_text()
 
         self.assertIn(".conversation-header { grid-row: 1;", styles)
         self.assertIn(".role-failure-list { grid-row: 2;", styles)
@@ -123,17 +113,11 @@ class ProductIdentityTest(unittest.TestCase):
         self.assertIn(".conversation-composer { grid-row: 4;", styles)
 
     def test_backend_integrations_use_product_derived_identity(self) -> None:
-        opencode = (ROOT / "floor" / "backends" / "opencode.py").read_text()
+        opencode = (ROOT / "machinome" / "studio" / "backends" / "opencode.py").read_text()
 
         self.assertIn('f"{role}-{secrets.token_hex(6)}"', opencode)
         self.assertIn('prefix="machinome-studio-opencode-"', opencode)
         self.assertIn('f"Machinome Studio: {role}"', opencode)
-
-    def test_setup_survives_a_relocated_workspace_virtualenv(self) -> None:
-        setup = (ROOT / "scripts" / "setup").read_text()
-
-        self.assertIn('"$VENV_PYTHON" -m pip', setup)
-        self.assertNotIn('PIP="$VENV/bin/pip"', setup)
 
 
 if __name__ == "__main__":

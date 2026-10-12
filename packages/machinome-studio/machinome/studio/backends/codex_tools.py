@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Bounded per-handle floor worker; native Codex never owns tool processes."""
 from __future__ import annotations
 
@@ -120,8 +120,12 @@ class FloorWorker:
         environment.update(HOME=self.private.name, XDG_CONFIG_HOME=self.private.name, XDG_STATE_HOME=self.private.name,
                            CODEX_HOME=self.private.name)
         environment.update(identities)
+        # Run from the directory holding the package's `machinome/`, from which
+        # `python -m machinome.studio.mcp_server` resolves; the resource root
+        # itself would put the package's modules on the path as top-level
+        # names (change `join-studio`).
         try:
-            self.process = await asyncio.create_subprocess_exec(*self.command, cwd=self.context.shop_root, env=environment,
+            self.process = await asyncio.create_subprocess_exec(*self.command, cwd=Path(self.context.shop_root).parents[1], env=environment,
                 stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
                 start_new_session=True, limit=8 * 1024 * 1024)
             await self.rpc("initialize", {})

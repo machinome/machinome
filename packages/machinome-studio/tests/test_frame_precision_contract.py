@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """The runtime contract preserves the ratified narrow Frame precision rule."""
 from pathlib import Path
 import unittest
@@ -8,7 +8,7 @@ import unittest
 class FramePrecisionContractTest(unittest.TestCase):
     def test_frame_and_readout_describe_precise_and_default_paths(self):
         text = (Path(__file__).resolve().parents[1] /
-                'shop-skills/machinome-api/SKILL.md').read_text()
+                'machinome/studio/shop-skills/machinome-api/SKILL.md').read_text()
         declaration = text.split('`Frame(at=(0,0,0)', 1)[1].split(
             'Arguments follow the joint argument rule', 1)[0]
         readout = text.split('**Reading them back.**', 1)[1].split('**Relations**', 1)[0]

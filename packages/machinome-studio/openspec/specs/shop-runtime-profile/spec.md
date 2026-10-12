@@ -62,10 +62,13 @@ skills that agent requires. Every listed skill SHALL resolve through that
 profile's `skills/<skill>/SKILL.md` allowlist.
 
 A profile-local skill SHALL be contained by the profile. A shared skill SHALL
-be exposed by an individual symlink resolving to one skill directory directly
-beneath `shop-skills/`. The loader MUST reject broken links, file links,
-transitive filesystem escapes, links into repository `skills/`, links into
-another profile, and prompt skill names absent from the profile allowlist.
+be exposed by an individual symlink that names, read one level,
+`shop-skills/<skill>` of the same shop. That entry SHALL be a skill directory
+or a relative link to one: the studio's `machinome-simulate` links the skill
+of that name in the repository's skills package. The loader MUST reject broken
+links, file links, a profile link naming anything but `shop-skills/<skill>`
+(repository `skills/`, another profile, any other location), and prompt skill
+names absent from the profile allowlist.
 Runtime agents MUST NOT resolve skills from the repository-development
 `skills/` namespace.
 
@@ -85,8 +88,12 @@ skill that cannot be announced cannot be chosen.
 - **THEN** profile validation fails before starting the project or runtime
 
 #### Scenario: A skill link escapes its runtime namespace
-- **WHEN** a profile skill link resolves into repository `skills/`, another profile, or any location outside `shop-skills/<one-skill>`
+- **WHEN** a profile skill link names, read one level, repository `skills/`, another profile, or any location other than `shop-skills/<one-skill>`
 - **THEN** profile validation fails
+
+#### Scenario: A shop skill links the skills package
+- **WHEN** `profiles/openspec-builder/skills/machinome-simulate` links `shop-skills/machinome-simulate`, itself a relative link to the skills package's `machinome-simulate`
+- **THEN** a Builder prompt that declares `machinome-simulate` passes skill validation, the skill announcing the skills package's name and description
 
 #### Scenario: An allowlisted skill does not describe itself
 - **WHEN** an allowlisted skill's `SKILL.md` has no frontmatter, a `name` other

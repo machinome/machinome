@@ -23,6 +23,7 @@ it builds.
 | [`machinome-mechanics`](packages/machinome-mechanics/) | The mechanics helpers, `machinome.mechanics`: gear, screw, crank, cam, delta, linkage, rolling and belt formulas for numeric poses and symbolic motion; installed by `machinome[mechanics]`. |
 | [`machinome-viewer`](packages/machinome-viewer/) | The browser viewer, `machinome.viewer.web`: the embeddable widget, the development server and the headless capture; installed by `machinome[viewer]`. |
 | [`machinome-movie`](packages/machinome-movie/) | The films, `machinome.movie` and the command `machinome movie`: a narrated film of a machine declared in Python or written as an episode, checked, voiced, previewed, rendered and served through the browser viewer; installed by `machinome[movie]`. |
+| [`machinome-studio`](packages/machinome-studio/) | The studio, `machinome.studio`: the project hub and workspace where a team of agents builds a project with its maker, and the command `machinome studio`; installed by `machinome[studio]`. |
 | [`machinome-skills`](packages/machinome-skills/) | The machinome skills for assistants that read Agent Skills, `machinome` and `machinome-simulate`, and the command `machinome skills` that installs them; installed by `machinome[skills]`. |
 
 ## Licence

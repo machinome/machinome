@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Regression coverage for S1's source-build and publication-event pipeline."""
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from floor.app import Broker, create_app
-from floor.watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
+from machinome.studio.app import Broker, create_app
+from machinome.studio.watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
 from watchdog.observers import Observer
 
 
@@ -347,7 +347,7 @@ def _artifact_app(project: Path, artifacts: Path):
     )
 
     class Registry:
-        shop_root = ROOT
+        shop_root = ROOT / "machinome" / "studio"
 
         def by_entry(self, path: str):
             return session if path == "project" else None

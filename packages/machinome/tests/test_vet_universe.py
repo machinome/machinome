@@ -56,6 +56,7 @@ class TheDeclarationTest(TestCase):
             'machinome.engine.brep.write_stl',
             'machinome.viewer.web',
             'machinome.movie',
+            'machinome.studio',
         ))
 
     def test_the_mechanics_helpers_are_inside_and_their_former_name_outside(
@@ -165,6 +166,42 @@ class TheDeclarationTest(TestCase):
         self.assertEqual(
             project('from machinome_movie import Movie'),
             {('sim/model.py', 'outside-universe', 'machinome_movie')})
+
+    def test_the_studio_is_internal_and_its_former_name_outside(self):
+        """(OpenSpec change `join-studio`) The studio is
+        `machinome.studio`, beneath the contract's `machinome` but denied:
+        it serves, spawns agents and writes into projects. Its former
+        package name is installed by no package of the set."""
+        from machinome.vet import vet
+
+        def project(statement):
+            scratch = os.path.realpath(
+                tempfile.mkdtemp(prefix='machinome-vet-'))
+            self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
+            os.makedirs(os.path.join(scratch, 'sim'))
+            files = {
+                'pyproject.toml':
+                    '[tool.machinome]\nmodel = "sim.model:Machine"\n',
+                'sim/__init__.py': '',
+                'sim/model.py': (
+                    'from machinome.node.assembly import AssemblyNode\n'
+                    f'{statement}\n\n\n'
+                    'class Machine(AssemblyNode):\n'
+                    '    hub = create_app\n'),
+            }
+            for relative, text in files.items():
+                with open(os.path.join(scratch, relative), 'w') as stream:
+                    stream.write(text)
+            (model,) = vet(origin=scratch).models
+            return {(finding.path, finding.kind, finding.name)
+                    for finding in model.findings}
+
+        self.assertEqual(
+            project('from machinome.studio.app import create_app'),
+            {('sim/model.py', 'framework-internal', 'machinome.studio')})
+        self.assertEqual(
+            project('from floor.app import create_app'),
+            {('sim/model.py', 'outside-universe', 'floor.app')})
 
     def test_the_engine_package_is_judged_by_its_new_addresses(self):
         """(OpenSpec change `brep-mesh`) The seams and the B-rep engine's

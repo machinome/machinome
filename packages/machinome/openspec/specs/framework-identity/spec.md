@@ -100,10 +100,13 @@ pin `~=<version>`, the version being the framework's own. `machinome-movie` is
 a distribution of the repository, at `packages/machinome-movie/`, whose
 package `machinome.movie` the framework never imports; the `movie` extra
 SHALL require it with the compatible-release pin `~=<version>`, the version
-being the framework's own.
-Current release material SHALL state that the experimental studio remains
-unpublished and that the `studio` extra cannot resolve from a package index
-until that publication occurs.
+being the framework's own. `machinome-studio` is a distribution of the
+repository, at `packages/machinome-studio/`, whose package `machinome.studio`
+the framework never imports; the `studio` extra SHALL require it with the
+compatible-release pin `~=<version>`, the version being the framework's own.
+Current release material SHALL NOT state that the `studio` extra cannot
+resolve; until the set's next release is published, the status page SHALL
+state that no index serves `machinome-studio` yet.
 
 The `viewer` extra and the `web-snapshot` extra SHALL require the viewer of
 the framework's own release with the compatible-release pin the set's
@@ -170,11 +173,22 @@ read the documents the release exports.
   movie` is a command of `machinome`, without the framework importing
   `machinome.movie`
 
+#### Scenario: A user installs the studio extra
+
+- **WHEN** `pip install "machinome[studio]"` resolves the framework's
+  distributions
+- **THEN** the `machinome-studio` distribution of the repository, numbered
+  with the framework, is installed with the viewer and its capture, and
+  `machinome studio` is a command of `machinome`, without the framework
+  importing `machinome.studio`
+
 #### Scenario: A reader asks for the studio extra before publication
 
-- **WHEN** current 0.7 guidance shows `pip install "machinome[studio]"`
-- **THEN** it also states that the installation cannot resolve from an index
-  until Machinome Studio is published
+- **WHEN** current guidance shows `pip install "machinome[studio]"` while no
+  index serves the set's release that includes the studio
+- **THEN** the status page says no index serves `machinome-studio` yet, no
+  other page says the extra cannot resolve, and the extra pins `~=` the
+  framework's version, a test failing naming the extra if it does not
 
 ### Requirement: The framework is the package directory `packages/machinome` of a monorepo
 
@@ -570,4 +584,71 @@ before building when the movie is a member and Node or npm is not on the PATH.
   `machinome movie setup` installs the Node dependencies into the installed
   package's `js/node_modules`, the same verb then reaches Node, and `setup
   --remove` leaves no `node_modules` behind
+
+### Requirement: The studio is a product of the set and the third member of the npm workspace
+
+The distribution `machinome-studio` SHALL be a product of the repository that
+keeps its record in its directory: `packages/machinome-studio/` SHALL hold its
+manifest `pyproject.toml`, a `README.md` that names its install lines and the
+licence, its `CHANGELOG.md`, its `MANIFEST.in` and `.gitignore`, the relative
+symbolic links `LICENSE` and `LICENSES` to the root's, its package directory
+`machinome/studio/` with its own `__init__.py` and none at `machinome/`, its
+`scripts/`, its `tests/`, its `openspec/` and its `workflow/` (its decision
+log under `workflow/adrs/`, its architecture overview, design reference,
+product records and spikes). Its manual pages SHALL be the framework's
+manual's. No module or alias of its former package name `floor` SHALL be
+shipped.
+
+It SHALL carry the framework's version and require the framework and the
+browser viewer with its capture with the compatible-release pin
+`~=<version>`; the root's `.bumpversion.cfg` SHALL name its manifest's
+version, its pins and the version of its frontend's `package.json`, and the
+release records SHALL hold that `package.json` and the root lock's entry for
+it to the set's version.
+
+Its frontend, `packages/machinome-studio/machinome/studio/frontend/`, SHALL be
+the third member of the root's npm workspace, after the viewer's widget and
+the movie's directory, under the name `@machinome/studio`, private, with no
+lockfile of its own; the root lock SHALL hold its resolutions, installed in
+its own `node_modules`. Its built browser surface,
+`packages/machinome-studio/machinome/studio/static/`, SHALL NOT be tracked.
+
+`scripts/check-dist` SHALL install the studio's wheel by its path, find its
+modules, its built surface and its skills owned by its distribution inside the
+throwaway environment and no frontend source, its version, its pins, the
+extra's requirement in the framework's metadata and its entry point in
+`machinome.commands`, load both of its profiles from the installed package,
+start `machinome studio` on a scratch catalogue and read its hub's page, and
+stop it; it SHALL refuse before building when the studio is a member and npm
+is not on the PATH.
+
+#### Scenario: The studio's directory holds its package and its record
+
+- **WHEN** the entries of `packages/machinome-studio/` are listed, ignored
+  leavings excepted
+- **THEN** they are those named above, `LICENSE` and `LICENSES` link the
+  root's, `machinome/studio/__init__.py` is a file and `machinome/__init__.py`
+  is absent, its manifest states `GPL-2.0-or-later OR CERN-OHL-S-2.0+`, and
+  the layout test fails naming any other entry
+
+#### Scenario: The workspace installs the studio's frontend beside it
+
+- **WHEN** `npm ci` runs at the repository root
+- **THEN** the studio's frontend is installed with its direct dependencies in
+  its own `node_modules`, the widget's and the movie's resolutions are those
+  their joins locked, and the frontend builds its surface from the root
+
+#### Scenario: The frontend keeps no lock of its own
+
+- **WHEN** the tracked files are listed
+- **THEN** no `package-lock.json` is under the studio's directory, and the
+  layout test fails naming one that is
+
+#### Scenario: The studio's wheel is smoked as a maker installs it
+
+- **WHEN** `scripts/check-dist` installs the studio's wheel beside the
+  framework's and the viewer's
+- **THEN** both profiles load from the installed package, the builder's
+  skills including `machinome-simulate`, `machinome studio` prints its
+  address, its hub answers with the studio's page, and the process is stopped
 

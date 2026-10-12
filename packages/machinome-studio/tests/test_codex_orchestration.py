@@ -1,11 +1,11 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock
 
-from floor.backends.base import BackendEvent, ContextUnrecoverable, RoleHandle
-from floor.orchestrator import ShopOrchestrator
+from machinome.studio.backends.base import BackendEvent, ContextUnrecoverable, RoleHandle
+from machinome.studio.orchestrator import ShopOrchestrator
 from tests.test_orchestrator import FakeMultiplexBackend, FakeBroker, FORDESMAC, ROOT
 
 
@@ -14,7 +14,7 @@ class CodexOrchestrationTests(unittest.IsolatedAsyncioTestCase):
         self.backend = FakeMultiplexBackend()
         self.broker = FakeBroker()
         self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC,
-            shop_root=ROOT, active_project=Path("/tmp/synthetic-project"))
+            shop_root=ROOT / "machinome" / "studio", active_project=Path("/tmp/synthetic-project"))
         await self.orchestrator.open()
 
     async def asyncTearDown(self):

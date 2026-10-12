@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Build the studio's favicon pack from the intact Machinome symbol.
 
 The studio's favicon is the identity's white symbol on a black rounded plate:
@@ -10,9 +10,10 @@ distinct from machinome.org's orange favicon. The symbol's path is taken
 verbatim from ``brand/v1/mark-white.svg``; only the plate and the placement
 are the studio's.
 
-Writes ``floor/frontend/public/assets/favicon/``: the SVG, the 16/32/48 ICO
+Writes ``machinome/studio/frontend/public/assets/favicon/``: the SVG, the 16/32/48 ICO
 and PNGs at 16, 32, 48, 64, 180, 192 and 512 px. Needs Playwright with its
-Chromium (the ``e2e`` extra) and Pillow.
+Chromium (the viewer's ``snapshot`` extra and ``playwright install
+chromium``) and Pillow.
 """
 
 from __future__ import annotations
@@ -21,8 +22,9 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BRAND = ROOT / "floor" / "frontend" / "public" / "assets" / "brand" / "v1"
-OUT = ROOT / "floor" / "frontend" / "public" / "assets" / "favicon"
+ASSETS = ROOT / "machinome" / "studio" / "frontend" / "public" / "assets"
+BRAND = ASSETS / "brand" / "v1"
+OUT = ASSETS / "favicon"
 PLATE_RADIUS = 24
 SYMBOL_SCALE = 0.78
 SIZES = (16, 32, 48, 64, 180, 192, 512)

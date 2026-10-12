@@ -80,6 +80,9 @@ its source; the :doc:`examples` page says what to look for there.
    howto/film-a-movie
    howto/declare-a-movie
    howto/draw-a-movie-stage
+   howto/open-a-studio-project
+   howto/studio-workspace
+   howto/studio-agents
    howto/assistant-skills
 
 .. toctree::
@@ -113,6 +116,7 @@ its source; the :doc:`examples` page says what to look for there.
    reference/mechanics/index
    reference/viewer/index
    reference/movie/index
+   reference/studio/index
    reference/manuals
 
 .. toctree::

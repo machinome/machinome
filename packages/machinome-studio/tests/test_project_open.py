@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """What opening a project is allowed to cost, and what it may present early."""
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.preparation import PreparationError
-from floor.sessions import Session, SessionRegistry
+from machinome.studio.preparation import PreparationError
+from machinome.studio.sessions import Session, SessionRegistry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +52,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
 
         self.registry = SessionRegistry(
             self.home,
-            shop_root=ROOT,
+            shop_root=ROOT / "machinome" / "studio",
             machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             backend_factory=factory,
         )

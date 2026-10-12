@@ -29,14 +29,20 @@ the published 0.6.0 package or what an installed checkout contains.
 Each module answers one question, and an import line says which:
 
 ```python
-from machinome.node import (                  # what the machine is made of
-    AssemblyNode, FusionNode,
-    CadQueryNode, Build123dNode, Solid2Node, OpenScadNode, JScadNode,
-    Build123dSheetNode, StlNode, StepNode, MolejoNode,
-    declared_children, property_as_number,
-    Marking, Wrapped, Flat, Svg,               # what a part CARRIES (also machinome.node.markings)
-    Frame,                                     # where another part ATTACHES (also machinome.node.frames)
-)
+from machinome.node.assembly import AssemblyNode   # what the machine is made of
+from machinome.node.fusion import FusionNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.build123d import Build123dNode, Build123dSheetNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.openscad import OpenScadNode
+from machinome.node.jscad import JScadNode
+from machinome.node.stl import StlNode
+from machinome.node.step import StepNode
+from machinome.node.molejo import MolejoNode
+from machinome.node.declarative import declared_children
+from machinome.node.decorators import property_as_number
+from machinome.node.markings import Marking, Wrapped, Flat, Svg   # what a part CARRIES
+from machinome.node.frames import Frame        # where another part ATTACHES
 from machinome.parameters import (            # what is built
     Length, Angle, Count, Ratio, Scalar, Flag, Quantity,
     declared_parameters, DimensionError, ParameterError)
@@ -179,7 +185,7 @@ The class body declares what a part is; the framework derives identity,
 propagation and the command-line surface. This is the preferred form.
 
 ```python
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.parameters import Length
 
 class Piston(CadQueryNode):
@@ -790,7 +796,8 @@ sentence in the assembly that holds both parts, written from the frame that
 MOVES:
 
 ```python
-from machinome.node import AssemblyNode, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
 from machinome.motion.joints import Revolute
 
 class Forearm(AssemblyNode):
@@ -895,7 +902,8 @@ and by nothing else: built on its own, it is refused by name.
 **Reference an existing child joint** when the child already owns the motion:
 
 ```python
-from machinome.node import AssemblyNode, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
 from machinome.motion.joints import Revolute
 
 class Dial(AssemblyNode):
@@ -1510,7 +1518,7 @@ digits on a number roll, an index mark, a scale, a label — drawn from a
 file, placed in the part's own frame, in a colour of its own:
 
 ```python
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.node.markings import Marking, Svg, Wrapped, Flat
 
 class ResultsDial(CadQueryNode):
@@ -1700,11 +1708,11 @@ rather than a tool.
 A run compares on one **kernel**, a property of the run and never of the
 model: `exact` (the default; two exact nodes are decided on their solids)
 or `faceted` (every question decided on the parts' meshes at tessellation
-precision, about 30x cheaper on flexible parts). `machinome test --faceted`
-or `--exact` selects it; without a flag `SOLID_TEST_KERNEL` in the
+precision, about 30x cheaper on flexible parts). `machinome test --mesh`
+or `--brep` selects it; without a flag `SOLID_TEST_ENGINE` in the
 project's ignored `.env` does; without that the run is exact. A faceted
-run prints `Comparing on the faceted kernel ...` before the first build
-and ends its summary line with `(faceted kernel, volume epsilon E mm³)`;
+run prints `Comparing on the mesh engine ...` before the first build
+and ends its summary line with `(mesh engine, volume epsilon E mm³)`;
 an exact run's output is unchanged. `--volume-epsilon MM3` (else
 `SOLID_TEST_VOLUME_EPSILON`, else 0) makes a faceted run report every
 intersection of at most that volume as empty, before any assertion reads
@@ -1829,7 +1837,7 @@ This minimal travel model shows repeatable commands and a physical stop;
 replace the grouping `Carriage` with the project's actual moving assembly:
 
 ```python
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.motion.ports import Time
 from machinome.motion.joints import Prismatic
 from machinome.simulation import Driver, Instruction, Sim
@@ -2474,7 +2482,7 @@ framework-internal and is not a project surface.
 ```text
 machinome new <name>
 machinome build   [ref] [--set NAME=VALUE ...]
-machinome test    [ref] [--set ...] [--failfast] [--exact | --faceted]
+machinome test    [ref] [--set ...] [--failfast] [--brep | --mesh]
       [--volume-epsilon MM3] [--placement-quantum MM]
       [--verdict-store | --no-verdict-store]
 machinome snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
