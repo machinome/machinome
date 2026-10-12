@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """An extracted nonlinear helper supplies a current machinome motion law."""
 
@@ -10,9 +10,9 @@ pytest.importorskip("machinome.motion")
 from machinome.core.serializer import symbolic_document
 from machinome.expression_graph import symbolic
 from machinome.motion.joints import Prismatic
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
-from machinome_mechanics import piston_height
+from machinome.mechanics import piston_height
 
 
 class Piston(AssemblyNode):

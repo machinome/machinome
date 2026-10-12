@@ -3,10 +3,10 @@
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import harmonic_cam_lift
-from machinome_mechanics.cams import harmonic_cam_lift as family_helper
+from machinome.mechanics import harmonic_cam_lift
+from machinome.mechanics.cams import harmonic_cam_lift as family_helper
 from tests.test_mechanisms import _eval_openscad_expr
 
 

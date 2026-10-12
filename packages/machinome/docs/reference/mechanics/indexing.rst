@@ -1,9 +1,9 @@
 Indexed advance
 ===============
 
-Import from ``machinome_mechanics`` or ``machinome_mechanics.indexing``.
+Import from ``machinome.mechanics`` or ``machinome.mechanics.indexing``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 .. py:function:: indexed_advance(angle, increment, stroke, phase_origin=0)
 
@@ -24,7 +24,7 @@ option. The caller supplies the output reference, direction and mounting sign.
 
 .. doctest::
 
-   >>> from machinome_mechanics import indexed_advance
+   >>> from machinome.mechanics import indexed_advance
    >>> [indexed_advance(a, 7.5, lambda p: 7.5*p/360) for a in (-90, 0, 180, 810)]
    [-1.875, 0.0, 3.75, 16.875]
    >>> from machinome.math import clamp01
@@ -58,7 +58,7 @@ Exceptions propagate; the helper does not test or repair callbacks. With a
 symbolic angle such as ``720 * self.time``, the same call returns a deferred
 expression over the stroke's own arithmetic.
 
-The usual :doc:`../conventions` limitation on dimensional class-body values
+The usual :doc:`conventions` limitation on dimensional class-body values
 applies. Very large floating angles retain ordinary phase-reduction precision
 limits. This law models displacement, not forces, collision-free engagement,
 or a guarantee that a real ratchet advances without slipping.

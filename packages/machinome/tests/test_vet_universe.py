@@ -15,6 +15,8 @@ every verdict.
 
 import configparser
 import os
+import shutil
+import tempfile
 import tomllib
 from unittest import TestCase
 
@@ -39,8 +41,7 @@ class TheDeclarationTest(TestCase):
         self.assertEqual(self.universe.version, machinome.__version__)
 
     def test_the_contract(self):
-        self.assertEqual(self.universe.contract,
-                         ('machinome', 'machinome_mechanics', 'molejo'))
+        self.assertEqual(self.universe.contract, ('machinome', 'molejo'))
         self.assertEqual(self.universe.contract_deny, (
             'machinome.cli', 'machinome.manager',
             'machinome.core.builder', 'machinome.core.processes',
@@ -54,6 +55,41 @@ class TheDeclarationTest(TestCase):
             'machinome.engine.brep.write_brep',
             'machinome.engine.brep.write_stl',
         ))
+
+    def test_the_mechanics_helpers_are_inside_and_their_former_name_outside(
+            self):
+        """(OpenSpec change `join-mechanics`) The helpers are
+        `machinome.mechanics`, beneath the contract's `machinome`; the
+        former module name is installed by no package of the set."""
+        from machinome.vet import vet
+
+        def project(statement):
+            scratch = os.path.realpath(
+                tempfile.mkdtemp(prefix='machinome-vet-'))
+            self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
+            os.makedirs(os.path.join(scratch, 'sim'))
+            files = {
+                'pyproject.toml':
+                    '[tool.machinome]\nmodel = "sim.model:Machine"\n',
+                'sim/__init__.py': '',
+                'sim/model.py': (
+                    'from machinome.node.assembly import AssemblyNode\n'
+                    f'{statement}\n\n\n'
+                    'class Machine(AssemblyNode):\n'
+                    '    angle = meshed_angle(0, 12, 24)\n'),
+            }
+            for relative, text in files.items():
+                with open(os.path.join(scratch, relative), 'w') as stream:
+                    stream.write(text)
+            (model,) = vet(origin=scratch).models
+            return {(finding.path, finding.kind, finding.name)
+                    for finding in model.findings}
+
+        self.assertEqual(
+            project('from machinome.mechanics import meshed_angle'), set())
+        self.assertEqual(
+            project('from machinome_mechanics import meshed_angle'),
+            {('sim/model.py', 'outside-universe', 'machinome_mechanics')})
 
     def test_the_engine_package_is_judged_by_its_new_addresses(self):
         """(OpenSpec change `brep-mesh`) The seams and the B-rep engine's

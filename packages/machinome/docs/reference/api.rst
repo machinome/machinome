@@ -978,25 +978,16 @@ Mechanics helpers
 ==================
 
 The gear, screw, crank, cam, indexing, delta, linkage, rolling and belt
-formulas, twenty-four in all, belong to the independent `Machinome
-Mechanics package <https://machinome-mechanics.readthedocs.io/en/latest/>`_,
-the mechanics helpers for this framework, released with it as
-|mechanics_version|. Select it with ``machinome[mechanics]`` and import
-from ``machinome_mechanics``; its `getting started page
-<https://machinome-mechanics.readthedocs.io/en/latest/getting-started.html>`_
-covers installation and migration. ``machinome.mechanisms`` is no longer
-a framework API.
-
-The `complete helper reference
-<https://machinome-mechanics.readthedocs.io/en/latest/reference/index.html>`_
-documents every signature, parameter, return value, coordinate convention
-and domain limit, with examples. The functions compose over
-``machinome.math`` and accept numeric or symbolic inputs. Use resolved
-parameters in relation law factories; the mechanics manual includes a
-`worked piston law
-<https://machinome-mechanics.readthedocs.io/en/latest/using-with-machinome.html>`_
-and explains the limit on dimensional class-body formulas. See
-:doc:`/concepts/relations` for the framework's relation semantics.
+formulas are the package ``machinome-mechanics`` |mechanics_version|,
+installed by ``machinome[mechanics]`` and imported from
+``machinome.mechanics``. :doc:`/reference/mechanics/index` documents every
+signature, parameter, return value, coordinate convention and domain limit,
+with examples, and :doc:`/howto/mechanism-formulas` a worked piston law with
+the limit on dimensional class-body formulas. The functions compose over
+``machinome.math`` and accept numeric or symbolic inputs; use resolved
+parameters in relation law factories. ``machinome.mechanisms`` is no longer
+a framework API. See :doc:`/concepts/relations` for the framework's relation
+semantics.
 
 Testing
 ===========

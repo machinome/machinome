@@ -115,9 +115,8 @@ about=...)`` and ``rotate_x``, ``rotate_y``, ``rotate_z`` turn points with
 the same three faces, so a point turned by a driver-derived angle
 survives the viewer. A rotation's *axis* is a constant and cannot carry a
 symbol; a rod leaning about a direction the effector's position decides
-is two rotations about constant axes, which is what the delta helper in
-`Machinome Mechanics <https://machinome-mechanics.readthedocs.io/en/latest/>`_
-returns.
+is two rotations about constant axes, which is what the delta helper of
+the :doc:`mechanics helpers </reference/mechanics/index>` returns.
 
 Freezing an instant
 -------------------

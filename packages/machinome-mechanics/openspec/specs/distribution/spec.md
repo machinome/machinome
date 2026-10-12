@@ -2,13 +2,15 @@
 
 ## Purpose
 
-Provide an independently installable library of helpers for machinome projects.
+Provide the helpers for machinome projects as a package of the Machinome
+repository, installable on its own.
 ## Requirements
 ### Requirement: Helpers depend on the framework
 
 The distribution SHALL be named `machinome-mechanics` and expose the Python
-package `machinome_mechanics` under Apache-2.0. It SHALL declare
-`machinome>=0.7.0` as its runtime dependency and use `machinome.math` for its
+package `machinome.mechanics`, a portion of the `machinome` package, under the
+repository's licence, `GPL-2.0-or-later OR CERN-OHL-S-2.0+`. It SHALL declare
+`machinome>=0.8.0` as its runtime dependency and use `machinome.math` for its
 nonlinear formulas. It SHALL NOT bundle a copy of the framework or replace its
 expression evaluator. The first release, 0.1.0 with Machinome 0.7.0, SHALL
 NOT expose a `solid_node_mechanics` compatibility package, because no
@@ -16,10 +18,10 @@ earlier mechanics version was ever published.
 
 #### Scenario: Install a built distribution
 
-- **WHEN** a wheel or source distribution is installed with Machinome 0.7 or
+- **WHEN** a wheel or source distribution is installed with Machinome 0.8 or
   newer available
 - **THEN** every declared public helper is importable from
-  `machinome_mechanics`
+  `machinome.mechanics`
 - **AND** they preserve numeric and symbolic computation
 
 #### Scenario: Use a helper inside a motion law

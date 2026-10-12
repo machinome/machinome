@@ -1,10 +1,10 @@
 """Internal relative mesh identities with fixed and orbiting pinion centers."""
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import internal_mesh_angle
-from machinome_mechanics.gears import internal_mesh_angle as family_helper
+from machinome.mechanics import internal_mesh_angle
+from machinome.mechanics.gears import internal_mesh_angle as family_helper
 from tests.test_mechanisms import _eval_openscad_expr
 
 

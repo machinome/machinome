@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Additional coverage for machinome's unreleased declarative API."""
 
@@ -7,9 +7,9 @@ from unittest import TestCase
 import pytest
 
 pytest.importorskip('machinome.parameters')
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Angle, DimensionError
-from machinome_mechanics import meshed_angle
+from machinome.mechanics import meshed_angle
 
 
 class DeclaredFaceTest(TestCase):

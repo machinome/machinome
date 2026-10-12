@@ -2,10 +2,10 @@ Rolling motion
 ==============
 
 Convert a wheel's rotation to tangent travel for a rack, belt, roller or
-constant-radius drum, or recover rotation from that travel. Import from ``machinome_mechanics`` or
-``machinome_mechanics.rolling``.
+constant-radius drum, or recover rotation from that travel. Import from ``machinome.mechanics`` or
+``machinome.mechanics.rolling``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 .. py:function:: rolling_travel(angle, radius)
 
@@ -25,7 +25,7 @@ pitch radius.
 .. doctest::
 
    >>> from math import pi
-   >>> from machinome_mechanics import rolling_travel
+   >>> from machinome.mechanics import rolling_travel
    >>> round(rolling_travel(360, 9), 6)
    56.548668
    >>> rolling_travel(90, 20 / pi)
@@ -54,7 +54,7 @@ idler's contact radius need not be a toothed pulley's pitch radius.
 
 .. doctest::
 
-   >>> from machinome_mechanics import rolling_angle
+   >>> from machinome.mechanics import rolling_angle
    >>> round(rolling_angle(18 * pi, 9), 6)
    360.0
    >>> round(rolling_angle(-36 * pi, 9), 6)

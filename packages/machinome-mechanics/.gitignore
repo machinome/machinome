@@ -1,9 +1,4 @@
-__pycache__/
-*.py[cod]
+# This package's leavings the root's .gitignore does not name: its own
+# test runs and a local build.
 .pytest_cache/
-.venv/
-build/
 dist/
-*.egg-info/
-_build/
-WTs/

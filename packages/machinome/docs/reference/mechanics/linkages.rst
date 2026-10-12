@@ -3,9 +3,9 @@ Planar linkages
 
 Find a point where two fixed-length links meet, calculate an angle from
 three side lengths, or find a link's vertical rise. Import from
-``machinome_mechanics`` or ``machinome_mechanics.linkages``.
+``machinome.mechanics`` or ``machinome.mechanics.linkages``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 Coordinates are ``(x, y)`` in your chosen plane, with consistent length
 units. Angles are degrees. Map the resulting point into your machine's
@@ -31,7 +31,7 @@ The two intersections are two possible assembly branches. Select the
 one your machine uses, keeping the order of the centres consistent.
 In standard XY coordinates, left of an A-to-B direction along +X is +Y:
 
-.. figure:: ../_static/circle-intersection.svg
+.. figure:: /_static/circle-intersection.svg
    :alt: Two radius-five circles centred at A (0,0) and B (8,0), with their left-side intersection at (4,3) above A-to-B and right-side intersection at (4,-3) below.
    :width: 480px
    :class: mechanism-diagram
@@ -40,7 +40,7 @@ In standard XY coordinates, left of an A-to-B direction along +X is +Y:
 
 .. doctest::
 
-   >>> from machinome_mechanics import circle_intersection
+   >>> from machinome.mechanics import circle_intersection
    >>> circle_intersection((0, 0), 5, (8, 0), 5)
    (4.0, 3.0)
    >>> circle_intersection((0, 0), 5, (8, 0), 5, side=-1)
@@ -84,7 +84,7 @@ valid input; your project chooses the sign when using it as a rotation.
 
 .. doctest::
 
-   >>> from machinome_mechanics import triangle_angle
+   >>> from machinome.mechanics import triangle_angle
    >>> triangle_angle(5, 3, 4)
    90.0
    >>> round(triangle_angle(3, 4, 5), 4)
@@ -113,7 +113,7 @@ not affect the rise.
 
 .. doctest::
 
-   >>> from machinome_mechanics import link_rise
+   >>> from machinome.mechanics import link_rise
    >>> link_rise(5, 3)
    4.0
    >>> link_rise(5, -3)
@@ -150,7 +150,7 @@ validated or normalized: supply exactly +1 or -1.
 
 .. doctest::
 
-   >>> from machinome_mechanics import two_link_angles
+   >>> from machinome.mechanics import two_link_angles
    >>> tuple(round(a, 4) for a in two_link_angles(3, 4, 5, 5))
    (113.1301, -120.0)
    >>> tuple(round(a, 4) for a in two_link_angles(3, 4, 5, 5, side=-1))
@@ -219,7 +219,7 @@ Neither output promises continuous unwrapping across an atan2 branch cut.
 
 .. doctest::
 
-   >>> from machinome_mechanics import four_bar_pose
+   >>> from machinome.mechanics import four_bar_pose
    >>> pose = four_bar_pose(90, (0, 0), (4, 0), 3, 4, 3, side=-1)
    >>> tuple(round(v, 6) for v in pose['crank_end'])
    (0.0, 3.0)

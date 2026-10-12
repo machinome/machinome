@@ -1,10 +1,10 @@
 """Fixed-ring relative motion, not a positive reduction magnitude."""
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import cycloidal_ratio
-from machinome_mechanics.gears import cycloidal_ratio as family_helper
+from machinome.mechanics import cycloidal_ratio
+from machinome.mechanics.gears import cycloidal_ratio as family_helper
 from tests.test_mechanisms import _eval_openscad_expr
 
 

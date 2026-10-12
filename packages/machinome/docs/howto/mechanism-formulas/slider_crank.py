@@ -1,8 +1,8 @@
 from machinome.motion.joints import Prismatic
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Length
 from machinome.simulation import Driver
-from machinome_mechanics import piston_height
+from machinome.mechanics import piston_height
 
 
 class Piston(AssemblyNode):

@@ -1,13 +1,13 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Reference phase, no-slip arc identities and deferred pulley motion."""
 
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import belt_pulley_angle
+from machinome.mechanics import belt_pulley_angle
 from tests.test_mechanisms import _eval_openscad_expr
 
 

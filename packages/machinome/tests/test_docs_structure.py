@@ -108,6 +108,27 @@ class NavigationTest(unittest.TestCase):
             with self.subTest(spelled=spelled):
                 self.assertIn(spelled, page)
 
+    def test_the_mechanics_helpers_are_a_reference_section_and_a_how_to(self):
+        # `join-mechanics`: the mechanics helpers' manual folds in by reader
+        # intent, a reference section of a conventions page and the nine
+        # formula families, and a how-to.
+        index = (DOCS / 'index.rst').read_text()
+        for caption, entry in (('How-to guides', 'howto/mechanism-formulas'),
+                               ('Reference', 'reference/mechanics/index')):
+            with self.subTest(caption=caption):
+                toctree = re.search(
+                    rf':caption:\s*{caption}\n\n((?:   \S+\n)+)', index)
+                self.assertIsNotNone(toctree,
+                                     f'index.rst has no {caption} toctree')
+                self.assertIn(entry, toctree.group(1).split())
+        section = (DOCS / 'reference' / 'mechanics' / 'index.rst').read_text()
+        toctree = re.search(r'\.\. toctree::\n(?:   :\S+:.*\n)*\n((?:   \S+\n)+)',
+                            section)
+        self.assertIsNotNone(toctree, 'the mechanics section has no toctree')
+        self.assertEqual(toctree.group(1).split(), [
+            'conventions', 'gears', 'screws', 'cranks', 'cams', 'indexing',
+            'deltas', 'linkages', 'rolling', 'belts'])
+
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',
                         'releases/development-0.7.rst'):
@@ -143,15 +164,21 @@ class KernelExtrasTest(unittest.TestCase):
               'machinome[' 'manifold]', 'SOLID_TEST_' 'KERNEL')
 
     #: The FreeCAD node package's module before it joined the repository
-    #: (`join-freecad`).
+    #: (`join-freecad`), and the mechanics helpers' module and separate
+    #: manual before they joined it (`join-mechanics`).
     STALE = ('Everything else comes with the package',
-             'machinome.node.adapters', 'machinome' '_freecad') + FORMER
+             'machinome.node.adapters', 'machinome' '_freecad',
+             'machinome' '_mechanics',
+             'machinome-mechanics.readthedocs') + FORMER
 
     #: The changelog records the dissolution and the released names, and
     #: the upgrading page maps every former name to its new one, the
-    #: dissolved adapters' addresses included (change `release-0-8-0`).
-    RECORDS = {'project/changelog.rst': ('machinome.node.adapters',) + FORMER,
-               'project/upgrading.rst': ('machinome.node.adapters',) + FORMER}
+    #: dissolved adapters' addresses included (change `release-0-8-0`); both
+    #: record the mechanics helpers' former module (`join-mechanics`).
+    RECORDS = {'project/changelog.rst': ('machinome.node.adapters',
+                                         'machinome' '_mechanics') + FORMER,
+               'project/upgrading.rst': ('machinome.node.adapters',
+                                         'machinome' '_mechanics') + FORMER}
 
     def test_the_installation_page_names_every_kernel_extra(self):
         page = (DOCS / 'start' / 'install.rst').read_text()
@@ -165,7 +192,8 @@ class KernelExtrasTest(unittest.TestCase):
         # `build123d`, `step` and `molejo` extras the node packages';
         # `cut-the-mesh-nodes`: the `openscad`, `solid2`, `jscad` and `stl`
         # extras theirs; `join-freecad`: the `freecad` extra the FreeCAD node
-        # package.
+        # package; `join-mechanics`: the `mechanics` extra the mechanics
+        # helpers.
         page = (DOCS / 'start' / 'install.rst').read_text()
         for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
                              'machinome-node-cadquery',
@@ -174,7 +202,7 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-openscad',
                              'machinome-node-solid2',
                              'machinome-node-jscad', 'machinome-node-stl',
-                             'machinome-node-freecad'):
+                             'machinome-node-freecad', 'machinome-mechanics'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
 
@@ -203,6 +231,14 @@ class ReleaseFactsTest(unittest.TestCase):
                      'framework_licence'):
             with self.subTest(name=name):
                 self.assertIn(f'|{name}|', conf)
+
+    def test_the_mechanics_version_is_the_package_s(self):
+        # `join-mechanics`: the mechanics helpers carry their own version,
+        # which the manual states once.
+        manifest = (REPOSITORY / 'packages' / 'machinome-mechanics'
+                    / 'pyproject.toml').read_text()
+        version = re.search(r'^version = "([^"]*)"', manifest, flags=re.M)[1]
+        self.assertEqual(conf_value('mechanics_version'), version)
 
     def test_no_caveat_outside_the_status_page(self):
         for relative, text in documents():

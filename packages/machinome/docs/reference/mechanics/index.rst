@@ -1,12 +1,69 @@
-Helper reference
-================
+Mechanics helpers
+=================
 
-Every helper is exported from ``machinome_mechanics``. You can also import
-it from the family module listed on its page. All angles are degrees;
-lengths use one consistent unit per calculation. See :doc:`../conventions`
-for numeric, symbolic and invalid-input behaviour.
+The package provides small Python functions for gears, screws, rolling travel,
+slider-cranks, linear deltas and planar linkages. Use them to calculate a
+single pose, or put them inside a :doc:`relation law </concepts/relations>` so
+the same formula follows a driver through an animation. Numeric and symbolic
+inputs share one definition through ``machinome.math``.
 
-.. py:module:: machinome_mechanics
+Your project supplies dimensions, coordinate frames and assembly geometry.
+Machinome supplies the machine model and motion evaluation. The helpers supply
+reusable kinematic relationships between them.
+
+The helpers are the package ``machinome-mechanics`` |mechanics_version|,
+installed by ``machinome[mechanics]`` and imported from
+``machinome.mechanics`` or its family modules; the framework never imports
+them. All angles are degrees; lengths use one consistent unit per calculation.
+Read :doc:`conventions` before adapting a law to another machine.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   conventions
+   gears
+   screws
+   cranks
+   cams
+   indexing
+   deltas
+   linkages
+   rolling
+   belts
+
+Find the formula you need
+-------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Mechanism
+     - What you can calculate
+   * - :doc:`Gears <gears>`
+     - External registration, internal mesh increments and cycloidal ratios.
+   * - :doc:`Lead screws <screws>`
+     - Linear travel from rotation, or the rotation needed for a travel.
+   * - :doc:`Slider-cranks <cranks>`
+     - Crank-pin position, connecting-rod angle and piston height.
+   * - :doc:`Cam followers <cams>`
+     - Periodic half-cosine lift, return and base dwell.
+   * - :doc:`Indexed advance <indexing>`
+     - Signed completed-turn accumulation around a mechanical stroke.
+   * - :doc:`Linear deltas <deltas>`
+     - Carriage heights and rod orientations for an effector position.
+   * - :doc:`Linkages <linkages>`
+     - Circle/triangle geometry, link rise, two-link angles and four-bar poses.
+   * - :doc:`Rolling motion <rolling>`
+     - Rack, belt or drum travel from rotation, and its inverse.
+   * - :doc:`Belt geometry <belts>`
+     - Pulley pitch radius, tangent contacts, closed path metrics and contact-referenced angle.
+
+Every helper
+------------
+
+.. py:module:: machinome.mechanics
    :synopsis: Mechanics helpers for Machinome models.
 
 .. list-table::
@@ -63,16 +120,3 @@ for numeric, symbolic and invalid-input behaviour.
      - Closed pitch path spans, wraps, arc lengths and stations.
    * - :py:func:`belt_pulley_angle`
      - Pulley orientation from belt position and a contact reference.
-
-.. toctree::
-   :maxdepth: 1
-
-   gears
-   screws
-   cranks
-   cams
-   indexing
-   deltas
-   linkages
-   rolling
-   belts

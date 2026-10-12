@@ -1,6 +1,6 @@
 # ADR-182: The Repository Is a Monorepo of Distributions, Each Named by Its Directory
 
-**Status:** Accepted
+**Status:** Accepted; a product of a repository of its own keeping its record in its directory, amended 2026-10-12 by [ADR-187](ADR-187-the-mechanics-helpers-are-a-portion-of-the-repository-at-their-own-version.md)
 **Date:** 2026-10-10
 **Change:** [`monorepo-layout`](../../../openspec/changes/archive/2026-10-10-monorepo-layout/)
 **Related to:**
@@ -87,6 +87,9 @@ and uploads nothing; the CI's `dist` job runs it after `test` and `docs`.
 - Neutral: Read the Docs reads a configuration path per project; the
   framework's sits beside its manual and names the manual's paths from the
   repository root. The project setting is the pilot's, at release.
+- Neutral (2026-10-12, `join-mechanics`): a product of a repository of its
+  own may join with its record in its directory and its own version
+  (ADR-187).
 - Bad: a clone without symbolic-link support checks the five links out as
   text files; the framework's development is on Linux.
 - Bad: the editable lenient mode is unfit for namespace portions, so a

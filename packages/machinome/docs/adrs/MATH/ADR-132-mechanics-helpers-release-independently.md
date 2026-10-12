@@ -1,6 +1,6 @@
 # ADR-132: Mechanics helpers release independently
 
-**Status:** Accepted
+**Status:** Accepted; import path and repository superseded 2026-10-12 by [ADR-187](../BUILD/ADR-187-the-mechanics-helpers-are-a-portion-of-the-repository-at-their-own-version.md)
 **Date:** 2026-09-20
 **Supersedes:** ADR-076's framework ownership and import path
 **Preserves:** ADR-022 expression semantics and ADR-089 project-supplied laws

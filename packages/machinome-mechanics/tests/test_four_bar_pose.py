@@ -3,10 +3,10 @@
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import four_bar_pose
-from machinome_mechanics.linkages import four_bar_pose as family_helper
+from machinome.mechanics import four_bar_pose
+from machinome.mechanics.linkages import four_bar_pose as family_helper
 from tests.test_mechanisms import _eval_openscad_expr
 
 

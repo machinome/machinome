@@ -1,11 +1,11 @@
 Belt geometry
 =============
 
-Import from ``machinome_mechanics`` or ``machinome_mechanics.belts``.
+Import from ``machinome.mechanics`` or ``machinome.mechanics.belts``.
 Pitch geometry describes the belt's pitch line, not the tooth tips or the
 surface of a plain idler. Use one length unit consistently.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 .. py:function:: pulley_pitch_radius(teeth, pitch)
 
@@ -28,7 +28,7 @@ surface of a plain idler. Use one length unit consistently.
 .. doctest::
 
    >>> from math import isclose, tau
-   >>> from machinome_mechanics import pulley_pitch_radius, rolling_travel
+   >>> from machinome.mechanics import pulley_pitch_radius, rolling_travel
    >>> radius = pulley_pitch_radius(117, 2)
    >>> isclose(tau * radius, 234)
    True
@@ -74,7 +74,7 @@ surface of a plain idler. Use one length unit consistently.
 
 .. doctest::
 
-   >>> from machinome_mechanics import belt_tangent_points
+   >>> from machinome.mechanics import belt_tangent_points
    >>> belt_tangent_points((0, 0), 2, (10, 0), 2)
    ((0.0, 2.0), (10.0, 2.0))
    >>> a, b = belt_tangent_points((0, 0), 2, (10, 0), 3, 1, -1)
@@ -123,7 +123,7 @@ surface of a plain idler. Use one length unit consistently.
 
 .. doctest::
 
-   >>> from machinome_mechanics import belt_path_metrics
+   >>> from machinome.mechanics import belt_path_metrics
    >>> path = belt_path_metrics(((0, 0), (10, 0)), (2, 2))
    >>> path['wrap_angles']
    (180.0, 180.0)
@@ -168,7 +168,7 @@ surface of a plain idler. Use one length unit consistently.
 .. doctest::
 
    >>> from math import pi
-   >>> from machinome_mechanics import belt_pulley_angle
+   >>> from machinome.mechanics import belt_pulley_angle
    >>> belt_pulley_angle(10, 2, 90, contact_station=10)
    90.0
    >>> round(belt_pulley_angle(10 + pi, 2, 90, 10), 6)

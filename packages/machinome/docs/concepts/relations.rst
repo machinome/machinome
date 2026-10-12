@@ -85,9 +85,9 @@ function is forward-only. ``ratio=`` or ``offset=`` together with
 A law's arithmetic is ``machinome.math``'s: it must apply to a symbolic
 value, because the same law is published to the browser, and it may not
 branch on its arguments in Python. For gear, screw, slider-crank, delta
-and linkage formulas, reuse `Machinome Mechanics
-<https://machinome-mechanics.readthedocs.io/en/latest/reference/index.html>`_
-inside your law; its manual owns the helpers' frames, signs and domains.
+and linkage formulas, reuse the :doc:`mechanics helpers
+</reference/mechanics/index>` inside your law; their pages own the helpers'
+frames, signs and domains.
 
 Several coordinates at an end
 -----------------------------

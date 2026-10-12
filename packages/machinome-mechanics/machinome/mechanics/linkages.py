@@ -1,6 +1,6 @@
 # Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Circle geometry and planar joint angles a linkage keeps asking for.
 
@@ -23,7 +23,8 @@ No guards. An unreachable configuration -- circles too far apart or one
 inside the other, a triangle whose sides do not close, a link shorter
 than its offset -- reaches ``sqrt`` or ``acos`` of an out-of-range value
 and raises numerically, exactly as ``machinome.math`` raises, and
-evaluates to NaN symbolically, exactly as OpenSCAD and the viewer do.
+evaluates to NaN symbolically, as every runtime that evaluates the
+expression does.
 That is the honest answer: a guard would have to invent a pose that
 does not exist.
 """

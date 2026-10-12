@@ -1,9 +1,9 @@
 Cam follower envelopes
 ======================
 
-Import from ``machinome_mechanics`` or ``machinome_mechanics.cams``.
+Import from ``machinome.mechanics`` or ``machinome.mechanics.cams``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 .. py:function:: harmonic_cam_lift(angle, lift, rise_span=180, return_span=180)
 
@@ -26,7 +26,7 @@ or a follower rotation; the helper does not infer a mechanism from its units.
 
 .. doctest::
 
-   >>> from machinome_mechanics import harmonic_cam_lift
+   >>> from machinome.mechanics import harmonic_cam_lift
    >>> [round(harmonic_cam_lift(a, 10), 6) for a in (0, 90, 180, 270, 360)]
    [0.0, 5.0, 10.0, 5.0, 0.0]
    >>> round(harmonic_cam_lift(-90, -10), 6)
@@ -52,7 +52,7 @@ out-of-domain spans retain arithmetic without a physical-envelope guarantee.
 The interval clamps implement the rise/return/dwell law, not tolerance repair.
 Zero and negative lift retain linear scaling. Supported deferred angle, lift
 and span operands use the same expression; class-body declarations retain the
-usual :doc:`../conventions` limitation.
+usual :doc:`conventions` limitation.
 
 This is a displacement law, not a cam profile, dynamic model or certification
 that a follower stays in contact. No top dwell, arbitrary period or automatic

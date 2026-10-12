@@ -20,6 +20,7 @@ it builds.
 | [`machinome-node-jscad`](packages/machinome-node-jscad/) | The JSCAD node type, `machinome.node.jscad`; installed by `machinome[jscad]`. |
 | [`machinome-node-stl`](packages/machinome-node-stl/) | The STL node type, `machinome.node.stl`; installed by `machinome[stl]`. |
 | [`machinome-node-freecad`](packages/machinome-node-freecad/) | The FreeCAD node type, `machinome.node.freecad`, a native FreeCAD assembly read by FreeCAD; installed by `machinome[freecad]`. |
+| [`machinome-mechanics`](packages/machinome-mechanics/) | The mechanics helpers, `machinome.mechanics`: gear, screw, crank, cam, delta, linkage, rolling and belt formulas for numeric poses and symbolic motion; installed by `machinome[mechanics]`. |
 
 ## Licence
 

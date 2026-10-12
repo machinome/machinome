@@ -36,7 +36,9 @@ release_date = '10 October 2026'
 viewer_version = '0.8.1'        # the matching machinome-viewer package
 viewer_api = '29'               # a clocked machine captured on demand
 document_versions = '1 to 13'    # supported by the paired viewer
-mechanics_version = '0.1.0'     # the matching machinome-mechanics package
+# The mechanics helpers' own version, packages/machinome-mechanics/pyproject.toml,
+# which tests/test_release_records.py holds to it.
+mechanics_version = '0.1.0'
 framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'
 
 rst_prolog = f'''
@@ -52,7 +54,7 @@ rst_prolog = f'''
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',
-              'machinome.sphinx']
+              'sphinx.ext.doctest', 'machinome.sphinx']
 
 # Every cross-reference must resolve, so a warnings-as-errors build (CI,
 # Read the Docs) refuses a link to nothing.

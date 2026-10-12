@@ -1,12 +1,12 @@
 # Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""Mechanical formula helpers for machinome projects.
+"""The mechanics helpers: kinematic formulas for machinome projects.
 
-This independent Apache-2.0 package depends on machinome. Its optional
-mechanics extra installs these helpers, but framework code never imports
-them. Import helpers from `machinome_mechanics`.
+Import them from `machinome.mechanics`, or from its family modules
+(`machinome.mechanics.gears` and the others). The framework's `mechanics`
+extra installs them; the framework itself never imports them.
 
 A *mechanism law* here is textbook geometry, not a design decision: how
 far a meshed gear has turned, how far a lead screw has advanced, where a
@@ -19,11 +19,11 @@ driver reached it.
 **Two faces, from `machinome.math`.** Every function here is a
 composition of `machinome.math` functions and ordinary arithmetic, and
 has exactly one definition. So it computes a number when the node is
-posed at a keyframe, and builds the equivalent deferred OpenSCAD
-expression when its driving argument is animation time or a driver
-symbol -- the same function either way, just deferred. Nothing here
-emits an OpenSCAD builtin `machinome.math` does not already emit, so
-the cross-runtime parity corpus covers this package without extension.
+posed at a keyframe, and builds the equivalent deferred expression when
+its driving argument is animation time or a driver symbol -- the same
+function either way, just deferred. Nothing here emits a function
+`machinome.math` does not already emit, so the cross-runtime parity
+corpus covers this package without extension.
 
 **No third, declared face.** The laws carry degree literals: the mesh
 adds `180`, the screw divides by `360`. In the dimension algebra a plain
@@ -53,19 +53,19 @@ The re-exports are eager: the formulas use `machinome.math` and lightweight
 standard-library constants, so there is nothing heavy to defer.
 """
 
-from machinome_mechanics.belts import (belt_path_metrics, belt_pulley_angle,
+from machinome.mechanics.belts import (belt_path_metrics, belt_pulley_angle,
                                        belt_tangent_points, pulley_pitch_radius)
-from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
+from machinome.mechanics.cranks import (crank_pin, crank_rod_angle,
                                          piston_height)
-from machinome_mechanics.cams import harmonic_cam_lift
-from machinome_mechanics.indexing import indexed_advance
-from machinome_mechanics.deltas import delta_carriage, delta_rod
-from machinome_mechanics.gears import (cycloidal_ratio, driving_angle,
+from machinome.mechanics.cams import harmonic_cam_lift
+from machinome.mechanics.indexing import indexed_advance
+from machinome.mechanics.deltas import delta_carriage, delta_rod
+from machinome.mechanics.gears import (cycloidal_ratio, driving_angle,
                                       internal_mesh_angle, meshed_angle)
-from machinome_mechanics.linkages import (circle_intersection, four_bar_pose, link_rise,
+from machinome.mechanics.linkages import (circle_intersection, four_bar_pose, link_rise,
                                            triangle_angle, two_link_angles)
-from machinome_mechanics.screws import screw_angle, screw_travel
-from machinome_mechanics.rolling import rolling_angle, rolling_travel
+from machinome.mechanics.screws import screw_angle, screw_travel
+from machinome.mechanics.rolling import rolling_angle, rolling_travel
 
 __all__ = [
     'meshed_angle', 'driving_angle',

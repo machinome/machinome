@@ -1,13 +1,13 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Circumference and degree conventions independently pin rolling travel."""
 
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import rolling_angle, rolling_travel
+from machinome.mechanics import rolling_angle, rolling_travel
 
 
 @pytest.mark.parametrize("angle, turns", [(0, 0), (90, .25), (360, 1), (-720, -2)])

@@ -8,6 +8,21 @@ All notable changes to Machinome Mechanics.
   `machinome.expression_graph.symbolic`, instead of by solid2's
   `OpenSCADConstant` class, which Machinome's symbolic values no longer
   derive from on its 0.8 line. No helper changes.
+- Machinome Mechanics is part of the Machinome repository,
+  <https://github.com/machinome/machinome>, at
+  `packages/machinome-mechanics/`, with its history. The helpers are
+  imported from `machinome.mechanics` (formerly `machinome_mechanics`), a
+  portion of the `machinome` package; names, signatures and formulas are
+  unchanged, and no module of the former name is provided. The package is
+  licensed as every package of the repository, GPL-2.0-or-later or
+  CERN-OHL-S-2.0-or-later, at the recipient's choice, and requires
+  Machinome 0.8 or newer. Its manual is part of Machinome's,
+  <https://machinome.readthedocs.io>: "Mechanics helpers" under Reference
+  and "Use a mechanism formula in a machine" among the how-to guides.
+- The tests take their symbolic time from
+  `machinome.expression_graph.get_animation_time()` and import
+  `AssemblyNode` from `machinome.node.assembly`. The specifications name the
+  new import and the manual's address, with no change of behaviour.
 
 ## 0.1.0 — 23 September 2026
 
@@ -45,8 +60,8 @@ Read the Docs theme.
 
 ### Identity and provenance
 
-- Package `machinome-mechanics`, import `machinome_mechanics`, Apache-2.0,
-  depending on `machinome>=0.7.0` and using `machinome.math` as its
+- Package `machinome-mechanics`, import `machinome_mechanics`, depending
+  on `machinome>=0.7.0` and using `machinome.math` as its
   expression provider. The framework's optional `mechanics` extra selects
   it; the framework never imports or re-exports the helpers.
 - Twelve of the helpers were extracted from the framework's unreleased

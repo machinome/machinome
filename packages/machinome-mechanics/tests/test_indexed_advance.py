@@ -4,10 +4,10 @@ import math
 
 import pytest
 from machinome.math import clamp01, cos
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import indexed_advance
-from machinome_mechanics.indexing import indexed_advance as family_helper
+from machinome.mechanics import indexed_advance
+from machinome.mechanics.indexing import indexed_advance as family_helper
 from tests.test_mechanisms import _eval_openscad_expr
 
 

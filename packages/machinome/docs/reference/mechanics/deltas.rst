@@ -3,10 +3,10 @@ Linear deltas
 
 For a linear delta printer, find each vertical carriage's height and
 each rod's orientation from the effector position. Call the helpers
-once per tower. Import from ``machinome_mechanics`` or
-``machinome_mechanics.deltas``.
+once per tower. Import from ``machinome.mechanics`` or
+``machinome.mechanics.deltas``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 Frame and effective radius
 --------------------------
@@ -53,7 +53,7 @@ same amount.
 
 .. doctest::
 
-   >>> from machinome_mechanics import delta_carriage
+   >>> from machinome.mechanics import delta_carriage
    >>> round(delta_carriage(0, 0, 215, 100, 0), 4)
    190.3287
    >>> round(delta_carriage(10, 0, 215, 100, 0), 4)
@@ -85,7 +85,7 @@ does not change the rod's lean.
 
 .. doctest::
 
-   >>> from machinome_mechanics import delta_rod
+   >>> from machinome.mechanics import delta_rod
    >>> tuple(round(v, 4) for v in delta_rod(0, 0, 215, 100, 0))
    (27.7177, 180.0)
    >>> tuple(round(v, 4) for v in delta_rod(0, 10, 215, 100, 0))

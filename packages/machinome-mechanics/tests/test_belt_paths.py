@@ -1,13 +1,13 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Closed-route measurements against independent angular constructions."""
 
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import belt_path_metrics
+from machinome.mechanics import belt_path_metrics
 from tests.test_mechanisms import _eval_openscad_expr
 
 

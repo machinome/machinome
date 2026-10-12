@@ -217,3 +217,51 @@ at b980d59 with the bench: a cold build of 54 parts in 55.0 s, a warm
 build with all 54 untouched in 14.4 s, the cord edit at line 144 with
 all 54 restamped and none regenerated in 15.9 s. Not a cycle of this
 plan; recorded so the line's head reads whole.
+
+2. `join-mechanics`. **Done** (12 October 2026): branch
+   `v0.9-joins-join-mechanics`, planning commit db007dd0 on d5d194ad,
+   ratified by the orchestrator's review, with the pilot's decisions of 12
+   October 2026 (the import `machinome.mechanics`, the manual folded into
+   the framework's, mechanics at its own version); the join, the merge
+   commit 076b566d of machinome-mechanics' `v0.8-symbolic-assertions`
+   rewritten by `git filter-repo` to its final paths (157 files, 45
+   commits, the tag `mechanics-v0.1.0`; `git log --follow` on `belts.py`
+   reaches f8c2cefd of 20 September 2026, and `git log` on `gears.py`, without
+   `--follow`, the founding commit b3f5a127 of 11 September 2026). ADR-187,
+   the mechanics helpers are a portion of the repository at their own
+   version, accepted; ADR-132 superseded in its import path and repository,
+   ADR-182 and ADR-183 amended. The package is
+   `packages/machinome-mechanics/` (the package directory
+   `machinome/mechanics/` with its `__init__.py` and nine family modules),
+   numbered 0.1.0 outside `.bumpversion.cfg`, requiring `machinome>=0.8.0`,
+   under the set's licence, keeping its changelog, tests, specs, sixteen
+   archived changes and working record in its directory; no module of the
+   former name `machinome_mechanics` is provided. The core's `mechanics`
+   extra floors at `machinome-mechanics>=0.1.0`; the boundary test's guard
+   refuses the dotted address; the layout gate gains a table of products;
+   the release records hold the package to its changelog and the manual's
+   `mechanics_version`; the vet universe's contract is `machinome` and
+   `molejo`. Its manual folds into the framework's as the reference section
+   `reference/mechanics/` and the how-to `howto/mechanism-formulas`, whose
+   149 examples the package's tests run. The specs modified are
+   `mechanics-distribution`, `framework-identity`, `vet`,
+   `user-documentation` (one requirement renamed) and
+   `framework-contributor-guidance`. `uv lock` resolves 188 packages; the
+   sync installs the package editable and removes the PyPI 0.1.0. The suite
+   green on the bench's uv venv (4838 passed, 24 skipped, the base's, 7505
+   subtests); the package's tests from its directory, 204 passed, run by a
+   step of CI's test job; the manual built with warnings as errors;
+   `scripts/check-dist` green on the tree and on a clean copy: thirteen
+   members built, 26 archives `twine check --strict` passed, the mechanics
+   wheel installed by its path and smoked numeric and symbolic; the clean
+   copy's framework sdist holds 1059 entries (13 more: the how-to and the
+   mechanics section) and its wheel 114, the mechanics package's 213 and 17;
+   nothing uploaded. The projects moved onto `machinome.mechanics` in their
+   own repositories: 47 files in 26 repositories, one commit each, the
+   verification records under `docs/` and science-jubilee's pinned tool left
+   as they were. Thor 29 of 34, dragon-r1 3 of 3 and wall clock 02 14 of 22
+   on the bench, the failures those of before the move. The universe sweep
+   after the move: 63 repositories, 130 rows, 122 ok, 0 expected, 2
+   unexpected, 0 timeout, 6 no-model, identical to `join-freecad`'s row for
+   row; no sweep ran before the move. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-12-join-mechanics/evidence.md`.

@@ -76,6 +76,16 @@ Unreleased
   only the edits after it are spared. Change
   ``digest-only-what-the-node-names`` (ADR-186, ADR-071 amended).
 
+* **The mechanics helpers join the repository.** machinome-mechanics,
+  published as 0.1.0 from a repository of its own, is the package
+  ``machinome-mechanics`` at ``packages/machinome-mechanics/``, its history
+  kept: its helpers are imported from ``machinome.mechanics`` (formerly
+  ``machinome_mechanics``, which nothing provides any more) and installed
+  by ``pip install "machinome[mechanics]"``, with names, signatures and
+  formulas unchanged. It keeps its own version, its changelog, its specs
+  and its tests in its directory, and its manual is part of this one.
+  Change ``join-mechanics`` (ADR-187).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

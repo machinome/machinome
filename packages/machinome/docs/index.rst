@@ -73,6 +73,7 @@ its source; the :doc:`examples` page says what to look for there.
    howto/fast-tests
    howto/simulate-existing
    howto/freecad-assemblies
+   howto/mechanism-formulas
 
 .. toctree::
    :maxdepth: 1
@@ -102,6 +103,7 @@ its source; the :doc:`examples` page says what to look for there.
    reference/api
    reference/assertions
    reference/sphinx
+   reference/mechanics/index
    reference/manuals
 
 .. toctree::

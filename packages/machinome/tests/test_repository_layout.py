@@ -24,7 +24,11 @@ the two engines and the node packages `machinome-node-cadquery`,
 its own `__init__.py`, and `machinome-node-freecad`, a package directory
 too, which joined the repository from a repository of its own (change
 `join-freecad`). The core's `machinome/node/` then holds no node type and its
-`machinome/viewers/` no node type's renderer.
+`machinome/viewers/` no node type's renderer. A product that joined from a
+repository of its own and is not an extension package keeps its record in its
+directory, at its own version: the mechanics helpers `machinome-mechanics`,
+the package `machinome.mechanics`, with their changelog, tests, specs and
+working record (change `join-mechanics`, ADR-187).
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -74,6 +78,18 @@ EXTENSIONS = {
     'machinome-node-jscad': ('machinome.node.jscad', 'jscad'),
     'machinome-node-stl': ('machinome.node.stl', 'stl'),
     'machinome-node-freecad': ('machinome.node.freecad', 'freecad'),
+}
+
+#: The products of the repository that keep their record in their own
+#: directory, by directory: the address of the package directory they
+#: ship, the core's extra that installs it, and the entries the directory
+#: holds beside the package (`join-mechanics`).
+PRODUCTS = {
+    'machinome-mechanics': ('machinome.mechanics', 'mechanics',
+                            ('.gitignore', 'CHANGELOG.md', 'LICENSE',
+                             'LICENSES', 'MANIFEST.in', 'README.md',
+                             'machinome', 'openspec', 'pyproject.toml',
+                             'tests', 'workflow')),
 }
 
 #: The extension packages whose portion is a package directory at its
@@ -230,9 +246,11 @@ class TheIndexTest(unittest.TestCase):
             with self.subTest(folder=folder):
                 self.assertTrue(
                     folder == 'workflow'
-                    or folder.startswith('packages/machinome/'),
+                    or folder.startswith('packages/machinome/')
+                    or any(folder.startswith(f'packages/{product}/')
+                           for product in PRODUCTS),
                     f'{folder} is neither the root workflow nor a folder '
-                    'of the framework')
+                    'of the framework or of a product')
                 if Path(folder).name != '_build':
                     self.assertTrue((REPOSITORY / folder).is_dir(),
                                     f'{folder} is not a directory')
@@ -268,6 +286,20 @@ class TheContinuousIntegrationTest(unittest.TestCase):
                         self.assertTrue((REPOSITORY / path).is_file(),
                                         f'{path} is not a file of the '
                                         'repository')
+
+    def test_the_test_job_runs_each_product_s_tests(self):
+        # A product keeps its tests in its directory; the core's suite does
+        # not collect them, so the test job runs them there
+        # (`join-mechanics`).
+        steps = self.jobs['test']['steps']
+        for product in PRODUCTS:
+            with self.subTest(product=product):
+                self.assertTrue(
+                    any(step.get('working-directory')
+                        == f'packages/{product}'
+                        and 'pytest' in step.get('run', '')
+                        for step in steps),
+                    f'the test job runs no pytest from packages/{product}')
 
     def test_the_dist_job_checks_the_distributions(self):
         dist = self.jobs['dist']
@@ -429,8 +461,9 @@ class TheExtensionPackagesTest(unittest.TestCase):
                     if directory.name != 'machinome']
         for name in siblings:
             with self.subTest(package=name):
-                self.assertIn(name, EXTENSIONS,
-                              f'packages/{name} is not in EXTENSIONS')
+                self.assertTrue(name in EXTENSIONS or name in PRODUCTS,
+                                f'packages/{name} is in neither EXTENSIONS '
+                                'nor PRODUCTS')
 
     def test_the_guide_installs_every_member_without_uv(self):
         guide = (REPOSITORY / 'CONTRIBUTING.rst').read_text()
@@ -450,6 +483,85 @@ class TheExtensionPackagesTest(unittest.TestCase):
                 found = re.search(retired, guide)
                 self.assertIsNone(
                     found, f'CONTRIBUTING.rst names {found and found[0]!r}')
+
+
+class TheProductsTest(unittest.TestCase):
+    """A product that joined from a repository of its own keeps its record
+    in its directory beside its package (`join-mechanics`)."""
+
+    def test_each_product_directory_holds_its_package_and_its_record(self):
+        for name, (address, _extra, entries) in PRODUCTS.items():
+            with self.subTest(package=name):
+                directory = REPOSITORY / 'packages' / name
+                self.assertTrue(directory.is_dir(), f'{directory} is missing')
+                listed = subprocess.run(
+                    ['git', 'ls-files', '--cached', '--others',
+                     '--exclude-standard', '--', f'packages/{name}'],
+                    cwd=REPOSITORY, capture_output=True, text=True,
+                    check=True).stdout.split()
+                self.assertEqual(
+                    sorted({path.removeprefix(f'packages/{name}/')
+                            .split('/')[0] for path in listed}),
+                    sorted(entries))
+                for entry in ('LICENSE', 'LICENSES'):
+                    self.assertTrue((directory / entry).is_symlink(),
+                                    f'{directory / entry} is not a link')
+                    self.assertEqual(os.readlink(directory / entry),
+                                     f'../../{entry}')
+                    self.assertEqual((directory / entry).resolve(),
+                                     REPOSITORY / entry)
+                package = directory / address.replace('.', '/')
+                self.assertFalse(
+                    (directory / 'machinome' / '__init__.py').exists(),
+                    f'{name} ships an __init__.py of the core\'s')
+                self.assertTrue((package / '__init__.py').is_file(),
+                                f'{package} holds no __init__.py')
+
+    def test_each_product_manifest_states_the_set_s_licence(self):
+        core = read_toml(PACKAGE / 'pyproject.toml')['project']
+        for name, (address, _extra, _entries) in PRODUCTS.items():
+            with self.subTest(package=name):
+                manifest = read_toml(
+                    REPOSITORY / 'packages' / name / 'pyproject.toml')
+                project = manifest['project']
+                self.assertEqual(project['name'], name)
+                self.assertEqual(project['license'], core['license'])
+                self.assertEqual(project['license-files'],
+                                 core['license-files'])
+                self.assertEqual(
+                    manifest['tool']['setuptools']['packages']['find'],
+                    {'include': [address], 'namespaces': True})
+
+    def test_each_product_readme_names_its_install_and_the_licence(self):
+        licence = conf_value('framework_licence')
+        for name, (_address, extra, _entries) in PRODUCTS.items():
+            with self.subTest(package=name):
+                readme = ' '.join(
+                    (REPOSITORY / 'packages' / name / 'README.md')
+                    .read_text().split())
+                self.assertIn(f'pip install "machinome[{extra}]"', readme)
+                self.assertIn(licence, readme,
+                              f'{name}/README.md does not state {licence!r}')
+
+    def test_each_product_resolves_from_its_directory(self):
+        # On the interpreter running this suite.
+        for name, (address, _extra, _entries) in PRODUCTS.items():
+            with self.subTest(package=name):
+                module = importlib.import_module(address)
+                self.assertEqual(
+                    Path(module.__file__).resolve(),
+                    REPOSITORY / 'packages' / name
+                    / address.replace('.', '/') / '__init__.py')
+
+    def test_each_product_keeps_its_tests_and_specs(self):
+        for name in PRODUCTS:
+            with self.subTest(package=name):
+                directory = REPOSITORY / 'packages' / name
+                self.assertTrue((directory / 'tests' / 'pyproject.toml')
+                                .is_file(),
+                                f'{name}/tests holds no pyproject.toml')
+                self.assertTrue((directory / 'openspec' / 'specs').is_dir(),
+                                f'{name} holds no openspec/specs/')
 
 
 class TheLinksTest(unittest.TestCase):

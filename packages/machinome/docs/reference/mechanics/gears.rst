@@ -8,9 +8,9 @@ signed disk/output ratio for a fixed ring; an internal-mesh helper relates
 ring, carrier and pinion increments. These functions describe existing
 gear geometry; they do not generate profiles or choose a centre distance.
 
-Import from ``machinome_mechanics`` or ``machinome_mechanics.gears``.
+Import from ``machinome.mechanics`` or ``machinome.mechanics.gears``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 Frame and tooth registration
 ----------------------------
@@ -63,7 +63,7 @@ tooth at local +X at zero, the driver's gap lies half a tooth pitch away:
 
 .. doctest::
 
-   >>> from machinome_mechanics import meshed_angle
+   >>> from machinome.mechanics import meshed_angle
    >>> meshed_angle(0, 12, 24, driver_gap=180 / 12)
    172.5
    >>> meshed_angle(30, 12, 24, driver_gap=15)
@@ -93,7 +93,7 @@ escape wheel whose orientation is fixed by the escapement.
 
 .. doctest::
 
-   >>> from machinome_mechanics import driving_angle
+   >>> from machinome.mechanics import driving_angle
    >>> driven = meshed_angle(10, 60, 8, 30, 3, 22.5)
    >>> driven
    315.0
@@ -140,7 +140,7 @@ alone does not promise an output speed smaller than the input speed.
 
 .. doctest::
 
-   >>> from machinome_mechanics import cycloidal_ratio
+   >>> from machinome.mechanics import cycloidal_ratio
    >>> ratio = cycloidal_ratio(20, 21)
    >>> ratio
    -0.05
@@ -187,7 +187,7 @@ this helper does not register teeth against gaps.
 
 .. doctest::
 
-   >>> from machinome_mechanics import internal_mesh_angle
+   >>> from machinome.mechanics import internal_mesh_angle
    >>> internal_mesh_angle(30, 60, 10)
    180.0
    >>> internal_mesh_angle(-720, 60, 10)

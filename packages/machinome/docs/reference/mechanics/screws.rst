@@ -2,10 +2,10 @@ Lead screws
 ===========
 
 Convert screw rotation to axial travel, or find the rotation needed for
-a desired travel. Import from ``machinome_mechanics`` or
-``machinome_mechanics.screws``.
+a desired travel. Import from ``machinome.mechanics`` or
+``machinome.mechanics.screws``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 Lead and direction
 ------------------
@@ -33,7 +33,7 @@ screw_travel
 
 .. doctest::
 
-   >>> from machinome_mechanics import screw_travel
+   >>> from machinome.mechanics import screw_travel
    >>> screw_travel(360, 2)
    2.0
    >>> screw_travel(90, 4)
@@ -59,7 +59,7 @@ No angle wrapping is applied.
 
 .. doctest::
 
-   >>> from machinome_mechanics import screw_angle
+   >>> from machinome.mechanics import screw_angle
    >>> screw_angle(1, 2)
    180.0
    >>> screw_angle(screw_travel(810, 4), 4)

@@ -1,13 +1,13 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Independent circumference references for belt pitch geometry."""
 
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import pulley_pitch_radius, rolling_angle, rolling_travel
+from machinome.mechanics import pulley_pitch_radius, rolling_angle, rolling_travel
 
 
 @pytest.mark.parametrize("teeth,pitch", [(117, 2), (10, 3), (30, 3), (16, 2.001)])

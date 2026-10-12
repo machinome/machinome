@@ -44,6 +44,12 @@ Unreleased
   parts, 61.1 s here); only the edits after it are spared
   (digest-only-what-the-node-names).
 
+* **The mechanics helpers are part of this manual.** Import them from
+  ``machinome.mechanics`` (formerly ``machinome_mechanics``); names,
+  signatures and formulas are unchanged, and ``pip install
+  "machinome[mechanics]"`` installs them
+  (:doc:`/reference/mechanics/index`, :doc:`/howto/mechanism-formulas`).
+
 Machinome 0.8.1
 ---------------
 

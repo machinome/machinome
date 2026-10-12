@@ -86,8 +86,10 @@ viewer = [
 web-snapshot = [
     "machinome-viewer[snapshot]>=0.8.1",
 ]
+# `machinome.mechanics`, the mechanics helpers, the repository's distribution
+# machinome-mechanics at its own version; the framework never imports them.
 mechanics = [
-    "machinome-mechanics",
+    "machinome-mechanics>=0.1.0",
 ]
 # The B-rep engine (`machinome.engine.brep`, resolved by its seam in
 # `machinome.engine`) is the distribution machinome-engine-brep, which

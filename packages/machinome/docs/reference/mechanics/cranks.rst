@@ -3,10 +3,10 @@ Slider-cranks
 
 A planar slider-crank turns a crank rotation into piston motion through
 a connecting rod. These helpers calculate the crank pin, rod tilt and
-small-end height from one crank angle. Import from ``machinome_mechanics``
-or ``machinome_mechanics.cranks``.
+small-end height from one crank angle. Import from ``machinome.mechanics``
+or ``machinome.mechanics.cranks``.
 
-.. py:currentmodule:: machinome_mechanics
+.. py:currentmodule:: machinome.mechanics
 
 Frame and zero
 --------------
@@ -16,7 +16,7 @@ axis is the along axis, passing through the crank centre. Zero crank
 angle is top dead centre: the crank pin points along the positive
 cylinder axis. A positive angle carries the pin toward **negative across**.
 
-.. figure:: ../_static/slider-crank.svg
+.. figure:: /_static/slider-crank.svg
    :alt: Slider-crank plane with the crank centre at the origin, the pin to negative across, and the piston on the positive along axis.
    :width: 480px
    :class: mechanism-diagram
@@ -43,7 +43,7 @@ crank_pin
 
 .. doctest::
 
-   >>> from machinome_mechanics import crank_pin
+   >>> from machinome.mechanics import crank_pin
    >>> tuple(round(v, 6) for v in crank_pin(0, 15))
    (-0.0, 15.0)
    >>> tuple(round(v, 6) for v in crank_pin(90, 15))
@@ -70,7 +70,7 @@ makes the small end land on the cylinder axis.
 
 .. doctest::
 
-   >>> from machinome_mechanics import crank_rod_angle
+   >>> from machinome.mechanics import crank_rod_angle
    >>> round(crank_rod_angle(90, 15, 60), 4)
    -14.4775
 
@@ -96,7 +96,7 @@ small end on the positive-along side of the crank pin.
 
 .. doctest::
 
-   >>> from machinome_mechanics import piston_height
+   >>> from machinome.mechanics import piston_height
    >>> [round(piston_height(a, 15, 60), 4) for a in (0, 90, 180)]
    [75.0, 58.0948, 45.0]
    >>> 15 + 60 - piston_height(180, 15, 60)
@@ -116,4 +116,4 @@ rod-angle calculation divide by zero. Unreachable angles cause the
 underlying inverse sine or square root to fail numerically.
 
 These functions describe an in-line cylinder with no lateral offset.
-See :doc:`../using-with-machinome` for a complete piston motion law.
+See :doc:`/howto/mechanism-formulas` for a complete piston motion law.

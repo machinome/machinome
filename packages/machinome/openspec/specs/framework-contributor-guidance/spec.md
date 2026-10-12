@@ -44,10 +44,11 @@ state the development install from the root of a clone (the uv workspace's
 sync, and, for a contributor without uv, the editable install in compat mode
 of every package directory under `packages/`, the framework's with its `dev`
 extra), SHALL state that the suite, the lint and the OpenSpec command run
-from the framework's directory `packages/machinome/`, and every link it
-makes into the repository SHALL resolve from the root. The contributor
-briefing SHALL say once that the paths it names are relative to
-`packages/machinome/`.
+from the framework's directory `packages/machinome/`, SHALL state that the
+mechanics helpers' tests run from their own directory
+`packages/machinome-mechanics/`, and every link it makes into the
+repository SHALL resolve from the root. The contributor briefing SHALL say
+once that the paths it names are relative to `packages/machinome/`.
 
 #### Scenario: A contributor sets up a clone
 
@@ -64,8 +65,9 @@ briefing SHALL say once that the paths it names are relative to
   `packages/machinome-node-build123d`, `packages/machinome-node-step`,
   `packages/machinome-node-molejo`, `packages/machinome-node-openscad`,
   `packages/machinome-node-solid2`, `packages/machinome-node-jscad`,
-  `packages/machinome-node-stl`, `packages/machinome-node-freecad` and
-  `packages/machinome` with its `dev` extra, editable with `editable_mode=compat`, and names no tox environment
+  `packages/machinome-node-stl`, `packages/machinome-node-freecad`,
+  `packages/machinome-mechanics` and `packages/machinome` with its `dev`
+  extra, editable with `editable_mode=compat`, and names no tox environment
   or requirements file
 
 #### Scenario: A link of the guide stops resolving
@@ -78,4 +80,11 @@ briefing SHALL say once that the paths it names are relative to
 
 - **WHEN** a contributor reads the contributor briefing's layout section
 - **THEN** it says that its paths are relative to `packages/machinome/`
+
+#### Scenario: A contributor runs the mechanics helpers' tests
+
+- **WHEN** a contributor looks in `CONTRIBUTING.rst` for how to run the
+  mechanics helpers' tests
+- **THEN** it says to run pytest from `packages/machinome-mechanics/`, and
+  the core's suite run from `packages/machinome/` does not collect them
 

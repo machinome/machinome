@@ -173,8 +173,7 @@ executable is installed separately), ``jscad`` and ``stl``; ``brep`` and
 ``mesh`` install the kernels of the two comparison engines, and ``all``
 installs every one. A module whose kernel is missing says so at the line
 that imports it, with the line that installs it. ``mechanics`` installs
-`Machinome Mechanics <https://machinome-mechanics.readthedocs.io>`_, an
-independent package of gear, screw, cam, belt and linkage formulas.
+``machinome.mechanics``, the gear, screw, cam, belt and linkage formulas.
 
 Without the viewer the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes

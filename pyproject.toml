@@ -9,6 +9,7 @@ members = ["packages/*"]
 machinome = { workspace = true }
 machinome-engine-brep = { workspace = true }
 machinome-engine-mesh = { workspace = true }
+machinome-mechanics = { workspace = true }
 machinome-node-build123d = { workspace = true }
 machinome-node-cadquery = { workspace = true }
 machinome-node-freecad = { workspace = true }

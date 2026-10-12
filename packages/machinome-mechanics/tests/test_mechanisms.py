@@ -1,8 +1,8 @@
 # Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""machinome_mechanics: the textbook mechanism laws this package
+"""machinome.mechanics: the textbook mechanism laws this package
 carries once, so thirteen projects' `kinematics.py` stop rewriting them.
 
 Each law is a composition over `machinome.math`, so it has that
@@ -20,12 +20,12 @@ import math as pymath
 import re
 from unittest import TestCase
 
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
 from machinome import math as snmath
 from machinome.expression_graph import symbolic
 from machinome.math import cos, sin
-from machinome_mechanics import (circle_intersection, crank_pin,
+from machinome.mechanics import (circle_intersection, crank_pin,
                                    crank_rod_angle, delta_carriage, delta_rod,
                                    driving_angle, link_rise, meshed_angle,
                                    piston_height, screw_angle, screw_travel,

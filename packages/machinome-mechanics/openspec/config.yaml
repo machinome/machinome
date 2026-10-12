@@ -1,8 +1,9 @@
 schema: spec-driven
 context: |
-  machinome-mechanics is an Apache-2.0 collection of mechanical formula helpers
-  for machinome projects. It depends on machinome and uses machinome.math;
-  machinome must never depend on this package. Python >=3.11.
+  machinome-mechanics is the Machinome repository's package machinome.mechanics,
+  mechanical formula helpers for machinome projects under the repository's
+  licence. It depends on machinome and uses machinome.math; machinome never
+  imports this package. Python >=3.11.
   Version 0.1.0 was released on 20 September 2026 with Machinome 0.7.0.
   Preserve numeric/symbolic parity and documented degrees, frames and signs.
 rules:

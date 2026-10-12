@@ -14,7 +14,7 @@ version = "0.8.1"
 # root's `.bumpversion.cfg` rewrites it with the others on a release.
 
 [contract]                  # allowed whole, minus `deny`
-members = ["machinome", "machinome_mechanics", "molejo"]
+members = ["machinome", "molejo"]
 
 # The framework's own modules that spawn processes, write to a
 # caller-chosen path, or import by name. Kind `framework-internal`,

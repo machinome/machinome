@@ -66,16 +66,19 @@ SHALL let a user choose a helper by mechanical purpose.
 
 ### Requirement: User documentation is readable and independently hosted
 
-The manual SHALL provide searchable navigation and readable desktop and mobile
-pages consistent with the framework documentation. The repository SHALL support
-building the manual on Read the Docs and locally without requiring unpublished
-runtime packages just to render its pages. `docs/` SHALL contain user
-documentation; internal extraction, validation and release preparation records
-SHALL live in `workflow/`.
+The manual SHALL be the mechanics section, `reference/mechanics/`, and the
+how-to `howto/mechanism-formulas` of the Machinome manual
+(`packages/machinome/docs/`), built with it, with its searchable navigation and
+readable desktop and mobile pages. The Machinome manual's build SHALL render
+those pages without importing any runtime package; the package's tests SHALL
+run their examples. Internal extraction, validation and release preparation
+records SHALL live in this package's `workflow/`.
 
 #### Scenario: Build and read the manual
 
-- **WHEN** a maintainer builds the documentation using its declared dependencies
-- **THEN** a navigable HTML manual is produced with no broken internal references
+- **WHEN** a maintainer builds the Machinome manual using its declared
+  dependencies
+- **THEN** a navigable HTML manual is produced, the mechanics pages among its
+  pages, with no broken internal references
 - **AND** its user pages do not require workflow records as API instructions
 

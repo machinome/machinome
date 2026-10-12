@@ -22,7 +22,11 @@ declare three tiers and a tests tier:
 
 - **The contract**, allowed whole except a denylist of the framework's
   own modules that spawn processes, write to a caller-chosen path, or
-  import by name: `machinome`, `machinome_mechanics`, `molejo`.
+  import by name: `machinome` and `molejo`. The mechanics helpers,
+  `machinome.mechanics`, lie beneath `machinome` and are in the contract
+  without a member of their own; the former module name
+  `machinome_mechanics`, which no package of the set installs, is not a
+  member.
 - **The kernels**, allowed except for a denylist of IO entry points:
   `cadquery`, `build123d`, `OCP`, `solid2`, `trimesh`, `numpy`, `scipy`,
   `manifold3d`, `shapely`. The denylist covers importers and exporters,
@@ -84,6 +88,14 @@ never on which packages the machine happens to have installed.
 - **WHEN** a project imports `requests` on a machine where `requests` is
   installed
 - **THEN** vet reports that import as `outside-universe`
+
+#### Scenario: The mechanics helpers are judged by their address
+
+- **WHEN** one vetted project runs `from machinome.mechanics import
+  meshed_angle` and another runs `from machinome_mechanics import
+  meshed_angle`
+- **THEN** vet reports no finding for the first, and reports the second as
+  `outside-universe` named `machinome_mechanics`
 
 ### Requirement: Vet resolves the model closure statically
 

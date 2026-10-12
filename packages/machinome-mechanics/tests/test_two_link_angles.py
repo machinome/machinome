@@ -3,10 +3,10 @@
 import math
 
 import pytest
-from solid2 import get_animation_time
+from machinome.expression_graph import get_animation_time
 
-from machinome_mechanics import two_link_angles
-from machinome_mechanics.linkages import two_link_angles as family_helper
+from machinome.mechanics import two_link_angles
+from machinome.mechanics.linkages import two_link_angles as family_helper
 from tests.test_mechanisms import _eval_openscad_expr
 
 

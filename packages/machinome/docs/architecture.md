@@ -370,7 +370,8 @@ SolidPython, `machinome-node-solid2`, which requires it, and
 `[freecad]` for the FreeCAD node package (the distribution
 `machinome-node-freecad`, over the B-rep engine; FreeCAD itself is a
 program no extra installs, found through `MACHINOME_FREECAD_ROOT`),
-and `[all]` — every OCCT kernel
+`[mechanics]` for the mechanics helpers (the distribution
+`machinome-mechanics`, at its own version), and `[all]` — every OCCT kernel
 extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
 before it imports a kernel; the check asks `find_spec` and imports nothing,
@@ -3198,18 +3199,20 @@ round-half-to-even included, for the same reason. The fixture itself is
 committed in the viewer repository (ADR-068), so widening the vocabulary
 is one change here and one there.
 
-### Mechanics helpers (independent package · spec `mechanics-distribution`)
+### Mechanics helpers (the distribution `machinome-mechanics` · spec `mechanics-distribution`)
 
 The twelve gear, screw, crank, delta and linkage formulas introduced by
-ADR-076 live in the independent `machinome-mechanics` package
-(ADR-132). Their numeric and symbolic faces compose over `machinome.math`;
-the package owns their conventions, tests and formula specification.
+ADR-076 live in the repository's `packages/machinome-mechanics/`, imported
+as `machinome.mechanics`, at their own version, with their tests, specs and
+working record in that directory (ADR-132, ADR-187). Their numeric and
+symbolic faces compose over `machinome.math`; the package owns their
+conventions, tests and formula specification.
 
 The dependency runs from mechanics to machinome. The default framework
 installation does not require it, while `machinome[mechanics]` selects it
 as an extra. Framework code neither imports nor re-exports its helpers and
 ships no `machinome.mechanisms` package. A project's `law=` callable may
-compose `machinome_mechanics` formulas exactly as it may compose its own
+compose `machinome.mechanics` formulas exactly as it may compose its own
 arithmetic; motion evaluation remains independent of their implementation.
 
 ## Load-bearing invariants
@@ -3489,7 +3492,7 @@ pure model closures without rejecting their pure declaration records.
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
-| Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
+| Mechanics helpers, the distribution `machinome-mechanics` | the repository's `packages/machinome-mechanics/` (`machinome/mechanics/`: `__init__.py` and the nine family modules; its own `tests/`, `openspec/` and `workflow/`) | `mechanics-distribution` | 022, 076, 132, 187 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |

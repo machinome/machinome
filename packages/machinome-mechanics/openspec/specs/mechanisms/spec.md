@@ -14,13 +14,13 @@ Preserves the formula contract originally introduced by machinome ADR-076
 exponent algebra). Package ownership follows the accepted extraction recorded
 in `workflow/extraction.md`; these ADR numbers refer to the framework's history.
 
-Code: `machinome_mechanics/`.
+Code: `machinome/mechanics/`.
 
 ## Requirements
 
 ### Requirement: Mechanism laws as compositions over expression math
 
-The system SHALL provide the package `machinome_mechanics`, whose every
+The system SHALL provide the package `machinome.mechanics`, whose every
 function is a composition of `machinome.math` functions and ordinary
 arithmetic, so that one formula computes on plain numbers and builds the
 viewer's deferred expression when any argument is symbolic animation time or
@@ -29,7 +29,7 @@ a driver. No function in the package SHALL emit an OpenSCAD builtin that
 of the `kinematics` capability covers the package without extension.
 
 The package SHALL re-export every public function under a flat name unique
-across its families, so `from machinome_mechanics import meshed_angle`
+across its families, so `from machinome.mechanics import meshed_angle`
 works, and SHALL keep each family in its own module with the family's
 conventions stated once in that module.
 
@@ -274,7 +274,7 @@ originating projects' behaviour and the honest one.
 
 `rolling_travel(angle, radius)` SHALL return `angle * radius * pi / 180`,
 the signed tangent travel for degree rotation at a pitch/contact radius.
-It SHALL be exported from `machinome_mechanics` and its `rolling` module.
+It SHALL be exported from `machinome.mechanics` and its `rolling` module.
 Zero angle SHALL give zero travel, with no wrapping or clamping. Positive
 travel SHALL follow the positively rotating surface tangent; callers SHALL
 supply their own mounting signs and rest offsets. Length units SHALL be those
@@ -301,7 +301,7 @@ Zero and negative radii SHALL retain arithmetic behavior rather than be clamped.
 
 `rolling_angle(travel, radius)` SHALL return `travel / radius * 180 / pi`,
 the unwrapped signed rotation in degrees from tangent travel at a constant
-pitch/contact radius. It SHALL be exported from `machinome_mechanics` and its
+pitch/contact radius. It SHALL be exported from `machinome.mechanics` and its
 `rolling` module. Travel and radius SHALL use the same length unit. Positive
 travel SHALL follow the positively rotating surface tangent; callers supply
 their mounting signs and reference phases. Numeric and symbolic arguments
@@ -337,7 +337,7 @@ and symbolic division SHALL retain the expression runtime's singular behavior.
 
 `pulley_pitch_radius(teeth, pitch)` SHALL return `teeth * pitch / (2*pi)`,
 the radius whose circumference contains the given number of linear tooth
-pitches. It SHALL be exported from `machinome_mechanics` and its `belts`
+pitches. It SHALL be exported from `machinome.mechanics` and its `belts`
 module. Its output SHALL use the length unit of pitch and SHALL not include
 tooth-tip or pitch-line surface offsets. Numeric and symbolic arguments SHALL
 share one arithmetic definition, without count rounding or domain clamping.

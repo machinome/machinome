@@ -22,7 +22,7 @@ expressions; use tolerances when comparing computed geometry.
 .. doctest::
 
    >>> from math import isclose
-   >>> from machinome_mechanics import crank_pin
+   >>> from machinome.mechanics import crank_pin
    >>> across, along = crank_pin(90, 15)
    >>> isclose(across, -15) and isclose(along, 0, abs_tol=1e-10)
    True
@@ -36,19 +36,19 @@ Choose the frame before calling
 
    * - Family
      - Reference convention
-   * - :doc:`Gears <reference/gears>`
+   * - :doc:`Gears <gears>`
      - Both gear angles and the line of centres use one common frame.
        Gap and tooth references use each gear's local frame at zero.
-   * - :doc:`Screws <reference/screws>`
+   * - :doc:`Screws <screws>`
      - Travel is the right-hand screw's advance along its axis relative
        to its nut, measured from zero rotation.
-   * - :doc:`Cranks <reference/cranks>`
+   * - :doc:`Cranks <cranks>`
      - Coordinates are ``(across, along)``. The cylinder is the along
        axis; zero crank angle is top dead centre.
-   * - :doc:`Deltas <reference/deltas>`
+   * - :doc:`Deltas <deltas>`
      - Z is vertical. Tower azimuth is measured from +X about +Z.
        Carriage heights share the effector joint plane's height frame.
-   * - :doc:`Linkages <reference/linkages>`
+   * - :doc:`Linkages <linkages>`
      - Points are ``(x, y)`` in the caller's plane. Intersection side
        is left or right when looking from the first centre to the second.
 
@@ -82,7 +82,7 @@ offset greater than its length:
 
 .. doctest::
 
-   >>> from machinome_mechanics import link_rise
+   >>> from machinome.mechanics import link_rise
    >>> link_rise(5, 6)
    Traceback (most recent call last):
        ...
@@ -97,6 +97,5 @@ Each reference page states the meaningful domain of its arguments.
 Check your dimensions and travel limits in the project, and leave a
 margin around singular poses where floating-point roundoff matters.
 These helpers do not prove collision clearance, strength or dynamic
-behaviour; use the framework's `test assertions
-<https://machinome.readthedocs.io/en/latest/reference/assertions.html>`_
-for the assembly properties your project needs.
+behaviour; use the framework's :doc:`test assertions
+</reference/assertions>` for the assembly properties your project needs.

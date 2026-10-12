@@ -11,6 +11,9 @@
     "packages/machinome/openspec",
     "packages/machinome/tests",
     "packages/machinome/docs/tutorial/counter",
+    "packages/machinome-mechanics/openspec",
+    "packages/machinome-mechanics/tests",
+    "packages/machinome-mechanics/workflow",
     "workflow"
   ],
   "excludeFiles": [],
@@ -31,6 +34,7 @@
     "machinome vet [reference] [--tests] [--json] checks statically that a project stays inside the machinome universe (the framework, its kernels and a pure stdlib tier): no process, socket, dynamic import or file write, and every declared STL, STEP, OpenSCAD or JSCAD source under the project root. It reads only the project's bytes and machinome/vet/universe.toml and reports one verdict per model, pure or findings by path and line.",
     "Running-only clearance laws: Play(low, high) retains a follower through backlash from one source; Follow(lower=, upper=) retains a coordinate between two independently moving authored surfaces and needs matching lower and upper Bound relations on that coordinate. Unsupported source ancestry is refused, not approximated.",
     "Finite profile contact: import ConvexProfile and profile_overlap from machinome.simulation.profile. profile_overlap(left, right, left_angle, right_angle, left_xy=, right_xy=) returns 1.0 on inclusive contact of two authored convex planar profiles, else 0.0. Symbolically it is admitted only as a term in a running Bound's limit expression and refused elsewhere. It is pointwise, not continuous collision detection, and does not prove the profiles cover installed parts.",
+    "The mechanics helpers are machinome.mechanics, installed by pip install \"machinome[mechanics]\" (the distribution machinome-mechanics, at its own version): gear, screw, crank, cam, indexing, delta, linkage, rolling and belt formulas. Angles are degrees. Each helper accepts numbers and the framework's symbolic values, so one formula serves a numeric pose and a relation law, for example crank.turn.drives(piston.rise, law=piston_law) where the law calls piston_height. The package supplies formulas only; the project supplies dimensions, reference frames, signs, branch selection and assembly facts; the framework never imports the helpers.",
     "Keep geometry and operating claims tied to runnable examples and tests. Simulated motion is not a claim of physical manufacturing validation.",
     "The manual is organised by reader intent: start pages, a ten-chapter tutorial building a tally counter under docs/tutorial/, how-to guides under docs/howto/, concept pages under docs/concepts/, examples, reference and project pages."
   ],

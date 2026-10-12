@@ -1,6 +1,6 @@
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Angle, Count
-from machinome_mechanics import meshed_angle
+from machinome.mechanics import meshed_angle
 
 
 class GearPair(AssemblyNode):

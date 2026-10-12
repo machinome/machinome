@@ -11,6 +11,7 @@ members = [
     "machinome",
     "machinome-engine-brep",
     "machinome-engine-mesh",
+    "machinome-mechanics",
     "machinome-node-build123d",
     "machinome-node-cadquery",
     "machinome-node-freecad",
@@ -1923,7 +1924,7 @@ requires-dist = [
     { name = "machinome", extras = ["cadquery", "build123d", "step", "molejo", "brep", "mesh", "openscad", "solid2", "jscad", "stl", "freecad"], marker = "extra == 'all'", editable = "packages/machinome" },
     { name = "machinome-engine-brep", marker = "extra == 'brep'", editable = "packages/machinome-engine-brep" },
     { name = "machinome-engine-mesh", marker = "extra == 'mesh'", editable = "packages/machinome-engine-mesh" },
-    { name = "machinome-mechanics", marker = "extra == 'mechanics'" },
+    { name = "machinome-mechanics", marker = "extra == 'mechanics'", editable = "packages/machinome-mechanics" },
     { name = "machinome-node-build123d", marker = "extra == 'build123d'", editable = "packages/machinome-node-build123d" },
     { name = "machinome-node-cadquery", marker = "extra == 'cadquery'", editable = "packages/machinome-node-cadquery" },
     { name = "machinome-node-freecad", marker = "extra == 'freecad'", editable = "packages/machinome-node-freecad" },
@@ -1992,14 +1993,13 @@ requires-dist = [
 [[package]]
 name = "machinome-mechanics"
 version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/machinome-mechanics" }
 dependencies = [
     { name = "machinome" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/96/63b7cfcbe24b79f74a319893326ebe0ec65e87125704eaa71687028a9296/machinome_mechanics-0.1.0.tar.gz", hash = "sha256:15a387d0858924ce8999f6b3b4e3287b862dc0e20e6677081731da4b48ce5599", size = 185500, upload-time = "2026-09-26T09:23:25.054Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/65/b7a3d5d5d06dec944ab8fa8454c743e0b7d4744449e30b1f537343d87b55/machinome_mechanics-0.1.0-py3-none-any.whl", hash = "sha256:e7489d2ba64813abf74d5d86e61e6519831abf444373db11119cc0c76bf9d1d3", size = 25980, upload-time = "2026-09-26T09:23:23.15Z" },
-]
+
+[package.metadata]
+requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
 
 [[package]]
 name = "machinome-node-build123d"

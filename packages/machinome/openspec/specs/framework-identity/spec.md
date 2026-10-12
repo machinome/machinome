@@ -86,6 +86,10 @@ different defaults.
 The distribution SHALL expose `viewer`, `mechanics`, and `studio` extras that
 select `machinome-viewer`, `machinome-mechanics`, and `machinome-studio`
 respectively. The default framework installation SHALL depend on none of them.
+`machinome-mechanics` is a distribution of the repository, at
+`packages/machinome-mechanics/`, whose package `machinome.mechanics` the
+framework never imports; the `mechanics` extra SHALL require it at a floor
+that its version in the repository satisfies.
 Current release material SHALL state that the experimental studio remains
 unpublished and that the `studio` extra cannot resolve from a package index
 until that publication occurs.
@@ -132,8 +136,9 @@ documents the release exports.
 
 - **WHEN** `pip install "machinome[mechanics]"` resolves from published
   packages
-- **THEN** the independent `machinome-mechanics` distribution is
-  installed without the framework importing or re-exporting its helpers
+- **THEN** the `machinome-mechanics` distribution of the repository is
+  installed, its helpers imported from `machinome.mechanics`, without the
+  framework importing or re-exporting them
 
 #### Scenario: A reader asks for the studio extra before publication
 
@@ -169,15 +174,32 @@ those levels, and its manifest's package search names that package. Its specs,
 tests, decision records and manual pages SHALL be the framework's, those of a
 package that joined the repository from a repository of its own
 (`machinome-node-freecad`) included.
-Every distribution of the set SHALL carry one version, the framework's, and
-every requirement between two of them SHALL be the compatible-release pin
-`~=<version>`, in both directions, between the framework and an extension
-package and between two extension packages alike (`machinome-node-step`
-requires `machinome-node-cadquery`, and `machinome-node-solid2` requires
-`machinome-node-openscad`). The version SHALL be bumped from one
-configuration at the repository root, `.bumpversion.cfg`, naming every
-manifest's version, every pin between the distributions and the files that
-restate the framework's version.
+
+A product that joined the repository from a repository of its own and is not
+an extension package, today the mechanics helpers `machinome-mechanics`,
+SHALL keep its record in its directory: `packages/machinome-mechanics/`
+SHALL hold its manifest `pyproject.toml`, a `README.md` that names its install
+line and the licence, its `CHANGELOG.md`, its `MANIFEST.in` and
+`.gitignore`, the relative symbolic links `LICENSE` and `LICENSES` to the
+root's, its package directory `machinome/mechanics/` with its own
+`__init__.py` and none at `machinome/`, its `tests/`, its `openspec/` (its
+specs and archived changes) and its `workflow/`. Its manual pages SHALL be
+the framework's manual's.
+
+Every distribution of the set but `machinome-mechanics` SHALL carry one
+version, the framework's, and every requirement between two of them SHALL be
+the compatible-release pin `~=<version>`, in both directions, between the
+framework and an extension package and between two extension packages alike
+(`machinome-node-step` requires `machinome-node-cadquery`, and
+`machinome-node-solid2` requires `machinome-node-openscad`).
+`machinome-mechanics` SHALL carry its own version, the version of its
+changelog's newest release section and of the manual's `mechanics_version`,
+and a requirement between it and the framework SHALL be a floor (`>=`) that
+the required distribution's version in the repository satisfies. The version
+SHALL be bumped from one configuration at the repository root,
+`.bumpversion.cfg`, naming every manifest's version but that of
+`machinome-mechanics`, which it SHALL NOT name, every pin between the
+distributions of the set and the files that restate the framework's version.
 
 The repository root SHALL hold the repository's record and tooling and no
 distribution of its own: the licence texts (`LICENSE`, `LICENSES/`), the
@@ -203,7 +225,8 @@ built before the layout.
 the workspace outside the repository, check them with `twine check
 --strict`, install the wheels into a throwaway environment outside the
 repository, an extension package through the framework's extra that
-installs it, import and smoke each there, an engine through the framework's
+installs it and `machinome-mechanics` from its own wheel, import and smoke
+each there, an engine through the framework's
 seam that resolves it and a node package through its address, rendering one
 part on its kernel where its external program is available and building it as
 far as the program allows where it is not, and upload nothing; the CI SHALL
@@ -218,9 +241,9 @@ in a `dist` job after its `test` and `docs` jobs.
   distributions under `packages/machinome-engine-brep/` and
   `packages/machinome-engine-mesh/`, the node packages' under
   `packages/machinome-node-cadquery/`, `-build123d/`, `-step/`, `-molejo/`,
-  `-openscad/`, `-solid2/`, `-jscad/`, `-stl/` and `-freecad/`, and the root
-  holds the
-  repository's
+  `-openscad/`, `-solid2/`, `-jscad/`, `-stl/` and `-freecad/`, the
+  mechanics helpers' with their tests and records under
+  `packages/machinome-mechanics/`, and the root holds the repository's
   record, the workspace manifest and its lock, and none of the framework's
   sources
 
@@ -248,18 +271,19 @@ in a `dist` job after its `test` and `docs` jobs.
 
 #### Scenario: Every sibling is an extension package of the table
 
-- **WHEN** a directory `packages/machinome-<name>/` exists that the layout
-  test's table of extension packages does not list
+- **WHEN** a directory `packages/machinome-<name>/` exists that neither the
+  layout test's table of extension packages nor its table of products lists
 - **THEN** the layout test fails naming the directory
 
 #### Scenario: The set carries one version
 
 - **WHEN** the manifests under `packages/` and the root's `.bumpversion.cfg`
   are read
-- **THEN** every manifest's version and `.bumpversion.cfg`'s
-  `current_version` equal the framework's, every requirement between two
-  distributions of the set is `~=` that version, `.bumpversion.cfg` names
-  every manifest, and the framework's `setup.cfg` holds no version table
+- **THEN** every manifest's version but `machinome-mechanics`'s and
+  `.bumpversion.cfg`'s `current_version` equal the framework's, every
+  requirement between two distributions of the set is `~=` that version,
+  `.bumpversion.cfg` names every manifest but `machinome-mechanics`'s, and
+  the framework's `setup.cfg` holds no version table
 
 #### Scenario: The archives carry the licence
 
@@ -296,7 +320,8 @@ in a `dist` job after its `test` and `docs` jobs.
   in compat mode from their directories, the framework with its `dev`
   extra, `machinome.engine.brep` resolves from
   `packages/machinome-engine-brep/`, `machinome.node.step` from
-  `packages/machinome-node-step/`, and the suite runs from
+  `packages/machinome-node-step/`, `machinome.mechanics` from
+  `packages/machinome-mechanics/`, and the suite runs from
   `packages/machinome/`
 
 #### Scenario: The root manifest declares a distribution
@@ -330,4 +355,36 @@ in a `dist` job after its `test` and `docs` jobs.
   runs it to its enabled limit where `MACHINOME_FREECAD_ROOT` is set, and
   finds its construction refused naming `MACHINOME_FREECAD_ROOT` where it is
   not
+
+#### Scenario: A product keeps its record in its directory
+
+- **WHEN** the entries of `packages/machinome-mechanics/` are listed, ignored
+  build leavings excepted
+- **THEN** they are `pyproject.toml`, `README.md`, `CHANGELOG.md`,
+  `MANIFEST.in`, `.gitignore`, the links `LICENSE` and `LICENSES` to the
+  root's, `machinome/` holding the package directory `mechanics/` with its own
+  `__init__.py`, `tests/`, `openspec/` and `workflow/`, its manifest states
+  `GPL-2.0-or-later OR CERN-OHL-S-2.0+` and the root's licence files, and the
+  layout test fails naming any other entry or an `__init__.py` at
+  `machinome/`
+
+#### Scenario: The mechanics helpers carry their own version
+
+- **WHEN** the manifest of `machinome-mechanics`, its `CHANGELOG.md`, the
+  manual's `mechanics_version`, the framework's `mechanics` extra and
+  `.bumpversion.cfg` are read
+- **THEN** the manifest's version equals the changelog's newest release
+  section's and `mechanics_version`, the extra and the package's requirement
+  on the framework are floors the versions in the repository satisfy, and no
+  table of `.bumpversion.cfg` names the manifest
+
+#### Scenario: The mechanics package is smoked from its wheel
+
+- **WHEN** `scripts/check-dist` installs the built wheels
+- **THEN** it installs `machinome-mechanics` from its own wheel by path,
+  imports `machinome.mechanics`, finds its ten modules owned by its own
+  distribution inside the throwaway environment, its version its own, its
+  requirement `machinome>=0.8.0` and the framework's `mechanics` extra
+  naming it, computes a pose numerically and a deferred expression from the
+  framework's animation time, and finds its licence texts
 

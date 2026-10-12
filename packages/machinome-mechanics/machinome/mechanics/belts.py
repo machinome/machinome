@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Belt pitch geometry, independent of mounting frame and tooth profile.
 
 Lengths share one unit; angles, when present, use degrees. Pitch circles
@@ -10,7 +10,7 @@ from math import pi
 
 from machinome.math import atan2, floor, sqrt
 
-from machinome_mechanics.rolling import rolling_angle
+from machinome.mechanics.rolling import rolling_angle
 
 
 def pulley_pitch_radius(teeth, pitch):

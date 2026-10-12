@@ -79,6 +79,12 @@ jobs:
           coverage run --source machinome -m pytest
           coverage report -m
 
+      # The mechanics helpers keep their tests in their own directory
+      # (change `join-mechanics`); the workspace synced above installs them.
+      - name: Run the mechanics package's tests
+        working-directory: packages/machinome-mechanics
+        run: python -m pytest
+
   browser-snapshot:
     runs-on: ubuntu-latest
     needs: lint

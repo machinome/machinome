@@ -116,6 +116,7 @@ dependencies::
         -e packages/machinome-node-openscad -e packages/machinome-node-solid2 \
         -e packages/machinome-node-jscad -e packages/machinome-node-stl \
         -e packages/machinome-node-freecad \
+        -e packages/machinome-mechanics \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
@@ -135,6 +136,9 @@ The test suite is pytest, run from the framework's directory,
     $ make test          # equivalent to: pytest
     $ pytest tests/test_builder_lifecycle.py   # a single file
     $ make lint          # flake8 + black --check
+
+The mechanics helpers keep their tests in their own directory: run
+``python -m pytest`` from ``packages/machinome-mechanics``.
 
 Notes:
 

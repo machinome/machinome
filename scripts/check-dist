@@ -34,6 +34,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+#: The mechanics helpers' own version (change `join-mechanics`): they are
+#: not numbered with the set.
+MECHANICS_VERSION = tomllib.loads(
+    (ROOT / 'packages/machinome-mechanics/pyproject.toml').read_text()
+)['project']['version']
+
 #: The licence checks of an extension package's smoke, formatted with its
 #: distribution name: the core's row states the same lines in its own code.
 LICENCES = string.Template('''
@@ -544,6 +550,45 @@ else:
         raise AssertionError('constructed without a FreeCAD runtime')
     result = 'refused without MACHINOME_FREECAD_ROOT, as documented'
 '''),
+        'commands': [],
+    },
+    'machinome-mechanics': {
+        # Installed from its wheel by path, not through `machinome[mechanics]`:
+        # the index serves another wheel of the same version, whose import is
+        # the former one, and pip may take it.
+        'extras': [],
+        'code': f'''
+import importlib.metadata as metadata
+from pathlib import Path
+import machinome.mechanics as mechanics
+from machinome.expression_graph import get_animation_time, symbolic
+distribution = metadata.distribution('machinome-mechanics')
+assert distribution.version == {MECHANICS_VERSION!r}, distribution.version
+files = [str(path) for path in distribution.files]
+shipped = sorted(path for path in files
+                 if path.startswith('machinome/') and path.endswith('.py'))
+assert shipped == [f'machinome/mechanics/{{module}}.py' for module in (
+    '__init__', 'belts', 'cams', 'cranks', 'deltas', 'gears', 'indexing',
+    'linkages', 'rolling', 'screws')], shipped
+owned = Path(distribution.locate_file(shipped[0])).resolve()
+assert owned == Path(mechanics.__file__).resolve(), (owned, mechanics.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+assert 'machinome>=0.8.0' in distribution.requires, distribution.requires
+core = metadata.requires('machinome')
+assert any(line.startswith('machinome-mechanics>={MECHANICS_VERSION}')
+           and 'mechanics' in line.partition(';')[2] for line in core), core
+assert len(mechanics.__all__) == 24, mechanics.__all__
+assert mechanics.screw_travel(360, 2) == 2
+assert mechanics.piston_height(0, 15, 60) == 75
+assert mechanics.meshed_angle(0, 12, 24, driver_gap=15) == 172.5
+height = mechanics.piston_height(get_animation_time(), 15, 60)
+assert symbolic(height) is not None, height
+'''
+        + LICENCES.substitute(name='machinome-mechanics')
+        + '''
+print('machinome-mechanics', distribution.version, 'module',
+      mechanics.__file__, 'numeric and symbolic')
+''',
         'commands': [],
     },
 }
