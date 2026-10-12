@@ -50,6 +50,12 @@ Unreleased
   "machinome[mechanics]"`` installs them
   (:doc:`/reference/mechanics/index`, :doc:`/howto/mechanism-formulas`).
 
+* **Other packages can add commands to ``machinome``.** A package
+  installed beside the framework may add a command of its own, listed by
+  ``machinome -h`` after the framework's and run as ``machinome <name>``
+  (:ref:`contributed-commands`). The framework's commands are unchanged
+  and never replaced.
+
 Machinome 0.8.1
 ---------------
 

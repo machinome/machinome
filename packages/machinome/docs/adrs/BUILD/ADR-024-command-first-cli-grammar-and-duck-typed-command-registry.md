@@ -1,6 +1,6 @@
 # ADR-024: Command-First CLI Grammar and Duck-Typed Command Registry
 
-**Status:** Accepted; registry amended 2026-10-03 by [ADR-168](./ADR-168-the-command-table-names-the-module-a-command-needs.md)
+**Status:** Accepted; registry amended 2026-10-03 by [ADR-168](./ADR-168-the-command-table-names-the-module-a-command-needs.md), and 2026-10-12 by [ADR-189](./ADR-189-a-package-contributes-a-command-through-the-group-machinome-commands.md)
 **Date:** 2026-07-17
 **Depends on:**
 - [ADR-005: Path-Based Dynamic Module Loading](./ADR-005-path-based-dynamic-module-loading.md)
@@ -115,3 +115,16 @@ needs beyond its implementation, or `None`. `import-step` names
 its kernel extra is absent, answers the command with the extra the module's
 refusal names and exits 1. The help path imports no such module, so every
 command is still listed by name with its docstring.
+
+## Amendment (2026-10-12)
+
+[ADR-189](./ADR-189-a-package-contributes-a-command-through-the-group-machinome-commands.md)
+gives the registry a second source: an installed package may contribute a
+command through the entry-point group `machinome.commands`, as
+`name = "package.module:Class"`, its class meeting the contract above with
+`needs_node` declared rather than defaulted. The command is now the first
+argument that does not begin with `-`, so a later argument spelling a
+command is that command's argument; the group is read only when that first
+argument is not a framework command, and the migration guard and argparse's
+choices then read the framework's names and the contributed ones. A
+framework command's name is never taken by a contributed one.

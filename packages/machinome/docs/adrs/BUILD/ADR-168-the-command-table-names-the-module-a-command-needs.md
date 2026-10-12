@@ -1,6 +1,6 @@
 # ADR-168: The Command Table Names the Module a Command Needs
 
-**Status:** Accepted, third column names a node type since 2026-10-04, by [ADR-179](ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md)
+**Status:** Accepted, third column names a node type since 2026-10-04, by [ADR-179](ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md); its entry-point group refused for the table's commands only since 2026-10-12, by [ADR-189](ADR-189-a-package-contributes-a-command-through-the-group-machinome-commands.md)
 **Date:** 2026-10-03
 **Change:** [`lean-install`](../../../openspec/changes/archive/2026-10-03-lean-install/)
 **Amends:**
@@ -85,3 +85,14 @@ entry-point group was rejected by D2.
 - `tests/test_cli_lazy_imports.py`, `tests/test_import_step.py`
 - `openspec/specs/cli/spec.md` ("Import-step command", "A command that needs
   an extra is answered by the extra")
+
+## Amendment (2026-10-12)
+
+[ADR-189](ADR-189-a-package-contributes-a-command-through-the-group-machinome-commands.md)
+opens the entry-point group `machinome.commands` for the commands of
+packages the core does not ship, by the pilot's decision of 12 October 2026.
+The refusal of option 4 above stands for this table's commands: a command
+whose implementation the core's table names, `import-step` included, is
+found from the table alone, and dispatching it reads no entry point. A
+contributed command whose module refuses for an absent extra is answered by
+the same line this ADR gives `import-step`.
