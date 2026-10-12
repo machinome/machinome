@@ -53,9 +53,11 @@ class Movie:
         print(f'movie {args.verb} {args.source}')
 '''
 
-SKILLS = '''
-class Skills:
-    """Install the agent skills (a fake contributed command)."""
+# A second contributor, named as no package of the set is, so the fake
+# never meets a command the suite's environment installs (`join-skills`).
+LESSONS = '''
+class Lessons:
+    """Teach a lesson (a fake contributed command)."""
 
     needs_node = False
 
@@ -65,7 +67,7 @@ class Skills:
             verbs.add_parser(verb)
 
     def handle(self, args):
-        print(f'skills {args.verb}')
+        print(f'lessons {args.verb}')
 '''
 
 NODE = '''
@@ -138,8 +140,8 @@ class Portioned:
 FAKES = {
     'fake-movie': (['movie = machinome_fake_movie:Movie'],
                    'machinome_fake_movie.py', MOVIE),
-    'fake-skills': (['skills = machinome_fake_skills:Skills'],
-                    'machinome_fake_skills.py', SKILLS),
+    'fake-lessons': (['lessons = machinome_fake_lessons:Lessons'],
+                     'machinome_fake_lessons.py', LESSONS),
     'fake-node': (['measure = machinome_fake_node:Measure'],
                   'machinome_fake_node.py', NODE),
     'fake-shadow': (['build = machinome_fake_shadow:Build'],
@@ -160,7 +162,7 @@ FAKES = {
 }
 
 #: Every module the fakes define, forgotten when `installed` exits.
-FAKE_MODULES = ('machinome_fake_movie', 'machinome_fake_skills',
+FAKE_MODULES = ('machinome_fake_movie', 'machinome_fake_lessons',
                 'machinome_fake_node', 'machinome_fake_shadow',
                 'machinome_fake_movie_two', 'machinome_fake_needy',
                 'machinome_fake_bare', 'machinome_fake_gone',

@@ -269,3 +269,53 @@ plan; recorded so the line's head reads whole.
    unexpected, 0 timeout, 6 no-model, identical to `join-freecad`'s row for
    row; no sweep ran before the move. Evidence:
    `packages/machinome/openspec/changes/archive/2026-10-12-join-mechanics/evidence.md`.
+
+4. `join-skills`. **Done** (12 October 2026): branch
+   `v0.9-joins-join-skills`, planning commit 624aab77 on 5af14f71, ratified
+   by the orchestrator's review, with the pilot's decisions of 12 October
+   2026 (`release-0.9.md`, decisions 1, 2, 4 and 6); the join, the merge
+   commit 36974f3e of machinome-skills' `main` rewritten by `git
+   filter-repo` to its final paths (8 files, one commit, its message kept as
+   written; `git log --follow` on the skill `machinome` and on the format
+   tests reaches 1b86a970 of 20 September 2026). ADR-190, the machinome
+   skills are a package of the set installed into assistants' directories
+   by a command, accepted. The package is `packages/machinome-skills/` (the
+   package directory `machinome/skills/` with `__init__.py`, `cli.py`,
+   `installer.py`, the registry `tools.toml` and the two skills under
+   `agent-skills/`), numbered 0.8.1 with the set, requiring
+   `machinome~=0.8.1`, under the set's licence, its tests and working
+   record in its directory and its specification the framework's new
+   `skills-distribution`; its licence, notice and per-skill licence and
+   notice files dropped at the join, the frontmatter's `license` the set's,
+   the skills otherwise unchanged; its provenance in `CREDITS.md`. Its
+   command `machinome skills install|update|list`, a contributor of
+   `machinome.commands`, writes each skill whole with a marker in its
+   frontmatter's `metadata`, refuses a skill it did not write unless
+   `--force` and deletes nothing, over a registry of OpenSpec 1.6.0's 31
+   tool ids and `agents`. The core gains the extra `skills`, the root's
+   default group `machinome[skills]`; the seam's tests read the
+   environment's contributors (the fake `fake-skills` renamed
+   `fake-lessons`, the expected choices computed), and the conformance walk
+   now walks a real entry. The specs modified are `cli`,
+   `framework-identity`, `user-documentation` and
+   `framework-contributor-guidance`; `skills-distribution` is created
+   (totals + 8, ~ 3). `uv lock` resolves 189 packages. The suite green on
+   the bench's uv venv (4857 passed, 24 skipped, the base's, 7562
+   subtests); the package's tests from its directory, 47 passed, run by a
+   step of CI's test job; the manual, with the how-to
+   `howto/assistant-skills` and the command reference's section `machinome
+   skills`, built with warnings as errors; `scripts/check-dist` green on the
+   tree and on a clean copy: fourteen members built, 28 archives `twine
+   check --strict` passed, the skills wheel installed by its path, 8 files
+   installed for agents and claude and `machinome skills list` exit 0; the
+   clean copy's framework sdist holds 1062 entries (1 more: the how-to) and
+   its wheel 114, the skills package's 37 and 16; nothing uploaded. The
+   originating check, in a scratch git project: `machinome skills install
+   --tools agents,claude` wrote the eight files where Codex and Claude Code
+   read them, each `SKILL.md` marked, and `update` rewrote the one copy
+   marked older alone; the two assistants were not asked to list the
+   skills, since either writes its session record under the user's home.
+   No universe sweep: no project repository reaches the package, its
+   module or its command (0 files on 12 October 2026), and no module of the
+   core changed. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-12-join-skills/evidence.md`.

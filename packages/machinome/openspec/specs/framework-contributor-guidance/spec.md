@@ -46,8 +46,9 @@ of every package directory under `packages/`, the framework's with its `dev`
 extra), SHALL state that the suite, the lint and the OpenSpec command run
 from the framework's directory `packages/machinome/`, SHALL state that the
 mechanics helpers' tests run from their own directory
-`packages/machinome-mechanics/`, and every link it makes into the
-repository SHALL resolve from the root. The contributor briefing SHALL say
+`packages/machinome-mechanics/` and the skills package's from
+`packages/machinome-skills/`, and every link it makes into the repository
+SHALL resolve from the root. The contributor briefing SHALL say
 once that the paths it names are relative to `packages/machinome/`.
 
 #### Scenario: A contributor sets up a clone
@@ -66,9 +67,9 @@ once that the paths it names are relative to `packages/machinome/`.
   `packages/machinome-node-molejo`, `packages/machinome-node-openscad`,
   `packages/machinome-node-solid2`, `packages/machinome-node-jscad`,
   `packages/machinome-node-stl`, `packages/machinome-node-freecad`,
-  `packages/machinome-mechanics` and `packages/machinome` with its `dev`
-  extra, editable with `editable_mode=compat`, and names no tox environment
-  or requirements file
+  `packages/machinome-mechanics`, `packages/machinome-skills` and
+  `packages/machinome` with its `dev` extra, editable with
+  `editable_mode=compat`, and names no tox environment or requirements file
 
 #### Scenario: A link of the guide stops resolving
 
@@ -87,4 +88,11 @@ once that the paths it names are relative to `packages/machinome/`.
   mechanics helpers' tests
 - **THEN** it says to run pytest from `packages/machinome-mechanics/`, and
   the core's suite run from `packages/machinome/` does not collect them
+
+#### Scenario: A contributor runs the skills package's tests
+
+- **WHEN** a contributor looks in `CONTRIBUTING.rst` for how to run the
+  skills package's tests
+- **THEN** it says to run pytest from `packages/machinome-skills/`, and the
+  core's suite run from `packages/machinome/` does not collect them
 

@@ -19,6 +19,7 @@ machinome-node-openscad = { workspace = true }
 machinome-node-solid2 = { workspace = true }
 machinome-node-step = { workspace = true }
 machinome-node-stl = { workspace = true }
+machinome-skills = { workspace = true }
 
 [tool.uv]
 # Every member installs editable in compat mode, a .pth line per package
@@ -34,7 +35,8 @@ exclude-dependencies = ["machinome-studio", "machinome-viewer"]
 
 [dependency-groups]
 # `uv sync` at the root installs this group by default: the framework's dev
-# extra, which installs every kernel the suite runs, and the mechanics
-# package the catalogue's projects import, so the universe sweep reads them
-# from this venv.
-dev = ["machinome[dev]", "machinome[mechanics]"]
+# extra, which installs every kernel the suite runs, the mechanics package
+# the catalogue's projects import, so the universe sweep reads them from
+# this venv, and the skills package, whose tests run from its directory and
+# whose command the suite's conformance walk reads.
+dev = ["machinome[dev]", "machinome[mechanics]", "machinome[skills]"]

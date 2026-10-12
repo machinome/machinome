@@ -13,6 +13,7 @@ is under test (`import_probe.probe`), on this process's `sys.path` where a
 handler is patched.
 """
 
+import importlib.metadata
 import io
 import os
 import sys
@@ -22,7 +23,7 @@ from unittest.mock import patch
 
 from machinome.cli import manage
 
-from .contributed_commands import distributions, installed
+from .contributed_commands import GROUP, distributions, installed
 from .import_probe import probe
 
 
@@ -45,7 +46,21 @@ MIGRATION_HINT = ('The CLI grammar changed in 0.4: commands come first. '
 DISPATCH = 'from machinome.cli import manage; manage()\n'
 
 MOVIE_DOC = 'Make films of machines (a fake contributed command).'
-SKILLS_DOC = 'Install the agent skills (a fake contributed command).'
+LESSONS_DOC = 'Teach a lesson (a fake contributed command).'
+
+#: The commands the packages installed in the suite's environment
+#: contribute, the fakes' distributions excepted: the workspace installs
+#: the products of the set, whose commands every help lists beside the
+#: fakes' (`join-skills`). Read once.
+INSTALLED = frozenset(entry.name for entry
+                      in importlib.metadata.entry_points(group=GROUP)
+                      if not entry.dist.name.startswith('fake-'))
+
+
+def choices(*fakes):
+    """The command names `machinome -h` lists with `fakes` installed: the
+    framework's, then the contributed ones, installed and fake, by name."""
+    return [*COMMAND_ORDER, *sorted(INSTALLED | set(fakes))]
 
 
 def run(*fakes, argv):
@@ -64,15 +79,15 @@ class ContributedCommandTest(TestCase):
 
     def test_help_lists_contributed_commands_after_the_framework(self):
         """Scenario "A contributed command is listed"."""
-        result = run('fake-movie', 'fake-skills', argv=['-h'])
+        result = run('fake-movie', 'fake-lessons', argv=['-h'])
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(result.stderr, '')
-        self.assertIn('{' + ','.join([*COMMAND_ORDER, 'movie', 'skills']) + '}',
+        self.assertIn('{' + ','.join(choices('movie', 'lessons')) + '}',
                       result.stdout)
         help_text = squeezed(result.stdout)
         self.assertIn('movie' + squeezed(MOVIE_DOC), help_text)
-        self.assertIn('skills' + squeezed(SKILLS_DOC), help_text)
+        self.assertIn('lessons' + squeezed(LESSONS_DOC), help_text)
 
     def test_a_contributed_command_runs_with_its_own_verbs(self):
         """Scenarios "A contributed command runs" and "A later argument
@@ -91,10 +106,10 @@ class ContributedCommandTest(TestCase):
 
     def test_a_second_contributor_runs(self):
         """Scenario "A contributed command runs", for a second package."""
-        result = run('fake-skills', argv=['skills', 'install'])
+        result = run('fake-lessons', argv=['lessons', 'install'])
 
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertEqual(result.stdout, 'skills install\n')
+        self.assertEqual(result.stdout, 'lessons install\n')
 
     def test_a_command_shipped_as_a_namespace_portion_runs(self):
         """Scenario "A contributed command runs", its module a portion of
@@ -262,8 +277,7 @@ class ContributedFailureTest(TestCase):
             "be loaded: ModuleNotFoundError: No module named "
             "'machinome_fake_gone')"), squeezed(listed.stdout))
         # Every other command is listed as it would be without it.
-        self.assertIn('{' + ','.join([*COMMAND_ORDER, 'gone']) + '}',
-                      listed.stdout)
+        self.assertIn('{' + ','.join(choices('gone')) + '}', listed.stdout)
 
         result = run('fake-gone', argv=['gone'])
         self.assertEqual(result.status, 1)

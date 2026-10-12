@@ -229,4 +229,6 @@ class HelpTest(TestCase):
         result = probe(DISPATCH, argv=['-h'])
 
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertIn('import-step,vet}', result.stdout)
+        # The framework's commands end with vet; the commands the packages
+        # installed in the suite's environment follow it (`join-skills`).
+        self.assertRegex(result.stdout, r'import-step,vet[},]')

@@ -29,6 +29,7 @@ class MachinomeIdentityTest(TestCase):
         # viewer's is held by tests/test_release_records.py, not here.
         for extra, name in (('viewer', 'machinome-viewer'),
                             ('mechanics', 'machinome-mechanics'),
+                            ('skills', 'machinome-skills'),
                             ('studio', 'machinome-studio')):
             with self.subTest(extra=extra):
                 (requirement,) = project['optional-dependencies'][extra]

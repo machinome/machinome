@@ -117,6 +117,7 @@ dependencies::
         -e packages/machinome-node-jscad -e packages/machinome-node-stl \
         -e packages/machinome-node-freecad \
         -e packages/machinome-mechanics \
+        -e packages/machinome-skills \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
@@ -138,7 +139,9 @@ The test suite is pytest, run from the framework's directory,
     $ make lint          # flake8 + black --check
 
 The mechanics helpers keep their tests in their own directory: run
-``python -m pytest`` from ``packages/machinome-mechanics``.
+``python -m pytest`` from ``packages/machinome-mechanics``. The skills
+package keeps its tests in its own directory: run ``python -m pytest`` from
+``packages/machinome-skills``.
 
 Notes:
 

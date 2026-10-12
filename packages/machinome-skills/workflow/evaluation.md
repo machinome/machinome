@@ -2,10 +2,14 @@
 
 ## Mechanical checks
 
-Run `python3 scripts/check.py` to validate package structure and local references.
-Run it with `--build` to create archives for testing in an isolated project.
-Inspect both individual archives: each must work without the repository root,
-the other skill, or files from Machinome Studio.
+The format checks are the package's tests: run `python -m pytest` from
+`packages/machinome-skills` on the synced workspace. They validate each
+shipped skill's frontmatter, name, licence field, size, local references and
+files, and that the manifest ships every file.
+For a trial in an isolated project, install the skills into a disposable
+project with `machinome skills install --tools <id> <project>` and check
+that each copy works without the repository, the other skill, or files from
+Machinome Studio.
 
 Static checks cannot prove that an assistant selects the right skill, uses its
 instructions, or builds a correct machine. The cases below are repeatable live
@@ -51,3 +55,13 @@ Local validation on 2026-09-20 used Python and PyYAML 6.0.3:
 Live harness trials and CAD execution are not part of that evidence. Refine these
 instructions from failures in actual use rather than accumulating hypothetical
 rules.
+
+## Distribution since the join (12 October 2026)
+
+On 12 October 2026 the package joined the machinome repository as the
+distribution `machinome-skills` (change `join-skills`). The skills ship in
+its wheel, installed by `pip install "machinome[skills]"`, and the command
+`machinome skills` copies them into the directories assistants read, each
+`SKILL.md` carrying a marker in its frontmatter's `metadata`. The per-skill
+licence and notice files are gone; each frontmatter states the set's licence.
+No archive is built. The live cases above are still not run in any harness.

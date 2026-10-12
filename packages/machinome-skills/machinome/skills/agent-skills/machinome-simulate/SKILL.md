@@ -1,7 +1,7 @@
 ---
 name: machinome-simulate
 description: Add a machinome assembly and simulation layer to an existing mechanical design, preserving its source geometry. Use when asked to reconstruct, assemble, animate, or simulate a machine supplied as CAD source, STL, STEP, URDF, or assembly files. Does not provide structural, fluid, or dynamic physics analysis.
-license: Apache-2.0
+license: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 ---
 
 # Reconstruct an existing machine

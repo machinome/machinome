@@ -74,6 +74,7 @@ its source; the :doc:`examples` page says what to look for there.
    howto/simulate-existing
    howto/freecad-assemblies
    howto/mechanism-formulas
+   howto/assistant-skills
 
 .. toctree::
    :maxdepth: 1

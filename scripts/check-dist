@@ -591,6 +591,68 @@ print('machinome-mechanics', distribution.version, 'module',
 ''',
         'commands': [],
     },
+    'machinome-skills': {
+        # Installed from its wheel by path: the smoke reads the extra's
+        # requirement from the core's metadata.
+        'extras': [],
+        'code': '''
+import importlib.metadata as metadata
+import subprocess
+import tempfile
+from pathlib import Path
+import machinome.skills as skills
+distribution = metadata.distribution('machinome-skills')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+# pip's record lists the bytecode it compiled at the install too.
+shipped = sorted(path for path in files if path.startswith('machinome/')
+                 and '__pycache__' not in path)
+assert shipped == sorted([
+    'machinome/skills/__init__.py', 'machinome/skills/cli.py',
+    'machinome/skills/installer.py', 'machinome/skills/tools.toml',
+    'machinome/skills/agent-skills/machinome/SKILL.md',
+    'machinome/skills/agent-skills/machinome/references/mechanical-contracts.md',
+    'machinome/skills/agent-skills/machinome-simulate/SKILL.md',
+    'machinome/skills/agent-skills/machinome-simulate/references/source-adaptation.md',
+]), shipped
+owned = Path(distribution.locate_file('machinome/skills/__init__.py')).resolve()
+assert owned == Path(skills.__file__).resolve(), (owned, skills.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+assert f'machinome~={version}' in distribution.requires, distribution.requires
+core = metadata.requires('machinome')
+assert any(line.startswith(f'machinome-skills~={version}')
+           and 'skills' in line.partition(';')[2] for line in core), core
+(entry,) = [entry for entry in metadata.entry_points(group='machinome.commands')
+            if entry.name == 'skills']
+assert entry.value == 'machinome.skills.cli:Skills', entry.value
+project = Path(tempfile.mkdtemp())
+run = subprocess.run([str(Path(VENV) / 'bin' / 'machinome'), 'skills',
+                      'install', '--tools', 'agents,claude', str(project)],
+                     capture_output=True, text=True)
+assert run.returncode == 0, run.stdout + run.stderr
+copies = sorted(path.relative_to(project).as_posix()
+                for path in project.rglob('*') if path.is_file())
+assert copies == sorted(f'{base}/{name}' for base in
+                        ('.agents/skills', '.claude/skills') for name in (
+    'machinome/SKILL.md', 'machinome/references/mechanical-contracts.md',
+    'machinome-simulate/SKILL.md',
+    'machinome-simulate/references/source-adaptation.md')), copies
+marked = sorted(project.glob('*/skills/*/SKILL.md'))
+assert len(marked) == 4, marked
+for copy in marked:
+    text = copy.read_text()
+    assert 'installed-by: machinome-skills' in text, copy
+    assert f'version: "{version}"' in text, copy
+    assert 'license: GPL-2.0-or-later OR CERN-OHL-S-2.0+' in text, copy
+'''
+        + LICENCES.substitute(name='machinome-skills')
+        + '''
+print('machinome-skills', distribution.version, 'installed',
+      len(copies), 'files for agents and claude')
+''',
+        'commands': [['machinome', 'skills', 'list']],
+    },
 }
 
 

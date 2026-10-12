@@ -1,7 +1,7 @@
 ---
 name: machinome
 description: Build, modify, and verify mechanical parts and assemblies with machinome. Use for parametric CAD nodes, assembly placement, mechanical motion, geometry contracts, and visual verification in a machinome project. For reconstructing an existing external design, start with machinome-simulate.
-license: Apache-2.0
+license: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 ---
 
 # Build and verify a machine

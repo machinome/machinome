@@ -21,6 +21,7 @@ members = [
     "machinome-node-solid2",
     "machinome-node-step",
     "machinome-node-stl",
+    "machinome-skills",
 ]
 excludes = [
     "machinome-studio",
@@ -31,6 +32,7 @@ excludes = [
 dev = [
     { name = "machinome", extras = ["dev"], editable = "packages/machinome" },
     { name = "machinome", extras = ["mechanics"], editable = "packages/machinome" },
+    { name = "machinome", extras = ["skills"], editable = "packages/machinome" },
 ]
 
 [[package]]
@@ -1898,6 +1900,9 @@ molejo = [
 openscad = [
     { name = "machinome-node-openscad" },
 ]
+skills = [
+    { name = "machinome-skills" },
+]
 solid2 = [
     { name = "machinome-node-solid2" },
 ]
@@ -1934,6 +1939,7 @@ requires-dist = [
     { name = "machinome-node-solid2", marker = "extra == 'solid2'", editable = "packages/machinome-node-solid2" },
     { name = "machinome-node-step", marker = "extra == 'step'", editable = "packages/machinome-node-step" },
     { name = "machinome-node-stl", marker = "extra == 'stl'", editable = "packages/machinome-node-stl" },
+    { name = "machinome-skills", marker = "extra == 'skills'", editable = "packages/machinome-skills" },
     { name = "machinome-studio", marker = "extra == 'studio'" },
     { name = "machinome-viewer", marker = "extra == 'viewer'", specifier = ">=0.8.1" },
     { name = "machinome-viewer", extras = ["snapshot"], marker = "extra == 'web-snapshot'", specifier = ">=0.8.1" },
@@ -1954,7 +1960,7 @@ requires-dist = [
     { name = "uvicorn", specifier = "==0.30.*" },
     { name = "watchdog" },
 ]
-provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "solid2", "jscad", "stl", "freecad", "all", "studio"]
+provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "solid2", "jscad", "stl", "freecad", "skills", "all", "studio"]
 
 [[package]]
 name = "machinome-engine-brep"
@@ -2156,6 +2162,17 @@ requires-dist = [
     { name = "machinome", editable = "packages/machinome" },
     { name = "trimesh" },
 ]
+
+[[package]]
+name = "machinome-skills"
+version = "0.8.1"
+source = { editable = "packages/machinome-skills" }
+dependencies = [
+    { name = "machinome" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
 
 [[package]]
 name = "manifold3d"

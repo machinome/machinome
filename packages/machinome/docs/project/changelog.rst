@@ -56,6 +56,13 @@ Unreleased
   (:ref:`contributed-commands`). The framework's commands are unchanged
   and never replaced.
 
+* **Give your assistant the machinome skills.** ``pip install
+  "machinome[skills]"`` then ``machinome skills install`` copies the
+  skills ``machinome`` and ``machinome-simulate`` into the directories your
+  assistants read, ``machinome skills update`` keeps them current, and
+  ``machinome skills list`` shows where each tool reads
+  (:doc:`/howto/assistant-skills`, :ref:`skills-command`).
+
 Machinome 0.8.1
 ---------------
 

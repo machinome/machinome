@@ -138,9 +138,9 @@ types in packages of their own that its extras install
 ``machinome-node-step``, ``machinome-node-molejo``,
 ``machinome-node-openscad``, ``machinome-node-solid2``,
 ``machinome-node-jscad``, ``machinome-node-stl`` and
-``machinome-node-freecad``), and with the mechanics helpers in
-``machinome-mechanics``, all licensed |framework_licence|, at the
-recipient's choice. The browser viewer is a
+``machinome-node-freecad``), with the mechanics helpers in
+``machinome-mechanics`` and the machinome skills in ``machinome-skills``,
+all licensed |framework_licence|, at the recipient's choice. The browser viewer is a
 separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``
@@ -189,12 +189,14 @@ and the ``documentVersions`` it reads. This manual matches viewer
 |document_versions|. Without the viewer the command names the extra to
 install and exits 1.
 
-Two more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
+Three more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
 </reference/mechanics/index>`, ``machinome.mechanics``, gear, screw, crank,
 cam, delta, linkage, rolling and belt formulas (the distribution
-``machinome-mechanics``, version |mechanics_version|), and ``web-snapshot``
-installs the viewer with its headless browser driver for transparent
-photographs. Neither is needed to start.
+``machinome-mechanics``, version |mechanics_version|); ``skills`` installs
+the :doc:`machinome skills </howto/assistant-skills>` for assistants and the
+command ``machinome skills`` (the distribution ``machinome-skills``); and
+``web-snapshot`` installs the viewer with its headless browser driver for
+transparent photographs. None is needed to start.
 
 Upgrading
 ---------
