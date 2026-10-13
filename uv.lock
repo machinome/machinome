@@ -2129,7 +2129,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-mechanics"
-version = "0.1.0"
+version = "0.8.1"
 source = { editable = "packages/machinome-mechanics" }
 dependencies = [
     { name = "machinome" },

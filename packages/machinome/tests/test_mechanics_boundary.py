@@ -53,7 +53,8 @@ class MechanicsBoundaryTest(TestCase):
         project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
         dependencies = list(project["dependencies"])
         extras = project.get("optional-dependencies", {})
-        self.assertEqual(extras.get("mechanics"), ["machinome-mechanics>=0.1.0"])
+        self.assertEqual(extras.get("mechanics"),
+                         [f"machinome-mechanics~={project['version']}"])
         for name, extra in extras.items():
             if name != "mechanics":
                 dependencies.extend(extra)

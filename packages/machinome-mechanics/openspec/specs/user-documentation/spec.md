@@ -29,8 +29,10 @@ contain no development workflow records or decision records.
 
 - **WHEN** a user reads the home or installation page, the README or the
   changelog
-- **THEN** each names version 0.1.0, released with Machinome 0.7.0, and
-  none describes the package as unreleased or pending publication
+- **THEN** the manual and the changelog name the framework's version as the
+  helpers', the changelog's 0.1.0 section states that 0.1.0 was released
+  with Machinome 0.7.0, the README names no version, and none describes
+  the package as unreleased or pending publication
 
 #### Scenario: A user follows a link into the framework manual
 

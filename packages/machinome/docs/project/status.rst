@@ -62,8 +62,8 @@ Machinome is licensed |framework_licence|, at the recipient's choice.
 The browser viewer is the package ``machinome-viewer``, numbered and
 licensed with the framework, installed through the ``viewer`` extra. The
 framework builds and tests
-without it; interactive development requires it. Machinome Mechanics
-|mechanics_version| is the optional helper package behind the
+without it; interactive development requires it. Machinome Mechanics,
+numbered with the framework, is the optional helper package behind the
 ``mechanics`` extra. Both release with the framework.
 
 Running documents this release exports declare schema 11, source-timed

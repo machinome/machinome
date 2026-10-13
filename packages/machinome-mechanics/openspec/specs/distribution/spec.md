@@ -10,16 +10,17 @@ repository, installable on its own.
 The distribution SHALL be named `machinome-mechanics` and expose the Python
 package `machinome.mechanics`, a portion of the `machinome` package, under the
 repository's licence, `GPL-2.0-or-later OR CERN-OHL-S-2.0+`. It SHALL declare
-`machinome>=0.8.0` as its runtime dependency and use `machinome.math` for its
-nonlinear formulas. It SHALL NOT bundle a copy of the framework or replace its
-expression evaluator. The first release, 0.1.0 with Machinome 0.7.0, SHALL
-NOT expose a `solid_node_mechanics` compatibility package, because no
-earlier mechanics version was ever published.
+`machinome~=<version>`, the version being Machinome's own, as its runtime
+dependency and use `machinome.math` for its nonlinear formulas. It SHALL
+NOT bundle a copy of the framework or replace its expression evaluator. The
+first release, 0.1.0 with Machinome 0.7.0, SHALL NOT expose a
+`solid_node_mechanics` compatibility package, because no earlier mechanics
+version was ever published.
 
 #### Scenario: Install a built distribution
 
-- **WHEN** a wheel or source distribution is installed with Machinome 0.8 or
-  newer available
+- **WHEN** a wheel or source distribution is installed with the Machinome
+  release of its own version available
 - **THEN** every declared public helper is importable from
   `machinome.mechanics`
 - **AND** they preserve numeric and symbolic computation
@@ -40,6 +41,7 @@ earlier mechanics version was ever published.
 #### Scenario: The release pair is legible
 
 - **WHEN** a user reads the package's README or changelog
-- **THEN** they learn that 0.1.0 is released with Machinome 0.7.0 and that
-  the framework's `viewer` and `mechanics` extras can be installed together
+- **THEN** they learn that 0.1.0 was released with Machinome 0.7.0, that the
+  package is numbered with Machinome since 0.9.0, and that the framework's
+  `viewer` and `mechanics` extras can be installed together
 

@@ -9,9 +9,10 @@
 released version, is held to that one statement, so a release moves the
 files together or fails here naming the one left behind (changes
 `release-0-7-1` and `release-0-8-0`). Every package of the repository
-carries the framework's version, but the mechanics helpers, which carry
-their own (change `join-mechanics`); the viewer's Python package, its widget
-and the root's npm lock carry it too (change `join-viewer`), and the movie's
+carries the framework's version, the mechanics helpers among them since
+change `release-0-9-0` ended their own (change `join-mechanics`); the
+viewer's Python package, its widget and the root's npm lock carry it too
+(change `join-viewer`), and the movie's
 JavaScript directory, its own lock and the root lock's entry for it (change
 `join-movie`), and the studio's frontend and the root lock's entry for it
 (change `join-studio`). Every pin between two of them is `~=` that version, and the
@@ -28,17 +29,12 @@ from pathlib import Path
 from unittest import TestCase
 
 from packaging.requirements import Requirement
+from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[1]
 # The repository holding the framework's directory, whose root holds
 # context7.json (change `monorepo-layout`).
 REPOSITORY = Path(__file__).resolve().parents[3]
-
-# The members the set does not number: each carries its own version, held
-# to its changelog's release and to the manual's statement of it, outside
-# .bumpversion.cfg, and a requirement on or from it is a floor (the pilot's
-# decision of 12 October 2026, change `join-mechanics`, ADR-187).
-OWN_VERSION = ('machinome-mechanics',)
 
 # The one heading under which work landed after a release is recorded.
 UNRELEASED = '\nUnreleased\n----------\n'
@@ -104,8 +100,6 @@ class VersionFilesTest(TestCase):
 
     def test_every_member_is_numbered_with_the_core(self):
         for directory, project in members():
-            if project['name'] in OWN_VERSION:
-                continue
             with self.subTest(member=directory.name):
                 self.assertEqual(project['version'], self.version)
 
@@ -122,53 +116,34 @@ class VersionFilesTest(TestCase):
                         or requirement.name not in projects:
                     continue
                 with self.subTest(member=name, requirement=line):
-                    if name in OWN_VERSION \
-                            or requirement.name in OWN_VERSION:
-                        # A floor that the required member's version in
-                        # the tree satisfies.
-                        required = projects[requirement.name]['version']
-                        self.assertEqual(
-                            [spec.operator for spec in requirement.specifier],
-                            ['>='], line)
-                        self.assertTrue(
-                            requirement.specifier.contains(required), line)
-                    else:
-                        self.assertEqual(str(requirement.specifier),
-                                         f'~={self.version}', line)
+                    self.assertEqual(str(requirement.specifier),
+                                     f'~={self.version}', line)
 
     def test_the_version_is_bumped_from_the_root(self):
         tables = re.findall(r'^\[bumpversion:file(?:\([^)]*\))?:([^\]]+)\]$',
                             (REPOSITORY / '.bumpversion.cfg').read_text(),
                             flags=re.M)
         for directory, project in members():
-            if project['name'] in OWN_VERSION:
-                continue
             manifest = directory.relative_to(REPOSITORY) / 'pyproject.toml'
             with self.subTest(member=directory.name):
                 self.assertIn(manifest.as_posix(), tables)
         self.assertNotIn('[bumpversion', (ROOT / 'setup.cfg').read_text(),
                          "the framework's setup.cfg holds a version table")
 
-    def test_a_member_of_its_own_version_is_outside_the_bump(self):
-        tables = re.findall(r'^\[bumpversion:file(?:\([^)]*\))?:([^\]]+)\]$',
-                            (REPOSITORY / '.bumpversion.cfg').read_text(),
-                            flags=re.M)
-        projects = {project['name']: (directory, project)
-                    for directory, project in members()}
-        for name in OWN_VERSION:
-            with self.subTest(member=name):
-                directory, project = projects[name]
-                manifest = directory.relative_to(REPOSITORY) / 'pyproject.toml'
-                self.assertNotIn(manifest.as_posix(), tables)
-                headings = re.findall(
-                    r'^## (.+)$', (directory / 'CHANGELOG.md').read_text(),
-                    flags=re.M)
-                released = next(heading for heading in headings
-                                if heading != 'Unreleased')
-                self.assertEqual(released.split()[0], project['version'],
-                                 released)
-                self.assertEqual(conf_value('mechanics_version'),
-                                 project['version'])
+    def test_the_mechanics_helpers_are_bumped_with_their_two_pins(self):
+        """The mechanics helpers, numbered with the set since
+        `release-0-9-0` (ADR-187 amended), have the two tables of a package
+        with pins, after the studio's: its version and its pin on the core;
+        the manual states no version of theirs."""
+        sections = re.findall(r'^\[(bumpversion:[^\]]+)\]$',
+                              (REPOSITORY / '.bumpversion.cfg').read_text(),
+                              flags=re.M)
+        manifest = 'packages/machinome-mechanics/pyproject.toml'
+        ours = [section for section in sections if section.endswith(manifest)]
+        self.assertEqual(ours, [f'bumpversion:file(version):{manifest}',
+                                f'bumpversion:file(pins):{manifest}'])
+        self.assertNotIn('mechanics_version',
+                         (ROOT / 'docs/conf.py').read_text())
 
     def test_the_openscad_viewer_is_bumped_with_its_two_pins(self):
         """The OpenSCAD viewer, a distribution of the set since
@@ -291,6 +266,15 @@ class VersionFilesTest(TestCase):
                 self.assertIsNone(trapped.search(page.read_text()))
 
 
+#: The products that keep a changelog of their own, by directory, and the
+#: first version of the set each is released at: the viewer is numbered with
+#: the set since 0.7.0; the mechanics helpers, the films and the studio first
+#: release with it at 0.9.0 (changes `join-viewer`, `join-movie`,
+#: `join-studio`, `release-0-9-0`).
+PRODUCTS = {'machinome-viewer': '0.7.0', 'machinome-mechanics': '0.9.0',
+            'machinome-movie': '0.9.0', 'machinome-studio': '0.9.0'}
+
+
 class ReleaseRecordsTest(TestCase):
     """The changelog, the history, the status page and context7 describe
     the released version as released. Work done after it is recorded as it
@@ -374,6 +358,27 @@ class ReleaseRecordsTest(TestCase):
                       f"API {conf_value('viewer_api')}", text)
         self.assertIn('Frame(', text)
         self.assertIn('machinome vet', text)
+
+    def test_each_product_records_the_release(self):
+        """A product numbered with a released version of the set records
+        that release as its changelog's newest release section, dated the
+        release's day, with at most one `Unreleased` section, above it
+        (change `release-0-9-0`)."""
+        version = Version(self.version)
+        heading = (f'{self.version} \N{EM DASH} '
+                   f"{self.date.strftime('%-d %B %Y')}")
+        for name, first in PRODUCTS.items():
+            if version < Version(first):
+                continue
+            changelog = REPOSITORY / 'packages' / name / 'CHANGELOG.md'
+            headings = re.findall(r'^## (.+)$', changelog.read_text(),
+                                  flags=re.M)
+            with self.subTest(product=name):
+                released = [one for one in headings if one != 'Unreleased']
+                self.assertTrue(released, f'{name} records no release')
+                self.assertEqual(released[0], heading)
+                self.assertIn(headings[0], ('Unreleased', heading))
+                self.assertLessEqual(headings.count('Unreleased'), 1)
 
 
 class TheManualInTheSourceArchiveTest(TestCase):

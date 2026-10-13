@@ -5,6 +5,50 @@ Upgrading from Machinome 0.8 to 0.9
 
 .. needs:: none
 
+Machinome 0.9 brings the packages that grew beside the framework into its
+repository and its release, and moves the ones that had addresses of their
+own under ``machinome``, without aliases: a former spelling fails where it
+is used, naming what to write instead. These are the moves a 0.8 project
+makes, and what to change for each. A project's machines, tests and exports
+are otherwise unchanged: exports keep document versions 1 to 13, and a 0.8
+viewer reads a 0.9 export.
+
+#. **Install the extra of every node type you use.** A bare ``pip install
+   machinome`` carries no node type: ``StlNode`` and ``JScadNode``, which
+   came with the framework in 0.8, need ``machinome[stl]`` and
+   ``machinome[jscad]``, and without them the import names the line that
+   installs them. :doc:`/start/install` lists every extra.
+#. **Import the helpers and the viewer from their addresses.**
+   ``machinome_mechanics`` is ``machinome.mechanics`` and
+   ``machinome_viewer`` is ``machinome.viewer.web``; names, signatures and
+   formulas are unchanged, and no module of a former name is installed.
+   A script that ran ``python -m machinome_viewer`` runs ``machinome
+   viewer``.
+#. **Install every package at the framework's release.** Each extra
+   installs the package of Machinome's own release, ``mechanics`` among
+   them: ``machinome-mechanics``, 0.1.0 until now, is numbered with the
+   framework, so a project that pinned it drops the pin and names the
+   ``mechanics`` extra. ``pip install --upgrade "machinome[...]"`` with
+   your extras moves the set together.
+#. **Name the viewer of a still with** ``--viewer``. ``--renderer`` is
+   refused, naming ``--viewer``, and the OpenSCAD viewer is installed by
+   ``machinome[viewer-openscad]``, ``[openscad]`` or ``[solid2]``; see
+   :ref:`upgrade-viewer-flag`.
+#. **Run the commands of** ``machinome``. ``machinome-viewer describe``,
+   ``serve`` and ``capture`` are ``machinome viewer describe``, ``serve``
+   and ``capture`` (:ref:`upgrade-viewer-command`), and the entry point
+   ``machinome.viewer`` is gone: a host reads ``machinome viewer``.
+#. **Run the studio and the films through** ``machinome`` **if you ran them
+   from their repositories.** The ``machinome-studio`` command is
+   ``machinome studio``, with the same options and configuration file, and
+   the studio's package ``floor`` is ``machinome.studio``
+   (:ref:`studio-command`); the videomaker is ``machinome movie``, installed
+   by ``machinome[movie]`` and ``machinome movie setup`` (:ref:`movie-command`).
+#. **Expect one rebuild after upgrading.** A node is rebuilt only for edits
+   to what it names in its sources, but the first edit after the upgrade is
+   judged by the earlier rule and rebuilds what it would have; the edits
+   after it are spared. Nothing is to be run by hand.
+
 .. _upgrade-viewer-flag:
 
 The viewer flag
@@ -491,7 +535,7 @@ Hosts must update their bundle and the renamed
 JavaScript/DOM surface together. See :doc:`/concepts/publishing`.
 
 The ``mechanics`` extra selects the independent
-``machinome-mechanics`` |mechanics_version| package. Projects using the unreleased
+``machinome-mechanics`` 0.1.0 package. Projects using the unreleased
 ``machinome.mechanisms`` helpers must change those imports to
 ``machinome_mechanics``; names, signatures and formulas are preserved.
 The framework does not re-export the helpers. The pages on :doc:`the

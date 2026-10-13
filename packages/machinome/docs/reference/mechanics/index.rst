@@ -13,7 +13,7 @@ Your project supplies dimensions, coordinate frames and assembly geometry.
 Machinome supplies the machine model and motion evaluation. The helpers supply
 reusable kinematic relationships between them.
 
-The helpers are the package ``machinome-mechanics`` |mechanics_version|,
+The helpers are the package ``machinome-mechanics`` |release|,
 installed by ``machinome[mechanics]`` and imported from
 ``machinome.mechanics`` or its family modules; the framework never imports
 them. All angles are degrees; lengths use one consistent unit per calculation.

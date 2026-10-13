@@ -51,12 +51,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-#: The mechanics helpers' own version (change `join-mechanics`): they are
-#: not numbered with the set.
-MECHANICS_VERSION = tomllib.loads(
-    (ROOT / 'packages/machinome-mechanics/pyproject.toml').read_text()
-)['project']['version']
-
 #: What the viewer's widget declares (change `join-viewer`): the report and
 #: the bundle's banner must state it.
 VIEWER_WIDGET = json.loads(
@@ -635,9 +629,9 @@ else:
         'commands': [],
     },
     'machinome-mechanics': {
-        # Installed from its wheel by path, not through `machinome[mechanics]`:
-        # the index serves another wheel of the same version, whose import is
-        # the former one, and pip may take it.
+        # Installed from its wheel by path, as every product of the set is:
+        # numbered with the set since the 0.9.0 preparation, its wheel is the
+        # one built here, not one the index serves.
         'extras': [],
         'code': f'''
 import importlib.metadata as metadata
@@ -645,7 +639,8 @@ from pathlib import Path
 import machinome.mechanics as mechanics
 from machinome.expression_graph import get_animation_time, symbolic
 distribution = metadata.distribution('machinome-mechanics')
-assert distribution.version == {MECHANICS_VERSION!r}, distribution.version
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
 files = [str(path) for path in distribution.files]
 shipped = sorted(path for path in files
                  if path.startswith('machinome/') and path.endswith('.py'))
@@ -655,9 +650,9 @@ assert shipped == [f'machinome/mechanics/{{module}}.py' for module in (
 owned = Path(distribution.locate_file(shipped[0])).resolve()
 assert owned == Path(mechanics.__file__).resolve(), (owned, mechanics.__file__)
 assert owned.is_relative_to(Path(VENV).resolve()), owned
-assert 'machinome>=0.8.0' in distribution.requires, distribution.requires
+assert f'machinome~={{version}}' in distribution.requires, distribution.requires
 core = metadata.requires('machinome')
-assert any(line.startswith('machinome-mechanics>={MECHANICS_VERSION}')
+assert any(line.startswith(f'machinome-mechanics~={{version}}')
            and 'mechanics' in line.partition(';')[2] for line in core), core
 assert len(mechanics.__all__) == 24, mechanics.__all__
 assert mechanics.screw_travel(360, 2) == 2

@@ -15,10 +15,11 @@ All notable changes to Machinome Mechanics.
   portion of the `machinome` package; names, signatures and formulas are
   unchanged, and no module of the former name is provided. The package is
   licensed as every package of the repository, GPL-2.0-or-later or
-  CERN-OHL-S-2.0-or-later, at the recipient's choice, and requires
-  Machinome 0.8 or newer. Its manual is part of Machinome's,
-  <https://machinome.readthedocs.io>: "Mechanics helpers" under Reference
-  and "Use a mechanism formula in a machine" among the how-to guides.
+  CERN-OHL-S-2.0-or-later, at the recipient's choice, and is numbered
+  with Machinome, requiring the matching release. Its manual is part of
+  Machinome's, <https://machinome.readthedocs.io>: "Mechanics helpers"
+  under Reference and "Use a mechanism formula in a machine" among the
+  how-to guides.
 - The tests take their symbolic time from
   `machinome.expression_graph.get_animation_time()` and import
   `AssemblyNode` from `machinome.node.assembly`. The specifications name the

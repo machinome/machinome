@@ -695,18 +695,10 @@ class ReleaseFactsTest(unittest.TestCase):
     def test_facts_are_substitutions(self):
         conf = (DOCS / 'conf.py').read_text()
         for name in ('release_date', 'viewer_version', 'viewer_api',
-                     'document_versions', 'mechanics_version',
+                     'document_versions',
                      'framework_licence'):
             with self.subTest(name=name):
                 self.assertIn(f'|{name}|', conf)
-
-    def test_the_mechanics_version_is_the_package_s(self):
-        # `join-mechanics`: the mechanics helpers carry their own version,
-        # which the manual states once.
-        manifest = (REPOSITORY / 'packages' / 'machinome-mechanics'
-                    / 'pyproject.toml').read_text()
-        version = re.search(r'^version = "([^"]*)"', manifest, flags=re.M)[1]
-        self.assertEqual(conf_value('mechanics_version'), version)
 
     def test_the_viewer_facts_are_the_widget_s(self):
         # `join-viewer`: the viewer API and the document versions the manual
@@ -865,6 +857,30 @@ class ReadmeTest(unittest.TestCase):
                     f'Python block {number} of README.rst is not the text '
                     'of a module under docs/tutorial/counter/, which the '
                     f'suite builds:\n{block}')
+
+
+class UpgradingPageTest(unittest.TestCase):
+    """The upgrading page's 0.9 part names every move a 0.8 project makes,
+    each with what to write instead (change `release-0-9-0`)."""
+
+    MOVES = ('machinome[stl]', 'machinome[jscad]',
+             'machinome' '_mechanics', 'machinome.mechanics',
+             'machinome' '_viewer', 'machinome.viewer.web',
+             'machinome-mechanics', '``--renderer``', '``--viewer``',
+             'machinome[viewer-openscad]', 'machinome-viewer describe',
+             'machinome viewer describe', 'machinome.viewer',
+             'machinome-studio', 'machinome studio', '``floor``',
+             'machinome.studio', 'machinome movie', 'machinome[movie]',
+             ':ref:`upgrade-viewer-flag`', ':ref:`upgrade-viewer-command`')
+
+    def test_the_0_9_part_names_every_move(self):
+        text = (DOCS / 'project' / 'upgrading.rst').read_text()
+        start = text.index('Upgrading from Machinome 0.8 to 0.9\n')
+        end = text.index('\nUpgrading from Machinome 0.8.0 to 0.8.1\n')
+        part = ' '.join(text[start:end].split())
+        for spelled in self.MOVES:
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, part)
 
 
 if __name__ == '__main__':

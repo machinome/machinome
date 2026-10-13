@@ -174,7 +174,10 @@ def test_the_manuals_examples_are_the_fixtures_code():
 
 def test_the_changelog_has_an_unreleased_section_with_this_change():
     text = (PYTHON / 'CHANGELOG.md').read_text()
-    assert '## Unreleased' in text
+    first = re.search(r'^## (.+)$', text, flags=re.M)[1]
+    version = re.search(r'^version = "(.+)"$', (PYTHON / 'pyproject.toml').read_text(),
+                        flags=re.M)[1]
+    assert first == 'Unreleased' or first.startswith(f'{version} \N{EM DASH} '), first
     assert 'machinome-movie' in text
     assert '(`declarative-stage`' in text
     assert '(`declare-a-take`' in text

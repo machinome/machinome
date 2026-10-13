@@ -223,7 +223,10 @@ class ReleaseFactsTest(unittest.TestCase):
     def test_the_changelog_records_the_join(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
         sections = re.split(r"^## ", changelog, flags=re.M)[1:]
-        self.assertTrue(sections and sections[0].startswith("Unreleased"), changelog[:80])
+        version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+        self.assertTrue(sections and (sections[0].startswith("Unreleased")
+                                      or sections[0].startswith(f"{version} \N{EM DASH} ")),
+                        changelog[:80])
         unreleased = " ".join(sections[0].split())
         self.assertIn("### Joined to the Machinome repository", sections[0])
         self.assertIn("numbered with Machinome", unreleased)

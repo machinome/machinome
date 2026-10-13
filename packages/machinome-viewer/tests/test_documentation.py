@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 import re
 import tomllib
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -59,7 +60,8 @@ def test_docs_contains_no_development_records():
 
 
 def test_the_manual_states_the_release():
-    """0.8.1 released with Machinome 0.8.1: nothing reader-facing says otherwise."""
+    """The viewer's newest release is the set's, released with Machinome on
+    the same day: nothing reader-facing says otherwise."""
     for page in [MANUAL / name for name in PAGES] + [ROOT / 'README.md']:
         text = page.read_text()
         assert 'unreleased' not in text.lower(), page
@@ -74,17 +76,17 @@ def test_the_manual_states_the_release():
         release_sections = release_sections[1:]
     assert not any(one.startswith('Unreleased') for one in release_sections)
     current = ' '.join(release_sections[0].split())
-    assert current.startswith('0.8.1 — 10 October 2026'), current[:40]
+    project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
+    version = project['version']
+    date = datetime.strptime(conf_value('release_date'), '%d %B %Y')
+    assert current.startswith(f"{version} — {date.strftime('%-d %B %Y')}"), current[:40]
     assert 'unreleased' not in current.lower()
-    assert 'Machinome 0.8.1' in current
-    assert 'published 0.8.0 renumbered' in current
+    assert f'Machinome {version}' in current
     versions = widget()['machinomeDocumentVersions']
     assert f"viewer API {widget()['machinomeViewerApi']}" in current
-    assert 'viewer API 29' in current
     assert f'document versions {versions[0]} through {versions[-1]}' in current
     assert 'released-viewer-api' not in (MANUAL / 'conf.py').read_text()
-    project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
-    assert project['version'] == '0.8.1'
+    assert version == conf_value('viewer_version')
 
 
 def test_the_release_facts_are_the_widget_s():

@@ -124,6 +124,12 @@ Unreleased
   it. The tutorial installs ``machinome[viewer,cadquery,build123d]``:
   the digits on its drums need build123d.
 
+* **The mechanics helpers are numbered with the framework.**
+  ``machinome-mechanics`` takes the framework's version, and ``pip install
+  "machinome[mechanics]"`` installs the helpers of the framework's own
+  release, as ``machinome[viewer]`` installs its viewer
+  (:ref:`upgrading-0-8-to-0-9`).
+
 Machinome 0.8.1
 ---------------
 

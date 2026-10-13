@@ -980,7 +980,7 @@ Mechanics helpers
 ==================
 
 The gear, screw, crank, cam, indexing, delta, linkage, rolling and belt
-formulas are the package ``machinome-mechanics`` |mechanics_version|,
+formulas are the package ``machinome-mechanics`` |release|,
 installed by ``machinome[mechanics]`` and imported from
 ``machinome.mechanics``. :doc:`/reference/mechanics/index` documents every
 signature, parameter, return value, coordinate convention and domain limit,

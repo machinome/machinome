@@ -82,8 +82,8 @@ Unreleased
   kept: its helpers are imported from ``machinome.mechanics`` (formerly
   ``machinome_mechanics``, which nothing provides any more) and installed
   by ``pip install "machinome[mechanics]"``, with names, signatures and
-  formulas unchanged. It keeps its own version, its changelog, its specs
-  and its tests in its directory, and its manual is part of this one.
+  formulas unchanged. It keeps its changelog, its specs and its tests in
+  its directory, and its manual is part of this one.
   Change ``join-mechanics`` (ADR-187).
 
 * **Packages may add COMMANDS to ``machinome``.** An installed package
@@ -219,6 +219,14 @@ Unreleased
   extras that is not the manifest's. The tutorial's install line names
   ``build123d``, which its digits need. Change ``manual-extras``
   (ADR-195).
+
+* **The mechanics helpers are NUMBERED WITH THE SET.**
+  ``machinome-mechanics`` leaves the number of its own it kept at its join:
+  the root's ``.bumpversion.cfg`` moves its version with every package's,
+  its requirement on the framework and the ``mechanics`` extra are ``~=``
+  pins both ways, and the manual states its version as the framework's.
+  Its 0.1.0 stays the release it was. Change ``release-0-9-0`` (ADR-187
+  amended).
 
 Machinome 0.8.1 (2026-10-10)
 ----------------------------

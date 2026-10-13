@@ -43,9 +43,6 @@ release_date = '10 October 2026'
 viewer_version = '0.8.1'
 viewer_api = '29'               # a clocked machine captured on demand
 document_versions = '1 to 13'    # supported by the paired viewer
-# The mechanics helpers' own version, packages/machinome-mechanics/pyproject.toml,
-# which tests/test_release_records.py holds to it.
-mechanics_version = '0.1.0'
 framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'
 # The studio's, held to its source by the studio's documentation test
 # (packages/machinome-studio/tests/test_documentation.py, change
@@ -70,7 +67,6 @@ rst_prolog = f'''
 .. |viewer_version| replace:: {viewer_version}
 .. |viewer_api| replace:: {viewer_api}
 .. |document_versions| replace:: {document_versions}
-.. |mechanics_version| replace:: {mechanics_version}
 .. |framework_licence| replace:: {framework_licence}
 .. |studio_viewer_api| replace:: {studio_viewer_api}
 .. |studio_claude_models| replace:: {literals(studio_claude_models)}

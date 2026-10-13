@@ -87,9 +87,10 @@ web-snapshot = [
     "machinome-viewer[snapshot]~=0.8.1",
 ]
 # `machinome.mechanics`, the mechanics helpers, the repository's distribution
-# machinome-mechanics at its own version; the framework never imports them.
+# machinome-mechanics, numbered with the set; the framework never imports
+# them.
 mechanics = [
-    "machinome-mechanics>=0.1.0",
+    "machinome-mechanics~=0.8.1",
 ]
 # The films, `machinome.movie` and the command `machinome movie`, the
 # repository's distribution machinome-movie, numbered with the set; its

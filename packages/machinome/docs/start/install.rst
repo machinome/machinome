@@ -127,10 +127,12 @@ install and exits 1.
 Upgrading
 ---------
 
-Coming from Machinome 0.7? Read :doc:`/project/upgrading` first: 0.8
-moves the kernels into extras, imports every name from its module and
-renames the engines' flags, with no aliases. Coming from solid-node 0.6 or
-earlier, the same page maps the names renamed for 0.7; a 0.5 environment
-must be recreated rather than upgraded in place.
+Coming from Machinome 0.8? Read :doc:`/project/upgrading` first: 0.9
+releases every package of the set together and moves the mechanics helpers
+and the viewer under ``machinome``, with no aliases. Coming from 0.7, the
+same page lists the moves of 0.8: the kernels in extras, every name imported
+from its module and the engines' flags renamed. Coming from solid-node 0.6
+or earlier, it maps the names renamed for 0.7; a 0.5 environment must be
+recreated rather than upgraded in place.
 
 Next: :doc:`first-machine`.

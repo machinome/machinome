@@ -4,6 +4,7 @@
 """Executable contract for the 0.7 Machinome identity."""
 
 import os
+import re
 from pathlib import Path
 import tomllib
 from unittest import TestCase
@@ -14,6 +15,13 @@ from packaging.requirements import Requirement
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def released_version():
+    """The set's version, `current_version` of the root's
+    `.bumpversion.cfg` (change `release-tooling`)."""
+    config = (ROOT.parents[1] / '.bumpversion.cfg').read_text()
+    return re.search(r'^current_version = (\S+)$', config, flags=re.M)[1]
+
+
 class MachinomeIdentityTest(TestCase):
     def setUp(self):
         self.metadata = tomllib.loads((ROOT / 'pyproject.toml').read_text())
@@ -21,7 +29,7 @@ class MachinomeIdentityTest(TestCase):
     def test_distribution_import_command_and_extras_share_the_name(self):
         project = self.metadata['project']
         self.assertEqual(project['name'], 'machinome')
-        self.assertEqual(project['version'], '0.8.1')
+        self.assertEqual(project['version'], released_version())
         self.assertEqual(project['scripts'], {'machinome': 'machinome.cli:manage'})
         self.assertEqual(project['urls']['Homepage'],
                          'https://github.com/machinome/machinome')

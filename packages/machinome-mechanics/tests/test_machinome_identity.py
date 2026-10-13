@@ -21,7 +21,8 @@ class MachinomeMechanicsIdentityTest(TestCase):
         manifest = tomllib.loads((ROOT / 'pyproject.toml').read_text())
         project = manifest['project']
         self.assertEqual(project['name'], 'machinome-mechanics')
-        self.assertEqual(project['dependencies'], ['machinome>=0.8.0'])
+        self.assertEqual(project['dependencies'],
+                         [f"machinome~={project['version']}"])
         self.assertEqual(project['license'],
                          'GPL-2.0-or-later OR CERN-OHL-S-2.0+')
         self.assertEqual(project['license-files'],

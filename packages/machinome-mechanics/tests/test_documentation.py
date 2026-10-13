@@ -13,7 +13,6 @@ import inspect
 from pathlib import Path
 import re
 import sys
-import tomllib
 
 import machinome.mechanics as mechanics
 
@@ -71,7 +70,8 @@ def test_every_export_has_one_reference_with_the_actual_signature():
 
 
 def test_the_changelog_states_the_release():
-    """0.1.0 is released with Machinome 0.7.0; the README states no version."""
+    """0.1.0 was released with Machinome 0.7.0, the helpers' own number before
+    they were numbered with the set; the README states no version."""
     changelog = (PACKAGE / "CHANGELOG.md").read_text()
     # The newest release section; the work since it sits under one
     # "Unreleased" section at the top until a release renames that heading.
@@ -79,12 +79,10 @@ def test_the_changelog_states_the_release():
     assert [section for section in sections
             if section.startswith("Unreleased")] in ([], sections[:1])
     current = next(" ".join(section.split()) for section in sections
-                   if not section.startswith("Unreleased"))
+                   if section.startswith("0.1.0 "))
     assert current.startswith("0.1.0"), current[:40]
     assert "23 September 2026" in current.partition(" ### ")[0][:40]
     assert "Machinome 0.7.0" in current
-    project = tomllib.loads((PACKAGE / "pyproject.toml").read_text())["project"]
-    assert project["version"] == current.split()[0]
     readme = (PACKAGE / "README.md").read_text()
     assert not re.search(r"(?<![\w.-])\d+\.\d+(?:\.\d+)?", readme), readme
 

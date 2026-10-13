@@ -4,10 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-mechanics"
-# Its own version, not the set's (change `join-mechanics`): the root's
-# .bumpversion.cfg does not renumber it, and tests/test_release_records.py
-# holds it to its CHANGELOG.md and to the manual's mechanics_version.
-version = "0.1.0"
+# The set's version, moved by the root's .bumpversion.cfg with every
+# package's (change `release-0-9-0`; its own 0.1.0 until then).
+version = "0.8.1"
 description = "The mechanics helpers of Machinome: gear, screw, crank, cam, indexing, delta, linkage, rolling and belt formulas for numeric poses and symbolic motion"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,9 +25,8 @@ classifiers = [
 keywords = ["machinome"]
 dependencies = [
     # The core whose machinome.math the formulas compose over and whose path
-    # extension admits this portion: Machinome 0.8 or newer, the first whose
-    # symbolic value is its own (probe 3: the tests pass on 0.8.0).
-    "machinome>=0.8.0",
+    # extension admits this portion, of the set's own release.
+    "machinome~=0.8.1",
 ]
 
 [project.urls]

@@ -1,6 +1,6 @@
 # ADR-187: The Mechanics Helpers Are a Portion of the Repository at Their Own Version
 
-**Status:** Accepted; a second product keeping its record in its directory, numbered with the set, amended 2026-10-12 by [ADR-188](ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md)
+**Status:** Accepted; a second product keeping its record in its directory, numbered with the set, amended 2026-10-12 by [ADR-188](ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md); its own version ended, the helpers numbered with the set from 0.9.0, amended 2026-10-13 by change `release-0-9-0` (note below)
 **Date:** 2026-10-12
 **Change:** [`join-mechanics`](../../../openspec/changes/archive/2026-10-12-join-mechanics/)
 **Supersedes:**
@@ -106,3 +106,21 @@ framework's animation time, and its licence texts.
 - Neutral: the core never imports the helpers, as before.
 - Neutral (2026-10-12, `join-viewer`): the browser viewer joined as a
   product numbered with the set; the root holds an npm workspace (ADR-188).
+
+## Amendment (2026-10-13, change `release-0-9-0`)
+
+On 12 October 2026, after the join, the pilot decided how Machinome 0.9.0 is
+released (`workflow/ongoing/release-0.9.md` at the repository root, decision
+2): every package is bumped to 0.9.0 in one bump from the root's
+`.bumpversion.cfg`, the mechanics helpers included, which ends their own
+version. "It carries its own version" no longer holds, and Option 2, the
+set's version, is the outcome from 0.9.0. The manifest states the set's
+version and two tables of `.bumpversion.cfg` move it, its version and its pin
+on the core; the package requires `machinome~=<version>` and the core's
+`mechanics` extra `machinome-mechanics~=<version>`; the manual states no
+version of its own for the helpers (`mechanics_version` is gone, its pages
+say `|release|`); `tests/test_release_records.py` holds them as every
+member. `scripts/check-dist` still installs their wheel by path, and finds
+its version and its pin the framework's. The consequence "the extra's floor
+admits the published 0.1.0 of the former import" ends: a `~=` pin admits no
+0.1.0. Their 0.1.0 stays the release it was. Everything else stands.

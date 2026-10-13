@@ -48,13 +48,14 @@ PARAGRAPH = '\n\n'
 
 
 def current_text(page):
-    """What of `page` a reader takes as current: the changelog's
-    `Unreleased` section alone, the upgrading page's 0.9 section alone, and
-    every other page whole."""
+    """What of `page` a reader takes as current: the changelog's first
+    section, `Unreleased` or the newest release, the upgrading page's 0.9
+    section alone, and every other page whole."""
     text = (DOCS / page).read_text()
     if page == 'project/changelog.rst':
-        start = text.index('Unreleased')
-        following = text.find('\nMachinome 0.', start)
+        start = re.search(r'^(Unreleased|Machinome \S+)\n-+$', text,
+                          flags=re.M).start()
+        following = text.find('\nMachinome 0.', start + 1)
         return text[start:following if following >= 0 else None]
     if page == 'project/upgrading.rst':
         start = text.find('Upgrading from Machinome 0.8 to 0.9')

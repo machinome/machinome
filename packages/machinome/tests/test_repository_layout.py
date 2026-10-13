@@ -30,9 +30,10 @@ seam of viewers (change `viewer-seam`). The core's `machinome/node/` then
 holds no node type, and its `machinome/viewer/` the seam alone and no
 viewer. A product that joined from a
 repository of its own and is not an extension package keeps its record in its
-directory, at its own version: the mechanics helpers `machinome-mechanics`,
-the package `machinome.mechanics`, with their changelog, tests, specs and
-working record (change `join-mechanics`, ADR-187), the browser viewer
+directory: the mechanics helpers `machinome-mechanics`, the package
+`machinome.mechanics`, numbered with the set since change `release-0-9-0`,
+with their changelog, tests, specs and working record (change
+`join-mechanics`, ADR-187, amended), the browser viewer
 `machinome-viewer`, the package `machinome.viewer.web`, numbered with the set,
 with its changelog, tests, specs and decision log, whose widget is the one
 member of the npm workspace the root declares beside the uv workspace (change
