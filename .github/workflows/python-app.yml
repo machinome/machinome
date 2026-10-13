@@ -96,10 +96,8 @@ jobs:
       # the viewer's widget and Python tests, the movie's Python tests and
       # the Node projects that open no browser, and the studio's frontend
       # build and tests, its browser tests left to a contributor's machine.
-      - name: Run the tests, the framework's under coverage
-        run: make test PYTEST='$(PYTHON) -m coverage run --source machinome -m pytest'
-      - name: Report the framework's coverage
-        run: cd packages/machinome && ../../.venv/bin/python -m coverage report -m
+      - name: Run the tests
+        run: make test
 
   browser-snapshot:
     runs-on: ubuntu-latest
