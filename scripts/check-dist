@@ -824,6 +824,7 @@ shipped = [path for path in files if path.startswith('machinome/')
            and '__pycache__' not in path]
 assert 'machinome/studio/cli.py' in shipped, shipped
 assert 'machinome/studio/static/index.html' in shipped, shipped
+assert 'machinome/studio/static/THIRD-PARTY-NOTICES.txt' in shipped, shipped
 assert ('machinome/studio/shop-skills/machinome-simulate/SKILL.md'
         in shipped), shipped
 assert not [path for path in shipped if '/frontend/' in path

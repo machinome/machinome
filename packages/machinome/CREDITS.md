@@ -191,7 +191,10 @@ repository's licence grants no right to use them.
 The studio's frontend bundles these packages, minified, into the built
 surface `machinome/studio/static/`, which the wheel carries; the versions are
 those the root `package-lock.json` resolves for the frontend. These licences
-are the bundled libraries' own, stated as their provenance.
+are the bundled libraries' own, stated as their provenance. The built surface
+carries `THIRD-PARTY-NOTICES.txt` beside its files, written by the frontend's
+build from the packages the bundle holds: each name, version, licence and the
+licence text it ships, as the MIT and Apache licences require of every copy.
 
 - **react** and **react-dom** 19.2.7, **scheduler** 0.27.0: MIT License,
   https://github.com/facebook/react
@@ -202,9 +205,11 @@ are the bundled libraries' own, stated as their provenance.
   License, https://github.com/suren-atoyan/monaco-react
 - **state-local** 1.0.7: MIT License,
   https://github.com/suren-atoyan/state-local
-- **marked** 14.0.0: MIT License, https://github.com/markedjs/marked
+- **marked** 14.0.0: MIT License, https://github.com/markedjs/marked;
+  inlined in monaco-editor's own files, which declare it
 - **dompurify** 3.4.8: MPL-2.0 OR Apache-2.0, as its `package.json` names
-  it, https://github.com/cure53/DOMPurify
+  it, https://github.com/cure53/DOMPurify; inlined in monaco-editor's own
+  files, which declare it
 
 ### Adapted from Machinome Studio, in the skills package
 

@@ -32,6 +32,14 @@ or qualified Codex as the agent backend.
 - The `machinome_test` tool takes `engine` (`brep` or `mesh`), the
   framework's flags since 0.8, in place of `kernel`; the two skills import
   each node name from its module.
+- **The browser surface carries its third-party notices.** The frontend's
+  build writes `THIRD-PARTY-NOTICES.txt` beside the built files, from the
+  packages the bundle holds (react, three, monaco-editor and the rest):
+  each name, version, licence and the licence text it ships. The minified
+  files had carried none, the licence comments of their sources dropped by
+  the build, while the MIT and Apache licences of those packages require
+  their notice to accompany every copy. The framework's `CREDITS.md` names
+  the file, and `scripts/check-dist` holds the wheel to it.
 
 ### What a maker gets
 
