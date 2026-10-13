@@ -3640,3 +3640,4 @@ pure model closures without rejecting their pure declaration records.
 | Viewers: the seam, the web provider's staging and session | `machinome/viewer/__init__.py`; the repository's `packages/machinome-viewer/` (`machinome/viewer/web/`: `__init__.py` the provider's operations, `stage.py`, `session.py`) | `viewer-seam`, `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103, 188, 194 |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |
+| The manual | `docs/` (`conf.py`, `_ext/manual_extras.py` and its table `_ext/manual_extras.toml`) | `user-documentation` | 195 |

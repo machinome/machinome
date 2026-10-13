@@ -1,6 +1,8 @@
 2. An input moves a body
 ========================
 
+.. needs:: viewer, cadquery
+
 A part on its own is a shape. A machine starts when an input moves a
 body. This chapter adds the crank and the one line that connects a
 person's hand to it.

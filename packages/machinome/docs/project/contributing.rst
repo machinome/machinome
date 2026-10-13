@@ -3,6 +3,8 @@
 Contributing
 ============
 
+.. needs:: none
+
 Bring a real mechanical use case: the design you are modelling, the
 relationship you need to express, or a reproducible mismatch between
 the model and the framework's behaviour. A small example and a failing
@@ -25,6 +27,9 @@ examples synchronized with their explanations, credit reused designs,
 and preserve their licences in their own repositories. Keep external
 design source out of the framework-owned tutorial; its machine lives
 under ``docs/tutorial/`` and the suite builds and tests every chapter.
+Every page begins, under its title, with ``.. needs::`` and the extras a
+reader installs to follow it, or ``none``; the build refuses a page without
+one.
 
 Browser-viewer changes are changes of this repository, in
 ``packages/machinome-viewer/``.

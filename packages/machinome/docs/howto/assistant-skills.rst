@@ -1,6 +1,8 @@
 Give your assistant the machinome skills
 ========================================
 
+.. needs:: skills
+
 An assistant that reads `Agent Skills <https://agentskills.io>`_ can build
 and simulate machines with machinome when it has the machinome skills. There
 are two:

@@ -4,6 +4,8 @@
 Examples
 ========
 
+.. needs:: none
+
 Real machines built with Machinome are shown on `machinome.org
 <https://machinome.org/>`_. Its `Foundry <https://machinome.org/foundry/>`_
 keeps a simulation of an open-source machine beside the design it

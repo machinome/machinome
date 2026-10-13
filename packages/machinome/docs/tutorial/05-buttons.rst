@@ -1,6 +1,8 @@
 5. Buttons
 ==========
 
+.. needs:: viewer, cadquery, build123d
+
 A slider answers "what does this pose look like". A machine also has
 operations: home the axis, count to ten, return to rest. Those are
 **instructions**, and the viewer makes them buttons.

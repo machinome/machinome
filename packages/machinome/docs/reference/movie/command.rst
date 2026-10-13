@@ -2,6 +2,8 @@
 The movie command
 =================
 
+.. needs:: movie
+
 ``machinome movie`` makes a narrated film of a machine. It is the command of
 the package ``machinome-movie``, which ``pip install "machinome[movie]"``
 installs beside the framework and the browser viewer;

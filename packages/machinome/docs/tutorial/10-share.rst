@@ -1,6 +1,8 @@
 10. Share it
 ============
 
+.. needs:: viewer, cadquery, build123d, viewer-openscad, web-snapshot
+
 Everything the counter is travels in one document. This chapter exports
 it, embeds it in a page, and photographs it.
 

@@ -122,7 +122,7 @@ def test_the_command_reference_names_the_viewer_flag(command):
     assert '--viewer' in section, command
 
 
-def test_the_installation_page_lists_the_openscad_viewer():
-    text = ' '.join((DOCS / 'start' / 'install.rst').read_text().split())
-    for spelled in ('machinome[viewer-openscad]', 'machinome-viewer-openscad'):
-        assert spelled in text, spelled
+# The installation page lists the OpenSCAD viewer's extra and the
+# distribution it installs through its rendered list since change
+# `manual-extras`, which tests/test_manual_extras.py holds for every extra
+# of the manifest.

@@ -1,6 +1,8 @@
 3. Dimensions in one place
 ==========================
 
+.. needs:: viewer, cadquery
+
 The crank's arbor is 8 mm and the base's bore is 8.2 mm. Those two
 numbers agree because you typed them to agree. This chapter makes the
 machine own that agreement: one declared shaft diameter, one declared

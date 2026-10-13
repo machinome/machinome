@@ -1,6 +1,8 @@
 Install
 =======
 
+.. needs:: none
+
 Requirements
 ------------
 
@@ -20,94 +22,25 @@ Needed only for OpenSCAD-family parts and OpenSCAD snapshots:
   those, so you can follow it without OpenSCAD. The starter part that
   ``machinome new`` writes is a ``Solid2Node`` where SolidPython is
   installed (``machinome[solid2]``, ``machinome[all]``), and a
-  ``CadQueryNode`` where only ``machinome[cadquery]`` is; with neither,
+  ``CadQueryNode`` where CadQuery is and SolidPython is not; with neither,
   ``machinome new`` refuses naming both extras.
-
-Optional:
-
-* The **jscad** command from npm, to write parts in JavaScript with
-  ``JScadNode``.
-* **FreeCAD** 1.1.4, extracted, to read native FreeCAD assemblies with
-  ``FreeCADAssemblyNode`` (:doc:`/howto/freecad-assemblies`).
 
 The package itself brings trimesh. Its node types, the CAD kernels,
 SolidPython and the engines are extras, so a project installs only the ones
 its parts use.
 
-CAD kernels are extras
-----------------------
+.. _extras:
 
-Each leaf type lives in one module, ``machinome.node.<name>``, and a leaf
-whose kernel is not part of the package is installed by the extra of the
-same name: the extra is the last component of the module's address.
+The extras
+----------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 26 34 40
+Every package of the set beyond the framework is installed by an extra,
+and every page of this manual says at its top which extras it needs. A
+node type lives in one module, ``machinome.node.<name>``, installed by the
+extra of the same name: the extra is the last component of the module's
+address.
 
-   * - Extra
-     - Module
-     - Installs, for
-   * - ``machinome[cadquery]``
-     - ``machinome.node.cadquery``
-     - the package ``machinome-node-cadquery``, with CadQuery, for
-       ``CadQueryNode``
-   * - ``machinome[build123d]``
-     - ``machinome.node.build123d``
-     - the package ``machinome-node-build123d``, with build123d, for
-       ``Build123dNode``, ``Build123dSheetNode`` and the SVG artwork of
-       :doc:`markings </howto/markings>`
-   * - ``machinome[step]``
-     - ``machinome.node.step``
-     - the package ``machinome-node-step``, with CadQuery's STEP reader,
-       for ``StepNode``, ``StepAssembly`` and ``machinome import-step``
-   * - ``machinome[molejo]``
-     - ``machinome.node.molejo``
-     - the package ``machinome-node-molejo``, with `molejo
-       <https://molejo.readthedocs.io>`_ with its B-rep evaluator, for
-       ``MolejoNode``
-   * - ``machinome[brep]``
-     - ``machinome.engine.brep``
-     - the B-rep engine, the package ``machinome-engine-brep``, with the
-       OCCT kernel; every extra above installs it too
-   * - ``machinome[mesh]``
-     - ``machinome.engine.mesh``
-     - the mesh engine, the package ``machinome-engine-mesh``, with
-       manifold3d, for every comparison on meshes: a part without B-rep
-       geometry, ``machinome test --mesh``, ``assertAssemblySupported``, a
-       fusion of such parts
-   * - ``machinome[openscad]``
-     - ``machinome.node.openscad``
-     - the package ``machinome-node-openscad``, with SolidPython, for
-       ``OpenScadNode`` and the OpenSCAD writer, and the OpenSCAD viewer of
-       ``machinome snapshot``, the package ``machinome-viewer-openscad``
-   * - ``machinome[viewer-openscad]``
-     - ``machinome.viewer.openscad``
-     - the OpenSCAD viewer alone, the package ``machinome-viewer-openscad``,
-       which brings ``machinome-node-openscad``: a still of a model of any
-       parts with ``machinome snapshot --viewer openscad``
-   * - ``machinome[solid2]``
-     - ``machinome.node.solid2``
-     - the package ``machinome-node-solid2``, with SolidPython, for
-       ``Solid2Node``; it installs ``machinome-node-openscad`` and the
-       OpenSCAD viewer too
-   * - ``machinome[jscad]``
-     - ``machinome.node.jscad``
-     - the package ``machinome-node-jscad``, for ``JScadNode``, which runs
-       the ``jscad`` command from npm, which no Python package installs
-   * - ``machinome[stl]``
-     - ``machinome.node.stl``
-     - the package ``machinome-node-stl``, for ``StlNode``, which reads
-       with trimesh, which comes with the package
-   * - ``machinome[freecad]``
-     - ``machinome.node.freecad``
-     - the package ``machinome-node-freecad``, for ``FreeCADAssemblyNode``
-       and ``FreeCADJoint``, which read a native assembly through FreeCAD,
-       a program no Python package installs, found through
-       ``MACHINOME_FREECAD_ROOT`` (:doc:`/howto/freecad-assemblies`)
-   * - ``machinome[all]``
-     - every module above
-     - every extra above
+.. extras::
 
 ``machinome[jscad]`` and ``machinome[stl]`` install their node types'
 packages and no kernel; a bare install carries no node type. ``JScadNode``
@@ -137,19 +70,9 @@ whose every compared part has B-rep geometry needs it only for
 Packages and licences
 ---------------------
 
-The framework is the package ``machinome``, with its engines and its node
-types in packages of their own that its extras install
-(``machinome-engine-brep``, ``machinome-engine-mesh``,
-``machinome-node-cadquery``, ``machinome-node-build123d``,
-``machinome-node-step``, ``machinome-node-molejo``,
-``machinome-node-openscad``, ``machinome-node-solid2``,
-``machinome-node-jscad``, ``machinome-node-stl`` and
-``machinome-node-freecad``), with the OpenSCAD viewer in
-``machinome-viewer-openscad``, the mechanics helpers in
-``machinome-mechanics``, with the browser viewer in ``machinome-viewer``, the
-machinome skills in ``machinome-skills``, the films in ``machinome-movie``
-and the studio in ``machinome-studio``, all licensed |framework_licence|, at
-the recipient's choice. The framework reaches the
+The framework is the package ``machinome``, and every package its extras
+install, listed above, is licensed |framework_licence|, at the recipient's
+choice. The framework reaches the
 browser viewer through its seam of viewers as the viewer named ``web``, in
 its own process. The ``viewer`` extra installs it.
 Without it the framework builds, tests, exports with
@@ -164,13 +87,14 @@ Install
 -------
 
 Create a virtual environment for your projects and install the framework
-with the viewer and CadQuery, which the tutorial models with:
+with the viewer, CadQuery and build123d, which the tutorial models with
+(build123d draws the digits on its drums):
 
 .. code-block:: bash
 
     $ python -m venv machines
     $ source machines/bin/activate
-    $ python -m pip install "machinome[viewer,cadquery]"
+    $ python -m pip install "machinome[viewer,cadquery,build123d]"
 
 Name the extras your parts need instead, ``all`` for every kernel, or,
 for a project of STL parts, ``stl`` with ``mesh``:
@@ -199,37 +123,6 @@ and the ``documentVersions`` it reads. This manual matches viewer
 |viewer_version|, API |viewer_api|, reading document versions
 |document_versions|. Without the viewer the command names the extra to
 install and exits 1.
-
-Five more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
-</reference/mechanics/index>`, ``machinome.mechanics``, gear, screw, crank,
-cam, delta, linkage, rolling and belt formulas (the distribution
-``machinome-mechanics``, version |mechanics_version|); ``skills`` installs
-the :doc:`machinome skills </howto/assistant-skills>` for assistants and the
-command ``machinome skills`` (the distribution ``machinome-skills``);
-``movie`` installs the films of a machine, ``machinome.movie`` and the
-command ``machinome movie`` (the distribution ``machinome-movie``), whose
-Node side is a second step, run with your Node 22 or newer, and whose
-Chromium and FFmpeg are documented steps of :doc:`/howto/film-a-movie`:
-
-.. code-block:: bash
-
-    $ python -m pip install "machinome[movie]"
-    $ machinome movie setup
-
-``studio`` installs :doc:`Machinome Studio </reference/studio/index>`,
-``machinome.studio`` and the command ``machinome studio`` (the distribution
-``machinome-studio``), which needs the OpenSpec CLI and a logged-in agent
-backend, and whose Chromium is a second step
-(:doc:`/howto/open-a-studio-project`):
-
-.. code-block:: bash
-
-    $ python -m pip install "machinome[studio]"
-    $ playwright install chromium
-
-and ``web-snapshot`` installs the viewer with its headless browser driver
-for transparent photographs; Chromium itself is a second step,
-``playwright install chromium``. None is needed to start.
 
 Upgrading
 ---------

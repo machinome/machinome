@@ -890,6 +890,15 @@ class TheExtensionPackagesTest(unittest.TestCase):
             with self.subTest(spelled=spelled):
                 self.assertIn(spelled, guide)
 
+    def test_the_guide_says_a_page_declares_its_extras(self):
+        # Every page of the manual begins with the extras it needs
+        # (`manual-extras`, ADR-195), and the guide's pull request steps say
+        # so where they ask for the documentation.
+        guide = (REPOSITORY / 'CONTRIBUTING.rst').read_text()
+        self.assertTrue('``.. needs::``' in guide,
+                        'CONTRIBUTING.rst does not say a manual page begins '
+                        'with ``.. needs::``')
+
 
 class TheProductsTest(unittest.TestCase):
     """A product that joined from a repository of its own keeps its record

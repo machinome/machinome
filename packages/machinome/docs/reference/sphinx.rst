@@ -1,6 +1,8 @@
 Sphinx directive
 ================
 
+.. needs:: viewer
+
 The ``machinome.sphinx`` extension embeds an export in built HTML
 documentation. It is how every model in this manual is shown. In
 ``conf.py``:

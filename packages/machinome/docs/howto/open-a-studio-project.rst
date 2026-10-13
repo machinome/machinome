@@ -2,6 +2,8 @@
 Open a project in the studio
 ============================
 
+.. needs:: studio
+
 Machinome Studio opens a hub over a folder of projects; from it you create
 a project or open one, and a team of agents builds it with you. This guide
 installs the studio, starts the hub, and opens or creates a project.

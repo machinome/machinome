@@ -2,6 +2,8 @@
 Running machines
 ================
 
+.. needs:: viewer
+
 ``viewer.run()`` returns a ``RunHandle`` when the document carries a running
 program (versions 5–7 or 9–13). It returns null for posed and clocked models.
 The run retains a coordinate bank and advances in fixed ticks, normally in

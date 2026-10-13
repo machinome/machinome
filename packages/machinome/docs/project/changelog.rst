@@ -3,6 +3,8 @@
 Changelog
 =========
 
+.. needs:: none
+
 Unreleased
 ----------
 
@@ -115,6 +117,12 @@ Unreleased
   (:ref:`viewer-command`, :ref:`upgrade-viewer-command`). ``machinome
   viewer serve`` and ``machinome develop`` print ``Serving at
   http://0.0.0.0:PORT (Ctrl+C to stop)`` once the server listens.
+
+* **Every page says what to install.** The top of each page names the
+  ``pip install`` line it needs and what those extras need outside pip,
+  and :doc:`/start/install` lists every extra with the pages that need
+  it. The tutorial installs ``machinome[viewer,cadquery,build123d]``:
+  the digits on its drums need build123d.
 
 Machinome 0.8.1
 ---------------

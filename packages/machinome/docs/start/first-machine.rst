@@ -1,6 +1,8 @@
 Your first machine
 ==================
 
+.. needs:: viewer, cadquery
+
 Ten minutes: a project, one part, one input, and a slider in the browser
 that moves it.
 
@@ -35,7 +37,7 @@ Give it an input
 ----------------
 
 The starter part is a CadQuery part when, as on the installation page's
-route, only ``machinome[cadquery]`` is installed, and a SolidPython part,
+route, SolidPython is not installed, and a SolidPython part,
 which needs OpenSCAD, where SolidPython is installed too. Replace the whole
 of ``myproject/myproject.py`` with a CadQuery block and an assembly that
 lifts it:

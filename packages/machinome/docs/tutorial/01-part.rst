@@ -1,6 +1,8 @@
 1. A part
 =========
 
+.. needs:: viewer, cadquery
+
 The machine this tutorial builds is a tally counter: a crank on a base,
 two digit drums on the crank's arbor, and a post to read them against.
 Turn the crank once and the units drum advances one digit; turn it ten

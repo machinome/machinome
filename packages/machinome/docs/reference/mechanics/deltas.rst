@@ -1,6 +1,8 @@
 Linear deltas
 =============
 
+.. needs:: mechanics
+
 For a linear delta printer, find each vertical carriage's height and
 each rod's orientation from the effector position. Call the helpers
 once per tower. Import from ``machinome.mechanics`` or

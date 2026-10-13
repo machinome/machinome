@@ -2,6 +2,8 @@
 Draw a movie's stage
 ====================
 
+.. needs:: movie
+
 A movie's declarations say what is on screen and when
 (:doc:`/howto/declare-a-movie`); its **stage module**, a TypeScript or
 JavaScript file beside the movie, says how it looks. This page is the contract

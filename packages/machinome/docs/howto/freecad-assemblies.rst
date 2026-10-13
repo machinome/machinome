@@ -1,6 +1,8 @@
 Simulate a native FreeCAD assembly
 ==================================
 
+.. needs:: freecad
+
 A ``FreeCADAssemblyNode`` is one native FreeCAD assembly: one grounded
 tree of rigid occurrences joined by fixed and revolute connections, read
 by FreeCAD itself in a separate process when the node is constructed.

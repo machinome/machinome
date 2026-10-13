@@ -1,6 +1,8 @@
 Gears
 =====
 
+.. needs:: mechanics
+
 Calculate the angular registration of an **external spur-gear pair**.
 The driven gear counter-rotates at the tooth-count ratio, with its teeth
 registered to the driver's gaps. A separate cycloidal helper gives the

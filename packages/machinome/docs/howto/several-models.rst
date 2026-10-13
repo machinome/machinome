@@ -1,6 +1,8 @@
 Keep several machines in one project
 ====================================
 
+.. needs:: none
+
 A project that holds a family of machines, one repository, one shared
 library, one model per machine, declares them by name:
 

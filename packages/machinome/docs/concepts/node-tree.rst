@@ -1,6 +1,8 @@
 The node tree
 =============
 
+.. needs:: none
+
 A project is a tree of nodes. Leaves make one part each; internal nodes
 combine their children. An assembly's children are separate parts that
 move relative to each other; a fusion's children are fused into one rigid

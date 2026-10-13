@@ -304,8 +304,10 @@ Pull requests
 2. Make the change under the discipline above, with the test that proves
    the failure before the change turns it green.
 3. Update the documentation the change touches: the manual under
-   ``packages/machinome/docs/``, and the changelog's ``Unreleased`` section
-   for anything a project can use, in the same change.
+   ``packages/machinome/docs/``, whose every page begins, under its title,
+   with ``.. needs::`` and the extras it needs or ``none``, and the
+   changelog's ``Unreleased`` section for anything a project can use, in the
+   same change.
 4. Check that the lint and the tests pass (``make lint``, ``make test``);
    `GitHub Actions <https://github.com/machinome/machinome/actions>`_ runs
    the suite on every supported Python version.

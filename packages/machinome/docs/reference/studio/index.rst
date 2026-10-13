@@ -2,6 +2,8 @@
 Studio
 ======
 
+.. needs:: studio
+
 Machinome Studio is the project hub and workspace in which a maker builds
 a mechanical CAD project with Machinome by talking to agents in the
 browser. It opens a project hub over a folder of projects. Opening a

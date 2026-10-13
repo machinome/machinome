@@ -1,6 +1,8 @@
 Reuse a vendor STEP or an STL
 =============================
 
+.. needs:: step, stl
+
 Plenty of the parts a machine needs are not yours to model: a bought
 bearing published as STEP, a bracket someone shared as an STL, a whole
 vendor assembly. Two leaf kinds bring such files into a project as

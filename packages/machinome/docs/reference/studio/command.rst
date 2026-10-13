@@ -2,6 +2,8 @@
 The studio command
 ==================
 
+.. needs:: studio
+
 .. code-block:: console
 
    $ machinome studio [--projects-dir PATH] [--port PORT]

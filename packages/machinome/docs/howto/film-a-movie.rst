@@ -2,6 +2,8 @@
 Film a movie of your machine
 ============================
 
+.. needs:: movie
+
 ``machinome movie`` makes a narrated film of a machine from its project: a
 movie the project declares in Python (:doc:`/howto/declare-a-movie`), the
 movie document it evaluates to, or an episode written as a YAML screenplay

@@ -1,6 +1,8 @@
 Cut parts from sheet
 ====================
 
+.. needs:: build123d
+
 Some parts are not modelled, they are cut. A panel of plywood, MDF or
 acrylic is a flat profile in stock of a known thickness, and what a laser
 cutter needs is that profile, not a mesh of the finished part.

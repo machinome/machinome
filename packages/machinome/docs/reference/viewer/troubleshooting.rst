@@ -2,6 +2,8 @@
 Troubleshooting
 ===============
 
+.. needs:: viewer
+
 The page is blank or the model does not load
 ================================================
 

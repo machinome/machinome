@@ -1,6 +1,8 @@
 Relations
 =========
 
+.. needs:: none
+
 A joint says where a body may move; a **relation** says that one
 coordinate's motion *is* another's. It is written as a statement in a
 class body, over declarations, and the verb needs no import:

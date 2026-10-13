@@ -1,6 +1,8 @@
 Rolling motion
 ==============
 
+.. needs:: mechanics
+
 Convert a wheel's rotation to tangent travel for a rack, belt, roller or
 constant-radius drum, or recover rotation from that travel. Import from ``machinome.mechanics`` or
 ``machinome.mechanics.rolling``.

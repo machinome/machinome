@@ -3,6 +3,8 @@
 Put digits and labels on a part
 ===============================
 
+.. needs:: cadquery, build123d
+
 A calculator's answer is the angular position of a printed number roll.
 Model the roll without its digits and the register is computed perfectly
 and unreadable. The same gap eats every dial face, index mark, scale,

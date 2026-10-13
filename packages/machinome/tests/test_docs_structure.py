@@ -6,13 +6,15 @@
 
 These checks pin the shape the user-documentation spec describes: the
 navigation sections in order, one tutorial chapter for each stage of the
-counter, the release facts defined once, and no publication caveat outside
-the status page.
+counter, the release facts defined once, no publication caveat outside
+the status page, and every page's declaration of the extras it needs
+(change `manual-extras`).
 """
 
 import json
 import re
 import textwrap
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -20,6 +22,8 @@ REPO = Path(__file__).resolve().parent.parent
 DOCS = REPO / 'docs'
 # The repository holding the framework's directory (change `monorepo-layout`).
 REPOSITORY = Path(__file__).resolve().parents[3]
+# The manual's table of extras, beside its extension (change `manual-extras`).
+EXTRAS_TABLE = DOCS / '_ext' / 'manual_extras.toml'
 
 CAPTIONS = ['Start', 'Tutorial: a machine that counts', 'How-to guides',
             'How it works', 'Examples', 'Reference', 'Project']
@@ -273,13 +277,12 @@ class NavigationTest(unittest.TestCase):
 
 class KernelExtrasTest(unittest.TestCase):
     """The CAD kernels are extras (OpenSpec changes `lean-install`,
-    `mesh-engine` and `brep-mesh`): the installation page names each, and
-    no page a reader lands on says the package carries them, sends a reader
-    to the dissolved adapters package, or names an engine by a former name,
-    flag, extra or variable."""
-
-    EXTRAS = ('brep', 'mesh', 'cadquery', 'build123d', 'step', 'molejo',
-              'jscad', 'stl', 'freecad', 'all')
+    `mesh-engine` and `brep-mesh`): no page a reader lands on says the
+    package carries them, sends a reader to the dissolved adapters package,
+    or names an engine by a former name, flag, extra or variable. The
+    installation page names every extra and the distribution it installs
+    through its rendered list since change `manual-extras`, which
+    `tests/test_manual_extras.py` holds for every extra of the manifest."""
 
     #: The engines' former names (`brep-mesh`), spelled in pieces so this
     #: file's own reading of them is plain.
@@ -324,43 +327,6 @@ class KernelExtrasTest(unittest.TestCase):
                                          'machinome' '_mechanics') + FORMER
                + VIEWER_COMMAND}
 
-    def test_the_installation_page_names_every_kernel_extra(self):
-        page = (DOCS / 'start' / 'install.rst').read_text()
-        for extra in self.EXTRAS:
-            with self.subTest(extra=extra):
-                self.assertIn(f'machinome[{extra}]', page)
-
-    def test_the_installation_page_names_the_extension_distributions(self):
-        # `cut-the-engines`: the `brep` and `mesh` extras install the
-        # engines' own distributions; `cut-the-brep-nodes`: the `cadquery`,
-        # `build123d`, `step` and `molejo` extras the node packages';
-        # `cut-the-mesh-nodes`: the `openscad`, `solid2`, `jscad` and `stl`
-        # extras theirs; `join-freecad`: the `freecad` extra the FreeCAD node
-        # package; `join-mechanics`: the `mechanics` extra the mechanics
-        # helpers; `join-viewer`: the `viewer` extra the browser viewer;
-        # `join-skills`: the `skills` extra the skills package; `join-movie`:
-        # the `movie` extra the films, and their Node side's second step;
-        # `join-studio`: the `studio` extra the studio, Chromium its second.
-        page = (DOCS / 'start' / 'install.rst').read_text()
-        for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
-                             'machinome-node-cadquery',
-                             'machinome-node-build123d',
-                             'machinome-node-step', 'machinome-node-molejo',
-                             'machinome-node-openscad',
-                             'machinome-node-solid2',
-                             'machinome-node-jscad', 'machinome-node-stl',
-                             'machinome-node-freecad', 'machinome-mechanics',
-                             'machinome-viewer', 'machinome-skills',
-                             'machinome-movie', 'machinome-studio',
-                             'machinome-viewer-openscad'):
-            with self.subTest(distribution=distribution):
-                self.assertIn(distribution, page)
-        for line in ('pip install "machinome[movie]"', 'machinome movie setup',
-                     'pip install "machinome[studio]"',
-                     'playwright install chromium'):
-            with self.subTest(line=line):
-                self.assertIn(line, page)
-
     def test_no_reader_page_carries_the_kernels_or_the_old_addresses(self):
         pages = list(documents()) + [('README.rst',
                                       (REPO / 'README.rst').read_text())]
@@ -370,6 +336,255 @@ class KernelExtrasTest(unittest.TestCase):
                     continue
                 with self.subTest(document=relative, stale=stale):
                     self.assertNotIn(stale, text)
+
+
+class PageExtrasTest(unittest.TestCase):
+    """Every page says what it needs (change `manual-extras`, ADR-195).
+
+    Each page but the release notes begins, under its title, with
+    `.. needs::` and the extras a reader installs to follow it, or `none`,
+    naming extras of the manual's table, `docs/_ext/manual_extras.toml`,
+    whose extras are the manifest's a reader installs. A product's
+    reference section declares its product's extra, the core's rules and
+    records declare `none`, and a teaching page declares at least what its
+    code needs. The installation page lists the extras through the
+    extension's directive, and its tutorial line names what the tutorial's
+    chapters declare. The build refuses the same; these checks fail first.
+    """
+
+    #: The extras of the manifest a contributor installs, not a reader.
+    CONTRIBUTOR = ('dev', 'docs')
+
+    #: A product's reference section and the extra each of its pages
+    #: declares, alone.
+    SECTIONS = {'reference/viewer/': 'viewer', 'reference/movie/': 'movie',
+                'reference/mechanics/': 'mechanics',
+                'reference/studio/': 'studio'}
+
+    #: The core's rules and records, which need the bare framework.
+    NONE = ('index.rst', 'why.rst', 'examples.rst', 'start/install.rst',
+            'reference/api.rst', 'reference/assertions.rst',
+            'reference/cli.rst', 'reference/manuals.rst')
+    NONE_SECTIONS = ('concepts/', 'project/')
+
+    #: The pages whose code a reader runs as written.
+    TEACHING = ('tutorial/', 'howto/', 'start/first-machine.rst')
+
+    #: The one teaching page held to no derived extra: the guide that
+    #: chooses among the node types shows every one of them and names each
+    #: one's extra in its table, so its reader installs only the one chosen.
+    CHOOSER = 'howto/backends.rst'
+
+    maxDiff = None
+
+    NEEDS = re.compile(r'^\.\. needs::(.*)$', re.M)
+    UNDERLINE = re.compile(r'^([=\-~^"\'`#*+_])\1*$')
+
+    #: Where a teaching page shows code: a code directive's body or a
+    #: literal block after a paragraph ending `::`, and a file it includes.
+    BLOCK = re.compile(
+        r'^(?:\.\. (?:code-block|code|doctest|testcode)::.*'
+        r'|(?!\.\. ).*::)\n((?:[ \t]*\n|[ \t]+.*\n)+)', re.M)
+    INCLUDE = re.compile(r'^\.\. literalinclude:: (\S+)', re.M)
+    RELATIVE = re.compile(r'^from \.(\w+) import', re.M)
+
+    @staticmethod
+    def pages():
+        for relative, text in documents():
+            if not relative.startswith('releases/'):
+                yield relative, text
+
+    @staticmethod
+    def table():
+        return tomllib.loads(EXTRAS_TABLE.read_text())
+
+    @classmethod
+    def under_title(cls, text):
+        """The first non-blank line under the page's title (an overline
+        allowed), or None for a page without one."""
+        lines = text.split('\n')
+        for number, (line, underline) in enumerate(zip(lines, lines[1:])):
+            title = line.rstrip()
+            if (title and not cls.UNDERLINE.match(title)
+                    and cls.UNDERLINE.match(underline)
+                    and len(underline) >= len(title)):
+                for following in lines[number + 2:]:
+                    if following.strip():
+                        return following
+                return None
+        return None
+
+    @classmethod
+    def declared(cls, text):
+        """The names the declaration under the title gives, as written, or
+        None when the first line under the title declares nothing."""
+        line = cls.under_title(text)
+        found = cls.NEEDS.match(line or '')
+        if found is None:
+            return None
+        return tuple(name.strip() for name in found.group(1).split(','))
+
+    @classmethod
+    def declaration(cls, text):
+        """The extras the page declares, `()` for `none`."""
+        names = cls.declared(text)
+        return () if names in (None, ('none',)) else names
+
+    def test_every_page_declares_first_under_its_title(self):
+        undeclared = []
+        for relative, text in self.pages():
+            if (len(self.NEEDS.findall(text)) != 1
+                    or self.declared(text) is None):
+                undeclared.append(relative)
+        self.assertEqual(
+            undeclared, [],
+            f'{len(undeclared)} pages do not begin, under their title, with '
+            'one `.. needs::` and the extras they need, or `none`')
+
+    def test_a_declaration_names_extras_of_the_table(self):
+        table = self.table()
+        wrong = {}
+        for relative, text in self.pages():
+            for line in self.NEEDS.findall(text):
+                names = [name.strip() for name in line.split(',')]
+                if names == ['none']:
+                    continue
+                unknown = [name for name in names if name not in table]
+                if unknown or len(set(names)) != len(names):
+                    wrong[relative] = names
+        self.assertEqual(wrong, {}, 'a declaration names an extra the '
+                         'table lacks, an extra twice, or none with another')
+
+    def test_the_table_is_the_manifest_s(self):
+        table = self.table()
+        extras = tomllib.loads((REPO / 'pyproject.toml').read_text())[
+            'project']['optional-dependencies']
+        self.assertEqual(sorted(table),
+                         sorted(set(extras) - set(self.CONTRIBUTOR)))
+        for name, row in table.items():
+            with self.subTest(extra=name):
+                self.assertIsInstance(row.get('for'), str)
+                self.assertIsInstance(row.get('outside'), list)
+
+    def test_a_product_s_reference_section_declares_its_product(self):
+        wrong = {}
+        for relative, text in self.pages():
+            for section, extra in self.SECTIONS.items():
+                if relative.startswith(section) \
+                        and self.declared(text) != (extra,):
+                    wrong[relative] = self.declared(text)
+        self.assertEqual(wrong, {})
+
+    def test_the_core_s_rules_and_records_declare_none(self):
+        wrong = {}
+        for relative, text in self.pages():
+            if relative in self.NONE \
+                    or relative.startswith(self.NONE_SECTIONS):
+                if self.declared(text) != ('none',):
+                    wrong[relative] = self.declared(text)
+        self.assertEqual(wrong, {})
+
+    @classmethod
+    def module_closure(cls, path, seen):
+        """`path` and every module its `from .<module> import` lines reach
+        in its directory, each once."""
+        if path in seen or not path.is_file():
+            return []
+        seen.add(path)
+        text = path.read_text()
+        found = [(path, text)]
+        for name in cls.RELATIVE.findall(text):
+            found += cls.module_closure(path.parent / f'{name}.py', seen)
+        return found
+
+    @classmethod
+    def code_of(cls, relative, text):
+        """The code a page shows, as (where, code): its blocks, and every
+        file it includes with the modules those reach."""
+        found = [(relative, ''.join(cls.BLOCK.findall(text)))]
+        page = DOCS / relative
+        seen = set()
+        for target in cls.INCLUDE.findall(text):
+            for path, code in cls.module_closure(
+                    (page.parent / target).resolve(), seen):
+                found.append((path.relative_to(DOCS).as_posix(), code))
+        return found
+
+    @staticmethod
+    def rules():
+        """What code needs: (pattern, extra), the extra None where the
+        pattern's group names it."""
+        from machinome.node.supported import NODE_TYPES
+
+        command = r'^[ \t]*(?:\$[ \t]*)?machinome {}\b'
+        return [
+            (re.compile(r'\bmachinome\.node\.({})\b'.format(
+                '|'.join(NODE_TYPES))), None),
+            (re.compile(r'\bmachinome\.mechanics\b'), 'mechanics'),
+            (re.compile(r'\bmachinome\.movie\b'), 'movie'),
+            (re.compile(command.format('movie'), re.M), 'movie'),
+            (re.compile(command.format('skills'), re.M), 'skills'),
+            (re.compile(command.format('studio'), re.M), 'studio'),
+            (re.compile(r'\bSvg\('), 'build123d'),
+            (re.compile(r'--viewer[ =]web\b'), 'web-snapshot'),
+        ]
+
+    @classmethod
+    def derived(cls, relative, text):
+        """{extra: where} for every extra the page's code needs."""
+        needs = {}
+        rules = cls.rules()
+        for where, code in cls.code_of(relative, text):
+            for pattern, extra in rules:
+                for found in pattern.finditer(code):
+                    needs.setdefault(extra or found.group(1), where)
+        return needs
+
+    def test_a_teaching_page_declares_what_its_code_needs(self):
+        missing = {}
+        for relative, text in self.pages():
+            if not relative.startswith(self.TEACHING) \
+                    or relative == self.CHOOSER:
+                continue
+            declared = set(self.declaration(text))
+            lacking = {extra: where for extra, where
+                       in self.derived(relative, text).items()
+                       if extra not in declared}
+            if lacking:
+                missing[relative] = lacking
+        self.assertEqual(
+            missing, {}, 'a teaching page does not declare an extra its '
+            'code needs ({page: {extra: the file whose code needs it}})')
+
+    def test_the_installation_page_derives_its_list(self):
+        page = (DOCS / 'start' / 'install.rst').read_text()
+        self.assertTrue('.. _extras:\n\nThe extras\n----------\n' in page,
+                        'install.rst has no section "The extras" under the '
+                        'label `extras`')
+        self.assertEqual(page.count('.. extras::'), 1,
+                         'install.rst does not list the extras with one '
+                         '`.. extras::`')
+        self.assertFalse('list-table' in page,
+                         'install.rst keeps a table by hand')
+
+    def test_the_tutorial_s_install_line_names_its_chapters_extras(self):
+        page = (DOCS / 'start' / 'install.rst').read_text()
+        section = re.search(r'^Install\n-+\n(.*?)(?=^\S[^\n]*\n[-=]+\n|\Z)',
+                            page, re.M | re.S)
+        self.assertIsNotNone(section, 'install.rst has no Install section')
+        line = re.search(r'pip install "machinome\[([^\]]*)\]"',
+                         section.group(1))
+        self.assertIsNotNone(line, 'the Install section has no install line')
+        installed = {name.strip() for name in line.group(1).split(',')}
+        declared = set()
+        for chapter in CHAPTERS:
+            text = (DOCS / 'tutorial' / f'{chapter}.rst').read_text()
+            if any(target.startswith('counter/') and target.endswith('.py')
+                   for target in self.INCLUDE.findall(text)):
+                declared |= set(self.declaration(text))
+        self.assertEqual(sorted(installed), sorted(declared),
+                         "the tutorial's install line is not the union of "
+                         "its chapters' declarations")
 
 
 def conf_value(name):

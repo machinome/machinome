@@ -5,6 +5,8 @@
 Command line reference
 ======================
 
+.. needs:: none
+
 The ``machinome`` command follows the grammar::
 
     machinome <command> [reference] [options]

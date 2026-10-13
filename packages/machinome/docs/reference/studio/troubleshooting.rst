@@ -2,6 +2,8 @@
 Troubleshooting
 ===============
 
+.. needs:: studio
+
 Each entry names what you see, why, and what to do.
 
 The hub does not start

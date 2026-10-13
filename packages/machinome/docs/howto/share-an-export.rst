@@ -2,6 +2,8 @@
 Share an export and take a still
 ================================
 
+.. needs:: web-snapshot
+
 Share a static export
 =====================
 

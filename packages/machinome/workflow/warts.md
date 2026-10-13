@@ -2403,3 +2403,27 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   which no declared contract covers; a contract for a node package that
   compiles an assembly, or the gate's reason for each import, is a later
   cycle's.
+
+# Findings from the framework cycle `manual-extras` (12 October 2026)
+
+- **Chapter 10 photographs through OpenSCAD's viewer in a tutorial that
+  says it needs no OpenSCAD.** `docs/tutorial/10-share.rst`, "Photograph",
+  shows `machinome snapshot -o counter.png --viewall --autocenter` and
+  `machinome snapshot --drive crank=3580 -o carry.png --viewall
+  --autocenter`, which take the default viewer, OpenSCAD's; chapter 1
+  (`docs/tutorial/01-part.rst`) says "The tutorial stays with CadQuery so
+  that nothing here needs OpenSCAD", and the installation page's
+  requirements say "The tutorial's machine is one of those, so you can
+  follow it without OpenSCAD". With the extras chapters 1 to 9 declare
+  installed and the other node packages and the OpenSCAD viewer refused,
+  the first line exits 1: "Error: machinome snapshot --viewer openscad needs
+  the viewer-openscad extra: the openscad viewer needs
+  machinome.viewer.openscad, which is not installed; install it with 'pip
+  install "machinome[viewer-openscad]"'; or use --viewer web"
+  (`openspec/changes/manual-extras/evidence.md`, task 6.5). The change
+  declares chapter 10 as written, `viewer, cadquery, build123d,
+  viewer-openscad, web-snapshot`, so its line asks for the OpenSCAD
+  executable, and leaves the three sentences as they are. Making the
+  chapter photograph through the web viewer alone would settle all three
+  and drop `viewer-openscad` and the OpenSCAD executable from its line; it
+  changes what the tutorial teaches, so it is the pilot's. **Recorded.**

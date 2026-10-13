@@ -1,6 +1,8 @@
 Three ways a machine runs
 =========================
 
+.. needs:: none
+
 Everything a machine does at an instant is a pose: the tree enumerated
 with its inputs bound. What differs between machines is what they keep
 between instants, and the framework has three answers, selected by what

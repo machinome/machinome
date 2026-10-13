@@ -2,6 +2,8 @@
 Inspect and operate a machine in the viewer
 ===========================================
 
+.. needs:: viewer
+
 The browser viewer turns a published model into an interactive 3D assembly:
 orbit the camera, look inside subassemblies, operate declared controls, and
 watch the machine respond. Install it with the framework, into the

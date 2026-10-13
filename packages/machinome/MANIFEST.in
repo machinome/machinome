@@ -12,4 +12,13 @@ recursive-include tests *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 
-recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
+# The manual, buildable from the archive: its pages and configuration, its
+# own extension and table (docs/_ext), its static files, the committed
+# exports and the example projects beside the pages (change `manual-extras`).
+recursive-include docs *.rst conf.py Makefile make.bat requirements.txt *.jpg *.png *.gif
+recursive-include docs/_ext *.py *.toml
+recursive-include docs/_static *.css *.js *.svg
+recursive-include docs/_exports *.json *.stl
+recursive-include docs/howto *.html *.js *.py *.toml
+recursive-include docs/tutorial *.py *.svg *.toml
+prune docs/_build

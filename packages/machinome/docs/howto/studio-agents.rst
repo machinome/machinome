@@ -2,6 +2,8 @@
 Choose and steer the studio's agents
 ====================================
 
+.. needs:: studio
+
 A profile is the team a project opens with: which agents stand ready,
 which one speaks with you, who assigns work to whom, what each may do, the
 prompt each follows and the skills it may load. The studio ships two. The

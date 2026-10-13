@@ -2,6 +2,8 @@
 The episode format
 ==================
 
+.. needs:: movie
+
 A YAML episode is a film written as its screenplay, in one of three formats:
 ``machinome-video-draft/0.2``, ``0.3`` and ``0.4``. 0.2 is the base; 0.3 is a draft
 that adds cues needing Viewer API 28 (see "Format 0.3" below); 0.4 is a draft

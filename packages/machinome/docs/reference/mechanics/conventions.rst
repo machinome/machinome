@@ -1,6 +1,8 @@
 Units, frames and valid poses
 =============================
 
+.. needs:: mechanics
+
 Each helper is a formula over the arguments you give it. It does not
 inspect your parts to discover a tooth's phase, a rod's reference frame,
 or which side of a linkage you assembled. Those conventions are part of

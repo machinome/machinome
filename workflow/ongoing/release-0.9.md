@@ -331,3 +331,50 @@ The site's intake (three files in the site's repository) is held for the
 pilot; no universe sweep, since nothing a project imports moved. Nothing
 pushed. Evidence:
 `packages/machinome/openspec/changes/archive/2026-10-12-viewer-command/evidence.md`.
+
+5. `manual-extras`. **Done** (13 October 2026). The pilot's ninth decision
+of 12 October 2026: one cycle gives every page of the manual the extra it
+needs, rendered at the top of the page by the manual's own extension,
+pinned by a test, the installation page's list derived from the same
+declarations. Branch `v0.9-joins-manual-extras`, planning commit 70be3aab
+on c5eeb038 (after `viewer-command`), ratified by the orchestrator's review
+with the recommendations of its Open Questions 1 to 6 and 8 to 10 accepted
+and Open Question 7 overruled (the source archive carries the manual);
+implemented and closed on 13 October 2026. ADR-195, every manual page
+declares the extras it needs, accepted (dated 12 October 2026). Every page
+but the release notes begins, under its title, with `.. needs::` and the
+extras a reader installs to follow it, or `none`: of 85 pages, 58 name
+extras and 27 `none`. The manual's own extension,
+`docs/_ext/manual_extras.py`, with its table `docs/_ext/manual_extras.toml`
+(19 rows, the manifest's extras but `dev` and `docs`), renders the line
+`Needs pip install "machinome[...]"` and what those extras need outside pip,
+and nothing for `none`; `.. extras::` renders the installation page's list,
+every extra with the distributions it installs, what it is for, what it
+needs outside pip and the pages that need it, in place of the hand-kept
+table and paragraphs. The build refuses an undeclared page, an unknown
+extra, a misplaced or second declaration and a table that is not the
+manifest's; the structure test refuses the same and holds a teaching page's
+declaration to its code. The finding's two false claims: the tutorial's
+install line is `machinome[viewer,cadquery,build123d]` (chapter 4's model
+is refused naming `machinome.node.build123d` without it); chapter 10
+declares what its photographs need as written, `viewer-openscad` among them
+since the seam, and its contradiction with chapter 1 and the installation
+page is in `workflow/warts.md` for the pilot. Departures kept by the
+orchestrator: the table's `viewer-openscad` row, the derived rule reading
+`--viewer web`, the seam's installation-page test held by the rendered
+list. `MANIFEST.in` carries the extension, the static files, the committed
+exports and the example projects, so the framework's sdist holds every file
+the manual's build reads (a test builds the sdist and holds it); building
+the pages needs the set's packages beside them, from the index once 0.9.0
+is uploaded or from the repository. The specs: `user-documentation` (two
+requirements added) and `framework-contributor-guidance` (one added).
+Counts: the core 5046 passed, 9 skipped (`viewer-command`'s 5023 and 23
+more); `make docs`, 97 HTML files, 58 carrying the line; `make check`, 36
+archives on the tree and 36 on the clean copy; the viewer's browser review
+of the manual, 12 pages at two widths, 279 local links, 0 browser errors.
+The originating check: the tutorial built and tested with only the node
+packages its chapters declare (`build --all` exit 0, `test --all` 11
+passed), chapters 1 to 3 and the first machine without build123d, chapter
+4 refused without it, chapter 10's stills through each viewer with its
+declaration. No project moves. Nothing pushed. Evidence:
+`packages/machinome/openspec/changes/archive/2026-10-13-manual-extras/evidence.md`.

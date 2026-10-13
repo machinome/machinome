@@ -1,6 +1,8 @@
 9. A machine that remembers
 ===========================
 
+.. needs:: viewer, cadquery, build123d
+
 A running counter keeps every coordinate's history and integrates every
 law on every tick. A tally counter needs less than that and more: two
 digits, retained between strokes, and a pose that is a plain function of

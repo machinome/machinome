@@ -1,6 +1,8 @@
 6. Prove the fit
 ================
 
+.. needs:: viewer, cadquery, build123d
+
 The drums run on the arbor with a tenth of a millimetre of clearance,
 and the post stands clear of the drums. Both are true because the
 numbers say so. This chapter makes them contracts: tests that fail when

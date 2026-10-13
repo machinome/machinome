@@ -2,6 +2,8 @@
 The viewer command
 ==================
 
+.. needs:: viewer
+
 ``machinome viewer`` reports and runs the installed viewer. Its three verbs,
 ``describe``, ``serve`` and ``capture``, ask the viewer named by
 ``--viewer NAME``, the browser viewer ``web`` by default; the command reads

@@ -3,6 +3,8 @@
 Project status and direction
 ============================
 
+.. needs:: none
+
 Machinome |release| was released on |release_date|. It continues
 Machinome 0.7, the published continuation of solid-node 0.6.0 under the
 Machinome name and the `machinome GitHub organisation

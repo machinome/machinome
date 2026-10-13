@@ -1,6 +1,8 @@
 4. One coordinate drives another
 ================================
 
+.. needs:: viewer, cadquery, build123d
+
 A counter counts on drums. This chapter adds two, relates them to the
 crank, and replaces a ratio with a law of the machine's own.
 

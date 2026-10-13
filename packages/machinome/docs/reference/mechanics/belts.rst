@@ -1,6 +1,8 @@
 Belt geometry
 =============
 
+.. needs:: mechanics
+
 Import from ``machinome.mechanics`` or ``machinome.mechanics.belts``.
 Pitch geometry describes the belt's pitch line, not the tooth tips or the
 surface of a plain idler. Use one length unit consistently.

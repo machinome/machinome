@@ -1,6 +1,8 @@
 Test assertions
 ===============
 
+.. needs:: none
+
 The testing API lives in ``machinome.test``. Tests for ``foo.py`` live in
 ``test_foo.py`` beside it, or in ``test.py`` for a package; subclass
 ``TestCase``, or mix ``TestCaseMixin`` into the node class so the tests

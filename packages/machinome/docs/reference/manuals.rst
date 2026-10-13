@@ -1,6 +1,8 @@
 Sibling manuals
 ===============
 
+.. needs:: none
+
 The browser viewer and the mechanics helpers are documented in this
 manual, under :doc:`/reference/viewer/index` and
 :doc:`/reference/mechanics/index`; the libraries below have manuals of

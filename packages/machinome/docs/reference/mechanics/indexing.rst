@@ -1,6 +1,8 @@
 Indexed advance
 ===============
 
+.. needs:: mechanics
+
 Import from ``machinome.mechanics`` or ``machinome.mechanics.indexing``.
 
 .. py:currentmodule:: machinome.mechanics

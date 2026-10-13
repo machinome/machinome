@@ -2,6 +2,8 @@
 Navigator, inspector and development
 ====================================
 
+.. needs:: viewer
+
 These components use the public viewer handle; your host need not duplicate
 the assembly tree or reach into three.js. They need no React integration.
 

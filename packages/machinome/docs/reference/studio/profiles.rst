@@ -2,6 +2,8 @@
 Shipped profiles
 ================
 
+.. needs:: studio
+
 A profile declares its standing agents, which one speaks with the maker,
 its work mode, and for each agent the prompt it follows, the skills it may
 load, the agents it may assign, the agent it reports to, and its Claude

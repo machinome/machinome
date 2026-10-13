@@ -2,6 +2,8 @@
 The viewer handle
 =================
 
+.. needs:: viewer
+
 Returned by :js:func:`MachinomeViewer.mount`, or available as
 ``inspector.viewer``. Methods returning ``void`` are synchronous; await the
 update methods that return promises. Stop using a disposed handle. After

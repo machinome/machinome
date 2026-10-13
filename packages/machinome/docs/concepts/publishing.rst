@@ -1,6 +1,8 @@
 What a build publishes
 ======================
 
+.. needs:: none
+
 Every command that loads a model, ``build``, ``develop``, ``test``,
 ``snapshot``, ``export``, goes through one pipeline: the tree is
 enumerated, every part's artifact is brought current, and a document is

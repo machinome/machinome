@@ -2,6 +2,8 @@
 Movies
 ======
 
+.. needs:: movie
+
 A narrated film of a machine is made with ``machinome movie``, the command
 of the package ``machinome-movie``, which ``pip install "machinome[movie]"``
 installs and which is numbered with the framework, |release| with this

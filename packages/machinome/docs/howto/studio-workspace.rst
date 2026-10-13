@@ -2,6 +2,8 @@
 Work in a project's workspace
 =============================
 
+.. needs:: studio
+
 An open project fills the browser. A title bar names the studio and the
 project. An activity rail on the left offers four areas, **Model**,
 **Code**, **Agents** and **Build**; a panel beside it holds that area's

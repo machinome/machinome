@@ -2,6 +2,8 @@
 Declare a movie
 ===============
 
+.. needs:: movie
+
 A movie is declared in Python, in the project that owns the model, and
 evaluated to the :doc:`movie document </reference/movie/document>`,
 ``machinome-movie/0.2``. The declarations say what is on screen and when; the

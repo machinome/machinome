@@ -1,6 +1,8 @@
 Cam follower envelopes
 ======================
 
+.. needs:: mechanics
+
 Import from ``machinome.mechanics`` or ``machinome.mechanics.cams``.
 
 .. py:currentmodule:: machinome.mechanics

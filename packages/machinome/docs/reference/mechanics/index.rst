@@ -1,6 +1,8 @@
 Mechanics helpers
 =================
 
+.. needs:: mechanics
+
 The package provides small Python functions for gears, screws, rolling travel,
 slider-cranks, linear deltas and planar linkages. Use them to calculate a
 single pose, or put them inside a :doc:`relation law </concepts/relations>` so

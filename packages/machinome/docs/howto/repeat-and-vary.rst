@@ -1,6 +1,8 @@
 Repeat a unit and vary a design
 ===============================
 
+.. needs:: none
+
 An engine has eight identical cylinder units at different stations. A
 windmill may or may not be fitted with its guard. A rack holds a left
 panel and a right panel that are not the same part. Each of these is

@@ -2,6 +2,8 @@
 Mounting and configuration
 ==========================
 
+.. needs:: viewer
+
 .. js:function:: MachinomeViewer.mount(target, sourceUrl, options)
 
    Load a published ``manifest.json`` or ``viewer.json`` into a container.

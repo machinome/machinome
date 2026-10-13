@@ -2,6 +2,8 @@
 Versions and compatibility
 ==========================
 
+.. needs:: viewer
+
 Three version numbers
 =====================
 

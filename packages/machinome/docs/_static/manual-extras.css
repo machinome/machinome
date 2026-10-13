@@ -1,0 +1,12 @@
+/* The line under a page's title naming the extras the page needs (change
+   `manual-extras`): a box in the theme's link colour. */
+.machinome-needs {
+    border-left: 4px solid #2980b9;
+    background: #f3f6f6;
+    padding: 6px 12px;
+    margin-bottom: 24px;
+}
+
+.machinome-needs p {
+    margin: 0;
+}

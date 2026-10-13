@@ -1,6 +1,8 @@
 7. Step it through a move
 =========================
 
+.. needs:: viewer, cadquery, build123d
+
 Chapter six judged the counter at rest. A machine is used in motion:
 does the arm clear the post on the way round, at every angle, and if it
 did not, at which angle does it hit? A **scenario** answers that by

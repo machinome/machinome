@@ -3,6 +3,8 @@
 Upgrading from Machinome 0.8 to 0.9
 ===================================
 
+.. needs:: none
+
 .. _upgrade-viewer-flag:
 
 The viewer flag

@@ -210,6 +210,16 @@ Unreleased
   handed. Change ``viewer-command`` (ADR-196; ADR-188 and ADR-194
   amended).
 
+* **Every page of the manual says what it needs.** A page begins with
+  ``.. needs::`` and the extras a reader installs to follow it, or
+  ``none``; the manual's own Sphinx extension, ``docs/_ext/manual_extras.py``,
+  shows them at the top of the page with what they need outside pip, and
+  the installation page lists every extra of the manifest with the pages
+  that need it. The build refuses an undeclared page and a table of
+  extras that is not the manifest's. The tutorial's install line names
+  ``build123d``, which its digits need. Change ``manual-extras``
+  (ADR-195).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

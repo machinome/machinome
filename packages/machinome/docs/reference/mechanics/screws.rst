@@ -1,6 +1,8 @@
 Lead screws
 ===========
 
+.. needs:: mechanics
+
 Convert screw rotation to axial travel, or find the rotation needed for
 a desired travel. Import from ``machinome.mechanics`` or
 ``machinome.mechanics.screws``.

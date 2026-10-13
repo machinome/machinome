@@ -19,6 +19,8 @@ import sys
 # before Sphinx runs (change `viewer-seam`).
 sys.path[:0] = [os.path.abspath('..'),
                 *sorted(glob.glob(os.path.abspath('../../machinome-*')))]
+# The manual's own extension, docs/_ext/ (change `manual-extras`).
+sys.path.insert(0, os.path.abspath('_ext'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -83,7 +85,10 @@ rst_prolog = f'''
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',
-              'sphinx.ext.doctest', 'machinome.sphinx']
+              'sphinx.ext.doctest', 'machinome.sphinx', 'manual_extras']
+
+# The release notes are history: the one place a page declares no extras.
+manual_extras_exempt = ['releases/*']
 
 # Every cross-reference must resolve, so a warnings-as-errors build (CI,
 # Read the Docs) refuses a link to nothing.

@@ -1,0 +1,80 @@
+# The extras a reader installs, in the order the installation page lists
+# them: what each is for, and what it needs that no pip extra installs.
+# The distribution each installs is read from the framework's manifest, and
+# the build refuses a table whose extras are not the manifest's.
+
+[viewer]
+for = "the browser viewer: ``machinome develop`` opens it, and every export carries its page"
+outside = []
+
+[cadquery]
+for = "``CadQueryNode``"
+outside = []
+
+[build123d]
+for = "``Build123dNode``, ``Build123dSheetNode`` and the SVG artwork of markings"
+outside = []
+
+[step]
+for = "``StepNode``, ``StepAssembly`` and ``machinome import-step``"
+outside = []
+
+[molejo]
+for = "``MolejoNode``, with `molejo <https://molejo.readthedocs.io>`_"
+outside = []
+
+[openscad]
+for = "``OpenScadNode`` and the OpenSCAD viewer of ``machinome snapshot``"
+outside = ["the OpenSCAD executable"]
+
+[viewer-openscad]
+for = "the OpenSCAD viewer of ``machinome snapshot`` alone, a still of a model of any parts"
+outside = ["the OpenSCAD executable"]
+
+[solid2]
+for = "``Solid2Node``, with the ``openscad`` extra's package"
+outside = ["the OpenSCAD executable"]
+
+[jscad]
+for = "``JScadNode``, compared on its mesh by the mesh engine"
+outside = ["the ``jscad`` command from npm"]
+
+[stl]
+for = "``StlNode``, compared on its mesh by the mesh engine"
+outside = []
+
+[freecad]
+for = "``FreeCADAssemblyNode`` and ``FreeCADJoint``"
+outside = ["FreeCAD 1.1.4, extracted, its root named by ``MACHINOME_FREECAD_ROOT``"]
+
+[brep]
+for = "the B-rep engine, which every node type over it installs too"
+outside = []
+
+[mesh]
+for = "the mesh engine, for every comparison on meshes"
+outside = []
+
+[all]
+for = "every node type and both engines"
+outside = []
+
+[web-snapshot]
+for = "the viewer with its headless browser driver, for transparent photographs"
+outside = ["Chromium for Playwright, ``playwright install chromium``"]
+
+[mechanics]
+for = "the mechanics helpers, ``machinome.mechanics``"
+outside = []
+
+[skills]
+for = "the machinome skills and the command ``machinome skills``"
+outside = []
+
+[movie]
+for = "the films of a machine, ``machinome.movie`` and the command ``machinome movie``, with the viewer they draw with"
+outside = ["Node 22 or newer, then ``machinome movie setup``", "the Chromium that ``machinome movie setup`` names", "FFmpeg with ffprobe"]
+
+[studio]
+for = "Machinome Studio and the command ``machinome studio``"
+outside = ["Git", "the OpenSCAD executable", "the OpenSpec CLI", "a logged-in agent backend", "Chromium for Playwright, ``playwright install chromium``"]

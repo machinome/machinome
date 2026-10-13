@@ -2,6 +2,8 @@
 The movie document
 ==================
 
+.. needs:: movie
+
 The contract of ``machinome-movie/0.2``, the document a movie declared with
 ``machinome.movie`` evaluates to (:doc:`/howto/declare-a-movie`) and the
 command ``machinome movie`` films (:doc:`command`). The Node side loads,

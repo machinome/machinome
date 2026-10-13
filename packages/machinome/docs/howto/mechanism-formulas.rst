@@ -1,6 +1,8 @@
 Use a mechanism formula in a machine
 ====================================
 
+.. needs:: mechanics
+
 A mechanics function calculates a relationship. A Machinome motion law
 connects that relationship to a driver or joint in your machine. This
 guide calculates a pose, then connects a crank-angle input to the height

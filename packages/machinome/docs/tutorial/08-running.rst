@@ -1,6 +1,8 @@
 8. A machine with history
 =========================
 
+.. needs:: viewer, cadquery, build123d
+
 Everything so far poses the counter from the crank's value. Ask for a
 crank of 720 and the drums stand where two turns put them, whatever
 happened before. A real counter is operated: turned, and turned again,

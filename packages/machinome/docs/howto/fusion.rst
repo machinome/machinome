@@ -1,6 +1,8 @@
 Fuse parts into one piece
 =========================
 
+.. needs:: none
+
 Sometimes several nodes describe one piece. A knob can be modelled as a
 shaft plus a grip, two simple solids that are easier to write and read
 separately, but it is a single rigid part, printed in one go. A

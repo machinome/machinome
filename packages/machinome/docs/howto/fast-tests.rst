@@ -1,6 +1,8 @@
 Run tests fast
 ==============
 
+.. needs:: mesh
+
 Every intersection, containment, connectivity and weld question a test
 asks is decided by one of two engines, and which one is a property of the
 run, not of the model.

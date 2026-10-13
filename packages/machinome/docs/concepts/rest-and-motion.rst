@@ -1,6 +1,8 @@
 Rest and motion
 ===============
 
+.. needs:: none
+
 An assembly has two lifecycle methods, and the split between them is
 what the framework knows about your machine.
 

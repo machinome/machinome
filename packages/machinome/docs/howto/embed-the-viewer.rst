@@ -2,6 +2,8 @@
 Embed the viewer in a page
 ==========================
 
+.. needs:: viewer
+
 Use an iframe when the exported page already has the controls you need.
 Use the JavaScript API when your page owns the layout, camera or operating
 panel. Both use the same viewer bundle.

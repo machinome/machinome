@@ -1,6 +1,8 @@
 Simulate an existing open-source design
 =======================================
 
+.. needs:: none
+
 Most machines worth simulating already have source: an OpenSCAD design,
 a folder of STLs, a vendor STEP, a build123d project. Machinome does not
 ask for a rewrite. It adds a thin layer beside the design that reads it

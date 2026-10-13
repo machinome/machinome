@@ -3,6 +3,8 @@
 Model springs, belts and cables
 ===============================
 
+.. needs:: molejo
+
 Every rigid leaf promises a part that holds still: whatever the machine
 does, the geometry is the same solid moved around. A valve spring
 compressed by its cam, a timing belt tensioned by an idler, a cable loom

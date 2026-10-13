@@ -2,6 +2,8 @@
 Project configuration
 =====================
 
+.. needs:: studio
+
 A project's ``pyproject.toml`` may carry one table for the studio,
 ``[tool.machinome-studio]``. It is the only place a project selects its
 profile and its agents' runtimes; there is no launcher option and no

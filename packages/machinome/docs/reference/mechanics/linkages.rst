@@ -1,6 +1,8 @@
 Planar linkages
 ===============
 
+.. needs:: mechanics
+
 Find a point where two fixed-length links meet, calculate an angle from
 three side lengths, or find a link's vertical rise. Import from
 ``machinome.mechanics`` or ``machinome.mechanics.linkages``.

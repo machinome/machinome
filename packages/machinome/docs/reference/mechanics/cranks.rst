@@ -1,6 +1,8 @@
 Slider-cranks
 =============
 
+.. needs:: mechanics
+
 A planar slider-crank turns a crank rotation into piston motion through
 a connecting rod. These helpers calculate the crank pin, rod tilt and
 small-end height from one crank angle. Import from ``machinome.mechanics``

@@ -2,6 +2,8 @@
 Clocked machines
 ================
 
+.. needs:: viewer
+
 ``viewer.machine()`` returns a ``MachineHandle`` for a version 8 clocked
 document; otherwise it returns null. ``viewer.run()`` is null on this model.
 One request moves one input, solves its path, applies events, and commits a

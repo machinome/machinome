@@ -374,3 +374,56 @@ class ReleaseRecordsTest(TestCase):
                       f"API {conf_value('viewer_api')}", text)
         self.assertIn('Frame(', text)
         self.assertIn('machinome vet', text)
+
+
+class TheManualInTheSourceArchiveTest(TestCase):
+    """The manual is distributed with the framework's source archive (the
+    pilot's decision of 12 October 2026, `workflow/ongoing/release-0.9.md`
+    at the repository root, decision 9), so the sdist carries every file
+    its build reads: the pages, the configuration, the manual's own
+    extension and its table under `docs/_ext/`, the static files, the
+    committed exports under `docs/_exports/` and the example projects
+    beside the pages (change `manual-extras`). The records Sphinx does not
+    read, the `.md` files under `docs/`, and Git's own files stay out."""
+
+    maxDiff = None
+
+    #: What the build does not read.
+    NOT_READ = re.compile(r'\.md$|(^|/)\.git(ignore|keep)$')
+
+    def tracked(self):
+        """The files under `docs/` Git tracks or would track, those the
+        build does not read left out."""
+        import subprocess
+        try:
+            listed = subprocess.run(
+                ['git', 'ls-files', '-z', '--cached', '--others',
+                 '--exclude-standard', 'docs'], cwd=ROOT, check=True,
+                capture_output=True, text=True).stdout
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest('not a Git checkout: the tracked files are unknown')
+        return sorted(path for path in listed.split('\0')
+                      if path and not self.NOT_READ.search(path))
+
+    def test_the_sdist_carries_what_the_manual_s_build_reads(self):
+        import subprocess
+        import sys
+        import tarfile
+        import tempfile
+
+        expected = self.tracked()
+        self.assertIn('docs/_ext/manual_extras.py', expected)
+        with tempfile.TemporaryDirectory() as out:
+            subprocess.run(
+                [sys.executable, '-m', 'build', '--sdist', '--no-isolation',
+                 '--outdir', out], cwd=ROOT, check=True,
+                capture_output=True)
+            (sdist,) = Path(out).glob('*.tar.gz')
+            with tarfile.open(sdist) as archive:
+                carried = {name.split('/', 1)[1]
+                           for name in archive.getnames() if '/' in name}
+        self.assertEqual([path for path in expected if path not in carried],
+                         [], 'the sdist lacks files the manual reads')
+        self.assertEqual(sorted(name for name in carried
+                                if name.startswith('docs/_build/')), [],
+                         'the sdist carries a build of the manual')
