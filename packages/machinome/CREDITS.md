@@ -164,52 +164,103 @@ their provenance.
 The package `machinome-studio` (`machinome.studio`) carries, under
 `packages/machinome-studio/machinome/studio/frontend/public/assets/` and in
 the browser surface its wheel ships, works that are not under this
-repository's licence, each with its own terms.
+repository's licence, each with its own terms: three fonts, the Machinome
+identity, and the packages its frontend bundles.
 
-#### Fonts
-- **Machinome Logo Regular**, the logo-only font derived from Anta, under
-  `brand/v1/fonts/`: SIL Open Font License 1.1; Copyright 2019 The Anta
-  Project Authors (https://github.com/Typedesigners/Anta-Regular), Copyright
-  2026 The Machinome Project Authors (the linkage M adaptation); its notice
-  `OFL.txt` and its `FONTLOG.md` are kept beside it.
-- **Space Grotesk**, by Florian Karsten, under `fonts/`: SIL Open Font
-  License 1.1; Copyright 2020 The Space Grotesk Project Authors
-  (https://github.com/floriankarsten/space-grotesk); its notice
-  `SpaceGrotesk-OFL.txt` is kept beside it.
-- **IBM Plex Mono**, by IBM, under `fonts/`: SIL Open Font License 1.1;
-  Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"; its notice
-  `IBMPlexMono-OFL.txt` is kept beside it.
-
-#### The Machinome identity
 The identity's artwork under `brand/v1/` (the wordmarks, the symbols and the
 favicon pack) and the studio's favicon pack built from it under `favicon/`
 carry no public licence. Machinome, the linkage symbol and the Machinome
 wordmark are trademarks of Poiesis Tecnologia da Informação LTDA; this
 repository's licence grants no right to use them.
 
-#### Bundled into the browser surface
-The studio's frontend bundles these packages, minified, into the built
-surface `machinome/studio/static/`, which the wheel carries; the versions are
-those the root `package-lock.json` resolves for the frontend. These licences
-are the bundled libraries' own, stated as their provenance. The built surface
+The frontend bundles the packages below, minified, into the built surface
+`machinome/studio/static/`, which the wheel carries; the versions are those
+the root `package-lock.json` resolves for the frontend. These licences are
+the bundled libraries' own, stated as their provenance. The built surface
 carries `THIRD-PARTY-NOTICES.txt` beside its files, written by the frontend's
 build from the packages the bundle holds: each name, version, licence and the
 licence text it ships, as the MIT and Apache licences require of every copy.
 
-- **react** and **react-dom** 19.2.7, **scheduler** 0.27.0: MIT License,
-  https://github.com/facebook/react
-- **three** 0.185.1: MIT License, https://github.com/mrdoob/three.js
-- **monaco-editor** 0.56.0: MIT License,
-  https://github.com/microsoft/monaco-editor
-- **@monaco-editor/react** 4.7.0 and **@monaco-editor/loader** 1.7.0: MIT
-  License, https://github.com/suren-atoyan/monaco-react
-- **state-local** 1.0.7: MIT License,
-  https://github.com/suren-atoyan/state-local
-- **marked** 14.0.0: MIT License, https://github.com/markedjs/marked;
-  inlined in monaco-editor's own files, which declare it
-- **dompurify** 3.4.8: MPL-2.0 OR Apache-2.0, as its `package.json` names
-  it, https://github.com/cure53/DOMPurify; inlined in monaco-editor's own
-  files, which declare it
+#### Machinome Logo Regular
+- **License:** SIL Open Font License 1.1
+- **Copyright:** Copyright 2019 The Anta Project Authors; Copyright 2026 The
+  Machinome Project Authors (the linkage M adaptation)
+- **Repository:** https://github.com/Typedesigners/Anta-Regular
+- **Description:** The logo-only font derived from Anta, under
+  `brand/v1/fonts/`; its notice `OFL.txt` and its `FONTLOG.md` are kept
+  beside it
+
+#### Space Grotesk
+- **License:** SIL Open Font License 1.1
+- **Copyright:** Copyright 2020 The Space Grotesk Project Authors
+- **Repository:** https://github.com/floriankarsten/space-grotesk
+- **Description:** The interface typeface, by Florian Karsten, under
+  `fonts/`; its notice `SpaceGrotesk-OFL.txt` is kept beside it
+
+#### IBM Plex Mono
+- **License:** SIL Open Font License 1.1
+- **Copyright:** Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+- **Repository:** https://github.com/IBM/plex
+- **Description:** The code typeface, by IBM, under `fonts/`; its notice
+  `IBMPlexMono-OFL.txt` is kept beside it
+
+#### react
+- **License:** MIT License
+- **Copyright:** Copyright (c) Meta Platforms, Inc. and affiliates.
+- **Repository:** https://github.com/facebook/react
+- **Version:** 19.2.7
+- **Description:** The user interface library the studio's surface is written
+  with; `react-dom` 19.2.7 and `scheduler` 0.27.0, of the same repository and
+  licence, are bundled with it
+
+#### three
+- **License:** MIT License
+- **Copyright:** Copyright © 2010-2026 three.js authors
+- **Repository:** https://github.com/mrdoob/three.js
+- **Version:** 0.185.1
+- **Description:** JavaScript 3D rendering library (WebGL), for the project
+  cards' previews
+
+#### monaco-editor
+- **License:** MIT License
+- **Copyright:** Copyright (c) 2016 - present Microsoft Corporation
+- **Repository:** https://github.com/microsoft/monaco-editor
+- **Version:** 0.56.0
+- **Description:** The code editor of the workspace; its own files inline
+  `marked` and `dompurify`, credited below, and its `ThirdPartyNotices.txt`
+  travels in the surface's notices
+
+#### @monaco-editor/react
+- **License:** MIT License
+- **Copyright:** Copyright (c) 2018 Suren Atoyan
+- **Repository:** https://github.com/suren-atoyan/monaco-react
+- **Version:** 4.7.0
+- **Description:** The React binding of monaco-editor; `@monaco-editor/loader`
+  1.7.0 (Copyright (c) 2021 Suren Atoyan, MIT License,
+  https://github.com/suren-atoyan/monaco-loader) is bundled with it
+
+#### state-local
+- **License:** MIT License
+- **Copyright:** Copyright (c) 2020 Suren Atoyan
+- **Repository:** https://github.com/suren-atoyan/state-local
+- **Version:** 1.0.7
+- **Description:** State container the monaco loader depends on
+
+#### marked
+- **License:** MIT License
+- **Copyright:** Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/)
+- **Repository:** https://github.com/markedjs/marked
+- **Version:** 14.0.0
+- **Description:** Markdown parser, inlined in monaco-editor's own files,
+  which declare it
+
+#### dompurify
+- **License:** MPL-2.0 OR Apache-2.0, as its `package.json` names it
+- **Copyright:** Dr.-Ing. Mario Heiderich, Cure53
+- **Repository:** https://github.com/cure53/DOMPurify
+- **Version:** 3.4.8
+- **Description:** HTML sanitiser, inlined in monaco-editor's own files,
+  which declare it
 
 ### Adapted from Machinome Studio, in the skills package
 
