@@ -40,6 +40,16 @@ or qualified Codex as the agent backend.
   the build, while the MIT and Apache licences of those packages require
   their notice to accompany every copy. The framework's `CREDITS.md` names
   the file, and `scripts/check-dist` holds the wheel to it.
+- **The identity's artwork is licensed with the set; the marks are stated
+  once.** The wordmarks, symbols and favicons the studio carries are under
+  the repository's licence like every file; Machinome, the linkage symbol
+  and the Machinome wordmark are trademarks or registered trademarks of
+  Poiesis Tecnologia da Informação LTDA, not part of that licence, and the
+  repository's `TRADEMARKS.md` states what anyone may do with them without
+  asking (refer to Machinome, show the unaltered marks in presentations,
+  articles, courses, videos and websites) and what needs permission (one's
+  own logo or product name, a commercial product). The former notice's term
+  that a modified version carries its own name and marks lives there.
 
 ### What a maker gets
 

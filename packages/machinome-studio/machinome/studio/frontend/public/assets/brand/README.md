@@ -19,8 +19,9 @@ The logo font is present because the release ships as one directory; no
 stylesheet of the studio names it, and none may: it contains the nine
 characters of `Machinome` and is not a typeface for text.
 
-The identity's artwork carries no public licence. Machinome, the linkage
-symbol and the wordmark are trademarks of Poiesis Tecnologia da Informação
-LTDA, and their presence here grants no right to use them (see the
-framework's `CREDITS.md`, "Carried by the studio"); the derived font alone
-is under the SIL Open Font License 1.1.
+The identity's artwork is licensed like every file of the repository.
+Machinome, the linkage symbol and the wordmark are trademarks or
+registered trademarks of Poiesis Tecnologia da Informação LTDA, and the
+name and the marks are not part of that licence: the repository's
+`TRADEMARKS.md` says what anyone may do with them without asking, and what
+needs permission; the derived font is under the SIL Open Font License 1.1.

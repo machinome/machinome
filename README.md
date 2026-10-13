@@ -31,6 +31,8 @@ it builds.
 
 Every package in this repository is licensed GPL-2.0-or-later or
 CERN-OHL-S-2.0-or-later, at the recipient's choice; see
-[LICENSE](LICENSE) and the texts in [LICENSES](LICENSES/).
+[LICENSE](LICENSE) and the texts in [LICENSES](LICENSES/). The Machinome
+name and marks are not part of it; [TRADEMARKS.md](TRADEMARKS.md) says how
+anyone may use them.
 [CONTRIBUTING.rst](CONTRIBUTING.rst) says how to work on them and
 [AI-USE.md](AI-USE.md) how AI is used in their development.

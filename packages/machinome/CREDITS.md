@@ -169,9 +169,11 @@ identity, and the packages its frontend bundles.
 
 The identity's artwork under `brand/v1/` (the wordmarks, the symbols and the
 favicon pack) and the studio's favicon pack built from it under `favicon/`
-carry no public licence. Machinome, the linkage symbol and the Machinome
-wordmark are trademarks of Poiesis Tecnologia da Informação LTDA; this
-repository's licence grants no right to use them.
+are licensed like every file of this repository. Machinome, the linkage
+symbol and the Machinome wordmark are trademarks or registered trademarks
+of Poiesis Tecnologia da Informação LTDA, and the name and the marks are
+not part of the licence: the repository's `TRADEMARKS.md` states what
+anyone may do with them without asking, and what needs permission.
 
 The frontend bundles the packages below, minified, into the built surface
 `machinome/studio/static/`, which the wheel carries; the versions are those
