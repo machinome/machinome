@@ -1,7 +1,7 @@
 10. Share it
 ============
 
-.. needs:: viewer, cadquery, build123d, viewer-openscad, web-snapshot
+.. needs:: viewer, cadquery, build123d, web-snapshot
 
 Everything the counter is travels in one document. This chapter exports
 it, embeds it in a page, and photographs it.
@@ -68,16 +68,16 @@ Photograph
 
 .. code-block:: bash
 
-    $ machinome snapshot -o counter.png --viewall --autocenter
-    $ machinome snapshot --drive crank=3580 -o carry.png --viewall --autocenter
+    $ machinome snapshot --viewer web -o counter.png
     $ machinome snapshot --viewer web --drive crank=3580 -o carry.png
 
 ``machinome snapshot`` renders one pose to a PNG without opening a
-viewer window. The default viewer is OpenSCAD's, fast and without a
-browser; ``--drive`` binds declared drivers by qualified id, so the second
-image shows the counter mid-carry. The ``web`` viewer photographs the model
-in a headless browser, keeps a real alpha channel, and is the one that
-draws markings, so the digits appear on it.
+viewer window. The ``web`` viewer photographs the model in a headless
+browser, keeps a real alpha channel, and is the one that draws markings,
+so the digits appear on it; ``--drive`` binds declared drivers by
+qualified id, so the second image shows the counter mid-carry. With
+OpenSCAD installed and the ``viewer-openscad`` extra, ``--viewer openscad``
+photographs through OpenSCAD instead, fast and without a browser.
 
 Where to go from here
 ---------------------

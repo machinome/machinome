@@ -104,23 +104,27 @@ sync: ## Install the workspace from its locks: every package editable, the npm m
 
 test: $(if $(PKG),test-$(PKG),$(addprefix test-,$(TESTED))) ## Run the tests of PKG=<package>, or of every package with tests, stopping at the first failure
 
+# The runner of every Python suite. CI runs the framework's under coverage
+# and prints the report: make test PKG=machinome PYTEST='$$(PYTHON) -m coverage run --source machinome -m pytest'
+PYTEST := $(PYTHON) -m pytest
+
 bundle:
 	$(NPM) run build --workspace $(WIDGET)
 
 test-machinome: bundle
-	cd packages/machinome && $(PYTHON) -m pytest
+	cd packages/machinome && $(PYTEST)
 
 test-machinome-mechanics test-machinome-skills:
-	cd packages/$(@:test-%=%) && $(PYTHON) -m pytest
+	cd packages/$(@:test-%=%) && $(PYTEST)
 
 test-machinome-viewer:
 	$(NPM) run typecheck --workspace $(WIDGET)
 	$(NPM) test --workspace $(WIDGET)
 	$(NPM) run build --workspace $(WIDGET)
-	cd packages/machinome-viewer && $(PYTHON) -m pytest
+	cd packages/machinome-viewer && $(PYTEST)
 
 test-machinome-movie:
-	cd packages/machinome-movie && $(PYTHON) -m pytest
+	cd packages/machinome-movie && $(PYTEST)
 	$(NPM) test --workspace $(MOVIE_JS) -- --project pure --project stage
 
 # The studio's tests serve its built surface; its browser tests run when
@@ -128,7 +132,7 @@ test-machinome-movie:
 test-machinome-studio:
 	$(NPM) test --workspace $(STUDIO_FRONTEND)
 	$(NPM) run build --workspace $(STUDIO_FRONTEND)
-	cd packages/machinome-studio && $(PYTHON) -m pytest
+	cd packages/machinome-studio && $(PYTEST)
 
 $(addprefix test-,$(UNTESTED)):
 	@echo 'make test: $(@:test-%=%) keeps no tests of its own; the core'"'"'s suite tests it: make test PKG=machinome' >&2; exit 2

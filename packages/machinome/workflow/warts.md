@@ -2425,5 +2425,24 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   viewer-openscad, web-snapshot`, so its line asks for the OpenSCAD
   executable, and leaves the three sentences as they are. Making the
   chapter photograph through the web viewer alone would settle all three
-  and drop `viewer-openscad` and the OpenSCAD executable from its line; it
-  changes what the tutorial teaches, so it is the pilot's. **Recorded.**
+  and drop `viewer-openscad` and the OpenSCAD executable from its line.
+  **Fixed (13 October 2026)** on `main`, a direct correction: chapter 10
+  photographs through the web viewer alone, its two commands `--viewer
+  web` and its line `viewer, cadquery, build123d, web-snapshot`, the
+  OpenSCAD viewer named as the alternative for a reader who has OpenSCAD;
+  the tutorial teaches the same photographs and keeps chapter 1's promise.
+
+# Findings from the framework cycle `viewer-command` (12 October 2026)
+
+- **`machinome develop` outlives one SIGINT sent to its process alone.**
+  Found by the cycle's evidence (`openspec/changes/archive/2026-10-12-viewer-command/evidence.md`,
+  section 12.3) and pre-existing: with the seam's session restored from
+  `HEAD` the same happens. One SIGINT delivered to the develop process
+  alone leaves it alive after 30 s, because its builder's `multiprocessing`
+  child is not signalled and the `atexit` join waits on it; a second SIGINT
+  ends it with exit 0. A terminal's Ctrl+C, delivered to the process
+  group, ends it in 0.67 s with the serving line printed, so a maker at a
+  terminal never sees it; a supervisor that signals the one process does.
+  Recorded on 13 October 2026 at the orchestrator's close; the pilot's
+  ruling of that day: pre-existing, found on the way, a fix is not part
+  of 0.9.0. **Recorded.**

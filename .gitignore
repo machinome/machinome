@@ -11,3 +11,7 @@
 /packages/*/*.egg-info/
 __pycache__/
 *.py[cod]
+
+# Coverage data of a suite run under coverage, as CI runs the framework's
+.coverage
+.coverage.*
