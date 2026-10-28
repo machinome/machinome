@@ -2446,3 +2446,18 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   Recorded on 13 October 2026 at the orchestrator's close; the pilot's
   ruling of that day: pre-existing, found on the way, a fix is not part
   of 0.9.0. **Recorded.**
+
+# Finding from the push of `main` (28 October 2026)
+
+- **The workflow could not resolve `astral-sh/setup-uv@v10`.** The run on
+  the push of 14 October 2026 (`main` at 38e34ebd) failed at setup in
+  every job, in five seconds: the action publishes v10.0.0 to v10.3.2 but
+  keeps no floating major tag past v7, so a bare `@v10` names nothing.
+  The tag's `build` job needs `test`, so a release tag would have created
+  no GitHub release, and the monorepo's workflow had never completed a run
+  on GitHub. **Fixed (28 October 2026)** on `main`, a direct correction
+  (`pin-setup-uv`): every job names `astral-sh/setup-uv@v10.3.2`, the
+  same release in every job, held by `TheContinuousIntegrationTest`. The
+  push of this correction is the workflow's first whole run; the
+  `ubuntu-latest` image moved to Ubuntu 26 on 19 October 2026, so that run
+  is the proof of the rest.

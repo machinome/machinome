@@ -397,6 +397,28 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         from tests import test_docs_exports
         self.assertEqual(test_docs_exports.WORKFLOW, WORKFLOW)
 
+    #: The uv action keeps no floating major tag past v7: a bare `@vN`
+    #: resolves to nothing and every job fails at setup, as the first run
+    #: of the monorepo's workflow did (`pin-setup-uv`). Each job names one
+    #: full release of it, the same in every job.
+    SETUP_UV = re.compile(r'^astral-sh/setup-uv@v\d+\.\d+\.\d+$')
+
+    def test_every_job_pins_one_full_release_of_the_uv_action(self):
+        pinned = set()
+        for name, job in self.jobs.items():
+            with self.subTest(job=name):
+                uses = [step['uses'] for step in job['steps']
+                        if step.get('uses', '').startswith(
+                            'astral-sh/setup-uv')]
+                self.assertEqual(len(uses), 1,
+                                 f'{name} sets uv up {len(uses)} times')
+                self.assertRegex(uses[0], self.SETUP_UV,
+                                 f'{name} names no full release of the uv '
+                                 f'action: {uses[0]}')
+                pinned.add(uses[0])
+        self.assertEqual(len(pinned), 1,
+                         f'the jobs pin different releases: {sorted(pinned)}')
+
     #: The targets each job calls, in order.
     CALLS = {
         'lint': ['make lint'],

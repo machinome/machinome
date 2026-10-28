@@ -228,6 +228,14 @@ Unreleased
   Its 0.1.0 stays the release it was. Change ``release-0-9-0`` (ADR-187
   amended).
 
+* **CI pins a full release of the uv action.** The workflow named
+  ``astral-sh/setup-uv@v10``, a floating major tag the action keeps for
+  no release past v7, so every job of the monorepo's first run on GitHub
+  failed at setup and a release tag would have created no GitHub
+  release. Each job names ``astral-sh/setup-uv@v10.3.2``, the same
+  release in every job, held by a test. A direct correction
+  (``pin-setup-uv``).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 
