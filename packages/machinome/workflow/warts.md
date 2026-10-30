@@ -2478,3 +2478,24 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   the module the class is in, and `TheContinuousIntegrationTest` holds
   that the step's module is a file of the package and defines the class.
   The test passed here through the real viewer in 4.4 s.
+
+- **The studio's project creation needs a git identity the environment
+  may not have.** The same run failed its `test` job at the studio's
+  suite, one test of 490: `SessionOpeningTest.test_creation_is_visible_as_a_provisional_project_until_its_directory_exists`,
+  `wait_until_settled` returning `None`. Reproduced here with an empty
+  `HOME` and no git configuration: `prepare_project` commits the new
+  project's scaffold (`preparation.py`, stage `git-commit`) with the
+  environment's identity, and git refuses, "Author identity unknown"; the
+  registry records the preparation failure and the test, unlike the floor
+  and project-open fixtures, gave no identity. **Fixed (30 October 2026)**
+  on `main`, a direct correction (`creation-test-identity`): the fixture
+  sets `GIT_AUTHOR_*` and `GIT_COMMITTER_*` as its siblings do; the module
+  passes with and without an identity in the environment. **For the
+  pilot:** a maker whose machine has no git identity cannot create a
+  project in the studio; the hub shows git's own message. Whether the
+  studio should commit the scaffold under an identity of its own, or
+  teach the prerequisite, is a product decision, not taken here.
+  Seen on the way, once in five runs of the module here and never on CI:
+  `ClaudeBackendAcceptanceTest.test_first_delivery_reports_last_pending_status_on_readiness_timeout`
+  failed one whole-module run and passed every run alone; a timing flake,
+  **recorded**, not fixed.

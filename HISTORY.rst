@@ -243,6 +243,14 @@ Unreleased
   is in, held by a test that the step's module and class exist. A direct
   correction (``browser-snapshot-path``).
 
+* **The studio's session-opening fixture carries a git identity.** Creating
+  a project commits its scaffold with the environment's git identity, which
+  a CI runner has none of, so the one test that creates a project through
+  the registry failed there with git's "Author identity unknown" while
+  passing on a maker's machine; the fixture gives the identity the floor
+  and project-open fixtures already give. A direct correction
+  (``creation-test-identity``).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

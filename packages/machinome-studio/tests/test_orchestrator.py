@@ -824,6 +824,17 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
 class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         from machinome.studio.sessions import SessionRegistry
+        # Creation commits a new project's scaffold with the environment's
+        # git identity, which a CI runner has none of; the fixture gives one,
+        # as the floor and project-open fixtures do.
+        identity = patch.dict(os.environ, {
+            "GIT_AUTHOR_NAME": "Shop Test",
+            "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+            "GIT_COMMITTER_NAME": "Shop Test",
+            "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+        })
+        identity.start()
+        self.addCleanup(identity.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name) / "projects"
