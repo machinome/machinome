@@ -151,7 +151,7 @@ jobs:
           MACHINOME_WEB_SNAPSHOT_E2E: "1"
         run: >-
           pytest
-          tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
+          tests/test_web_viewer_capture.py::BrowserSnapshotEndToEndTest
 
   docs:
     runs-on: ubuntu-latest

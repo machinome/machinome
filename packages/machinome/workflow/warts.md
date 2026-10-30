@@ -2461,3 +2461,20 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   push of this correction is the workflow's first whole run; the
   `ubuntu-latest` image moved to Ubuntu 26 on 19 October 2026, so that run
   is the proof of the rest.
+
+# Finding from the workflow's first whole run (30 October 2026)
+
+- **The `browser-snapshot` job named a test module that no longer exists.**
+  The first whole run of the monorepo's workflow, on the push of
+  `pin-setup-uv` (`main` at b3b3bf91), failed its `browser-snapshot` job:
+  pytest collected nothing at
+  `tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest` and exited
+  4. The `viewer-seam` cycle (12 October 2026) renamed the module to
+  `tests/test_web_viewer_capture.py`, and the step kept the old name; the
+  layout test exempted the step from the rule against a spelled pytest
+  without holding its target. The tag's `build` job needs `test` alone,
+  so a release would still have been made. **Fixed (30 October 2026)** on
+  `main`, a direct correction (`browser-snapshot-path`): the step names
+  the module the class is in, and `TheContinuousIntegrationTest` holds
+  that the step's module is a file of the package and defines the class.
+  The test passed here through the real viewer in 4.4 s.

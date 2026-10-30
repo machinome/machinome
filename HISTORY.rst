@@ -236,6 +236,13 @@ Unreleased
   release in every job, held by a test. A direct correction
   (``pin-setup-uv``).
 
+* **CI's browser snapshot job names the test where it is.** The job ran
+  ``tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest``, the
+  module ``viewer-seam`` renamed to ``tests/test_web_viewer_capture.py``,
+  so the job collected nothing and failed; it names the module the class
+  is in, held by a test that the step's module and class exist. A direct
+  correction (``browser-snapshot-path``).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

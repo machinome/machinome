@@ -419,6 +419,24 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         self.assertEqual(len(pinned), 1,
                          f'the jobs pin different releases: {sorted(pinned)}')
 
+    def test_the_browser_snapshot_step_names_a_test_of_the_core(self):
+        # The one pytest a job spells names a module and a class of the
+        # core's tests: `viewer-seam` renamed the module and the step kept
+        # the old name, which the workflow's first whole run found
+        # (`browser-snapshot-path`).
+        steps = self.jobs['browser-snapshot']['steps']
+        step = next(step for step in steps
+                    if step.get('env', {}).get('MACHINOME_WEB_SNAPSHOT_E2E'))
+        self.assertEqual(step.get('working-directory'), 'packages/machinome')
+        match = re.search(r'pytest\s+(tests/\S+?)::(\w+)', step['run'])
+        self.assertIsNotNone(match,
+                             f'the step runs no test node: {step["run"]!r}')
+        path, name = match.groups()
+        self.assertTrue((PACKAGE / path).is_file(),
+                        f'{path} is not a file of the package')
+        self.assertIn(f'class {name}(', (PACKAGE / path).read_text(),
+                      f'{path} defines no {name}')
+
     #: The targets each job calls, in order.
     CALLS = {
         'lint': ['make lint'],
