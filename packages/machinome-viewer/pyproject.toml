@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-viewer"
-version = "0.8.1"
+version = "0.9.0"
 description = "The browser viewer for machinome models: the embeddable widget, the development server and the headless snapshot capture"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -29,7 +29,7 @@ dependencies = [
     # viewer is the web provider of the framework's seam of viewers,
     # `machinome.viewer`, which imports it at its address; it imports the
     # core it is released with when it stages a still.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     "fastapi>=0.111,<1",
     "uvicorn>=0.30,<1",
     # uvicorn serves WebSockets only through an optional library, and the

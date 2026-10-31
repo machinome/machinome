@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-studio"
-version = "0.8.1"
+version = "0.9.0"
 description = "Machinome Studio: a project hub and workspace in the browser where a team of agents builds a machinome project with its maker"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,8 +26,8 @@ dependencies = [
     # and through whose capture it photographs each project, released with
     # it: the set carries one version, and the pins between its packages are
     # ~= both ways. The studio imports neither's modules.
-    "machinome~=0.8.1",
-    "machinome-viewer[snapshot]~=0.8.1",
+    "machinome~=0.9.0",
+    "machinome-viewer[snapshot]~=0.9.0",
     "fastapi>=0.111,<1",
     "tomlkit>=0.13,<1",
     "uvicorn>=0.30,<1",

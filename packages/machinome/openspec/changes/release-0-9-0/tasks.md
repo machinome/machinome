@@ -42,27 +42,27 @@ the pilot's alone. No agent tags, pushes or uploads.
 
 ## 6. The day: the date and the bump (a fresh applier, the pilot's date)
 
-- [ ] 6.1 Record the pilot's date and the base in `evidence.md`: the bench at the preparation's commit (or the head the orchestrator names), `git status --porcelain` empty, `make -s version` 0.8.1.
-- [ ] 6.2 `make bump VERSION=0.9.0` from the bench root; record `git diff --stat` (expected 29 files, design.md probe 3) and `make -s version` (0.9.0); `git log` shows no new commit and `git tag` no new tag. Then `uv sync --python 3.12` at the bench root; `importlib.metadata.version` of `machinome` and `machinome-mechanics` reads 0.9.0 (design.md probe 12).
-- [ ] 6.3 Run `tests/test_release_records.py` and the products' documentation tests (the viewer's, the movie's, the studio's, the mechanics package's). Expected red, each naming a record not yet dated: `context7.json`, the four products' changelogs, the changelog's first release section, the history's top entry, the release note's page, the viewer's release section and its `describe` example. Record each.
+- [x] 6.1 Record the pilot's date and the base in `evidence.md`: the bench at the preparation's commit (or the head the orchestrator names), `git status --porcelain` empty, `make -s version` 0.8.1.
+- [x] 6.2 `make bump VERSION=0.9.0` from the bench root; record `git diff --stat` (expected 29 files, design.md probe 3) and `make -s version` (0.9.0); `git log` shows no new commit and `git tag` no new tag. Then `uv sync --python 3.12` at the bench root; `importlib.metadata.version` of `machinome` and `machinome-mechanics` reads 0.9.0 (design.md probe 12).
+- [x] 6.3 Run `tests/test_release_records.py` and the products' documentation tests (the viewer's, the movie's, the studio's, the mechanics package's). Expected red, each naming a record not yet dated: `context7.json`, the four products' changelogs, the changelog's first release section, the history's top entry, the release note's page, the viewer's release section and its `describe` example. Record each.
 
 ## 7. The day: the records
 
-- [ ] 7.1 `docs/conf.py`: `version = '0.9'`, `release_date` the pilot's date (Decision 7).
-- [ ] 7.2 `HISTORY.rst`: the `Unreleased` heading becomes `Machinome 0.9.0 (<YYYY-MM-DD>)` with its opening paragraph, verbatim; every bullet kept in its order.
-- [ ] 7.3 The manual's changelog: `Machinome 0.9.0`, `Released on <dd/Mon/YYYY>`, the opening and the moves a project may follow, verbatim; the toctree's `../releases/release-0.9`.
-- [ ] 7.4 `docs/releases/release-0.9.rst`, verbatim.
-- [ ] 7.5 The status page: the four passages of Decision 7.
-- [ ] 7.6 `context7.json`: the two rules of Decision 7.
-- [ ] 7.7 The four products' changelogs and the studio's preamble, verbatim.
-- [ ] 7.8 `docs/reference/viewer/cli.rst`'s `"version": "0.9.0"`; the viewer's own `user-documentation` and `viewer-distribution` specs at 0.9.0, in place.
-- [ ] 7.9 Re-read every bullet list against the head: a bullet landed after the planning commit stays in its place; `grep -rn "0\.8\.1"` over the tracked files, records, archives and workflow aside, finds only the 0.8.1 records and the tests' fixtures.
+- [x] 7.1 `docs/conf.py`: `version = '0.9'`, `release_date` the pilot's date (Decision 7).
+- [x] 7.2 `HISTORY.rst`: the `Unreleased` heading becomes `Machinome 0.9.0 (<YYYY-MM-DD>)` with its opening paragraph, verbatim; every bullet kept in its order.
+- [x] 7.3 The manual's changelog: `Machinome 0.9.0`, `Released on <dd/Mon/YYYY>`, the opening and the moves a project may follow, verbatim; the toctree's `../releases/release-0.9`.
+- [x] 7.4 `docs/releases/release-0.9.rst`, verbatim.
+- [x] 7.5 The status page: the four passages of Decision 7.
+- [x] 7.6 `context7.json`: the two rules of Decision 7.
+- [x] 7.7 The four products' changelogs and the studio's preamble, verbatim.
+- [x] 7.8 `docs/reference/viewer/cli.rst`'s `"version": "0.9.0"`; the viewer's own `user-documentation` and `viewer-distribution` specs at 0.9.0, in place.
+- [x] 7.9 Re-read every bullet list against the head: a bullet landed after the planning commit stays in its place; `grep -rn "0\.8\.1"` over the tracked files, records, archives and workflow aside, finds only the 0.8.1 records and the tests' fixtures.
 
 ## 8. The day: green, checked and committed
 
-- [ ] 8.1 Run 6.3's tests: green. `make test` whole; `make docs`; read the status page, the changelog's 0.9.0 section, the release note and the upgrading page's 0.9 part in the built HTML.
-- [ ] 8.2 `make check`: 36 archives from the tree and 36 from the clean copy, every smoke line reading 0.9.0.
-- [ ] 8.3 `git status --short`: the bump's 29 files, the records of group 7, `evidence.md` and this file, nothing else. Pause before the commit and report; the orchestrator commits "Release 0.9.0".
+- [x] 8.1 Run 6.3's tests: green. `make test` whole; `make docs`; read the status page, the changelog's 0.9.0 section, the release note and the upgrading page's 0.9 part in the built HTML.
+- [x] 8.2 `make check`: 36 archives from the tree and 36 from the clean copy, every smoke line reading 0.9.0.
+- [x] 8.3 `git status --short`: the bump's 29 files, the records of group 7, `evidence.md` and this file, nothing else. Pause before the commit and report; the orchestrator commits "Release 0.9.0".
 
 ## 9. The day: integration and the archives (the orchestrator)
 

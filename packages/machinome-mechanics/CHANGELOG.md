@@ -2,7 +2,12 @@
 
 All notable changes to Machinome Mechanics.
 
-## Unreleased
+## 0.9.0 — 31 October 2026
+
+Released with Machinome 0.9.0 and numbered with it: the helpers follow
+0.1.0 with the set's version, and `pip install 'machinome[mechanics]'`
+installs the helpers of the framework's own release. Names, signatures and
+formulas are those of 0.1.0.
 
 - The tests recognise a symbolic result by Machinome's own predicate,
   `machinome.expression_graph.symbolic`, instead of by solid2's

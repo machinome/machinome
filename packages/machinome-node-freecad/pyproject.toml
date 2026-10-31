@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-node-freecad"
-version = "0.8.1"
+version = "0.9.0"
 description = "The FreeCAD node type of Machinome: a native FreeCAD assembly, read by FreeCAD"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,11 +26,11 @@ dependencies = [
     # The core this node type is a portion of, released with it: the set
     # carries one version, and the pins between its packages are ~= both
     # ways.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     # Each occurrence is a B-rep leaf, whose solid FreeCAD hands over as
     # BREP and the package reads through the OCCT binding, whose range the
     # B-rep engine states once.
-    "machinome-engine-brep~=0.8.1",
+    "machinome-engine-brep~=0.9.0",
     # Arrays and the rotation of a native placement; the core pins numpy's
     # range and requires scipy. FreeCAD itself, the program that reads the
     # document, is no package's to install: it is found through

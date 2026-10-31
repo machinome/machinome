@@ -234,27 +234,26 @@ manual's `|framework_licence|`.
   recipient's choice, as the licence of every package of the repository,
   naming no other licence
 
-### Requirement: The manual states the 0.8.1 release
+### Requirement: The manual states the 0.9.0 release
 
-machinome-viewer 0.8.1 SHALL be stated as released with Machinome 0.8.1 on
-10 October 2026 and numbered with it: the published 0.8.0 renumbered, with
-no change to the widget, the server or the capture, declaring viewer API 29
-and document versions 1 through 13. The changelog's first release section
-SHALL be `0.8.1 — 10 October 2026` and say so; the compatibility page,
-the `describe` example and the manual's release facts SHALL state 0.8.1,
-released with Machinome 0.8.1.
+machinome-viewer 0.9.0 SHALL be stated as released with Machinome 0.9.0 on
+31 October 2026 and numbered with it, declaring viewer API 29 and document
+versions 1 through 13, unchanged from 0.8.1. The changelog's newest release
+section SHALL be `0.9.0 — 31 October 2026` and say so; the compatibility page,
+the `describe` example and the manual's release facts SHALL state 0.9.0,
+released with Machinome 0.9.0.
 
-#### Scenario: A maker checks the 0.8.1 release they installed
+#### Scenario: A maker checks the 0.9.0 release they installed
 
 - **WHEN** a maker runs `machinome viewer describe`, reads the bundle banner
   and opens the compatibility page
-- **THEN** each reports version 0.8.1 with viewer API 29 and document
+- **THEN** each reports version 0.9.0 with viewer API 29 and document
   versions 1 through 13, and the changelog says it was released on
-  10 October 2026 together with Machinome 0.8.1
+  31 October 2026 together with Machinome 0.9.0
 
-#### Scenario: A reader compares 0.8.1 with 0.8.0
+#### Scenario: A reader compares 0.9.0 with 0.8.1
 
-- **WHEN** a reader reads the 0.8.1 changelog section
-- **THEN** it says the viewer is the published 0.8.0 renumbered with
-  Machinome 0.8.1, with API 29 and document versions 1 to 13 unchanged
+- **WHEN** a reader reads the 0.9.0 changelog section
+- **THEN** it says the viewer is released with Machinome 0.9.0 and numbered
+  with it, with API 29 and document versions 1 to 13 unchanged
 

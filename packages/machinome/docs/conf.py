@@ -28,8 +28,8 @@ sys.path.insert(0, os.path.abspath('_ext'))
 project = 'Machinome'
 copyright = '2023-2026, Luis Henrique Cassis Fagundes'
 author = 'Luis Henrique Cassis Fagundes'
-release = '0.8.1'
-version = '0.8'
+release = '0.9.0'
+version = '0.9'
 html_title = 'Machinome — Source code for machines'
 
 # -- Release facts -----------------------------------------------------------
@@ -37,10 +37,10 @@ html_title = 'Machinome — Source code for machines'
 # substitutions below (|release| and |version| are Sphinx's own) so a
 # release edits this block and the status page and nothing else.
 
-release_date = '10 October 2026'
+release_date = '31 October 2026'
 # The viewer, numbered with the set (packages/machinome-viewer/pyproject.toml);
 # its API and document versions are its widget's, which tests hold them to.
-viewer_version = '0.8.1'
+viewer_version = '0.9.0'
 viewer_api = '29'               # a clocked machine captured on demand
 document_versions = '1 to 13'    # supported by the paired viewer
 framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'

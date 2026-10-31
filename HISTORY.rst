@@ -2,8 +2,25 @@
 History
 =======
 
-Unreleased
-----------
+Machinome 0.9.0 (2026-10-31)
+----------------------------
+
+**One repository, one release.** The joins of the 0.9 road
+(``workflow/ongoing/joins-0.9.md`` and ``workflow/ongoing/release-0.9.md``
+at the repository root): the framework, its two engines and nine node
+types, the OpenSCAD viewer, and the products that lived in repositories of
+their own, the mechanics helpers, the browser viewer, the skills, the films
+and the studio, are eighteen distributions of one repository under one
+licence, GPL-2.0-or-later or CERN-OHL-S-2.0-or-later at the recipient's
+choice, stated once at its root. Every package carries one version, 0.9.0,
+declared once in ``.bumpversion.cfg``; ``machinome`` is the one command, to
+which the films, the skills and the studio add theirs; the products' pages
+are part of the one manual; and one release builds, checks and smokes every
+archive into ``dist/v0.9.0``, uploaded in one command. Nothing in the
+published document moves: exports declare document versions 1 to 13, and
+the matching viewer 0.9.0 reads them with API 29. ADR-182 to ADR-196 are
+new. Each item names the archived OpenSpec change that carries its
+evidence.
 
 * **The framework is a PACKAGE of its repository.**
   The framework's tree moved, unchanged, under ``packages/machinome/``,

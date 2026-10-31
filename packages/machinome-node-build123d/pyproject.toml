@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-node-build123d"
-version = "0.8.1"
+version = "0.9.0"
 description = "The build123d node types of Machinome, and the reducer of its SVG artwork"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,7 +26,7 @@ dependencies = [
     # The core this node type is a portion of, released with it: the set
     # carries one version, and the pins between its packages are ~= both
     # ways.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     # The newest build123d whose OCP is the one cadquery 2.7 binds
     # (machinome-node-cadquery's manifest says why the pair).
     "build123d==0.10.*",
@@ -35,7 +35,7 @@ dependencies = [
     "ocp-gordon>=0.2.2,<0.3",
     # The B-rep engine, which turns a render result into B-rep geometry and
     # states the OCCT range, once.
-    "machinome-engine-brep~=0.8.1",
+    "machinome-engine-brep~=0.9.0",
     # Arrays, imported by the artwork reducer; the core pins the range.
     "numpy",
 ]

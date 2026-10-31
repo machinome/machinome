@@ -19,7 +19,7 @@ of its own: its verbs are the framework's ``machinome viewer describe``,
 command with this interpreter.
 """
 
-__version__ = "0.8.1"
+__version__ = "0.9.0"
 
 #: The viewer contract version this provider implements (the seam's
 #: `machinome.viewer.CONTRACT`).

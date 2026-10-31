@@ -1,10 +1,14 @@
 # Changelog
 
-All notable changes to Machinome Studio. The first section describes the
-current source; when a release is cut it becomes that release's section
-and a new `Unreleased` section opens above it.
+All notable changes to Machinome Studio, numbered with Machinome. Work
+after a release is recorded as it lands, in one `Unreleased` section above
+that release's section.
 
-## Unreleased
+## 0.9.0 — 31 October 2026
+
+The first release of Machinome Studio, released with Machinome 0.9.0 and
+numbered with it. It was developed in a repository of its own, where it
+stood at 0.1.0 and was never published.
 
 Machinome Studio, numbered with Machinome, runs against the framework and
 the browser viewer of its own release, on Linux, with Claude Code, OpenCode

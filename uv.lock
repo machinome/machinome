@@ -1916,7 +1916,7 @@ wheels = [
 
 [[package]]
 name = "machinome"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome" }
 dependencies = [
     { name = "asgiref" },
@@ -2095,7 +2095,7 @@ provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "movie"
 
 [[package]]
 name = "machinome-engine-brep"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-engine-brep" }
 dependencies = [
     { name = "cadquery-ocp" },
@@ -2112,7 +2112,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-engine-mesh"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-engine-mesh" }
 dependencies = [
     { name = "machinome" },
@@ -2129,7 +2129,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-mechanics"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-mechanics" }
 dependencies = [
     { name = "machinome" },
@@ -2140,7 +2140,7 @@ requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
 
 [[package]]
 name = "machinome-movie"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-movie" }
 dependencies = [
     { name = "jsonschema" },
@@ -2157,7 +2157,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-build123d"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-build123d" }
 dependencies = [
     { name = "build123d" },
@@ -2178,7 +2178,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-cadquery"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-cadquery" }
 dependencies = [
     { name = "cadquery" },
@@ -2195,7 +2195,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-freecad"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-freecad" }
 dependencies = [
     { name = "machinome" },
@@ -2215,7 +2215,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-jscad"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-jscad" }
 dependencies = [
     { name = "machinome" },
@@ -2226,7 +2226,7 @@ requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
 
 [[package]]
 name = "machinome-node-molejo"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-molejo" }
 dependencies = [
     { name = "machinome" },
@@ -2245,7 +2245,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-openscad"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-openscad" }
 dependencies = [
     { name = "machinome" },
@@ -2260,7 +2260,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-solid2"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-solid2" }
 dependencies = [
     { name = "machinome" },
@@ -2277,7 +2277,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-step"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-step" }
 dependencies = [
     { name = "cadquery" },
@@ -2298,7 +2298,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-node-stl"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-node-stl" }
 dependencies = [
     { name = "machinome" },
@@ -2313,7 +2313,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-skills"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-skills" }
 dependencies = [
     { name = "machinome" },
@@ -2324,7 +2324,7 @@ requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
 
 [[package]]
 name = "machinome-studio"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-studio" }
 dependencies = [
     { name = "fastapi" },
@@ -2347,7 +2347,7 @@ requires-dist = [
 
 [[package]]
 name = "machinome-viewer"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-viewer" }
 dependencies = [
     { name = "fastapi" },
@@ -2373,7 +2373,7 @@ provides-extras = ["snapshot"]
 
 [[package]]
 name = "machinome-viewer-openscad"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "packages/machinome-viewer-openscad" }
 dependencies = [
     { name = "machinome" },

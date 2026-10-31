@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-node-solid2"
-version = "0.8.1"
+version = "0.9.0"
 description = "The Solid2Node type of Machinome, a leaf of the OpenSCAD node family rendered with SolidPython"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,10 +26,10 @@ dependencies = [
     # The core this node type is a portion of, released with it: the set
     # carries one version, and the pins between its packages are ~= both
     # ways.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     # The OpenSCAD node family, whose leaf base and binary contract the
     # module imports.
-    "machinome-node-openscad~=0.8.1",
+    "machinome-node-openscad~=0.9.0",
     # SolidPython, imported here directly, so named here directly, in the
     # one range machinome-node-openscad states.
     "solidpython2==2.1.*",

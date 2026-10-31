@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-node-step"
-version = "0.8.1"
+version = "0.9.0"
 description = "The STEP node types of Machinome, on CadQuery's reader"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,16 +26,16 @@ dependencies = [
     # The core this node type is a portion of, released with it: the set
     # carries one version, and the pins between its packages are ~= both
     # ways.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     # The module converts a CadQuery shape with machinome.node.cadquery's
     # workplane_shape.
-    "machinome-node-cadquery~=0.8.1",
+    "machinome-node-cadquery~=0.9.0",
     # The reader and adjust are CadQuery's, imported here directly, so
     # named here directly, in the one range machinome-node-cadquery states.
     "cadquery==2.7.*",
     # The document is read through the OCCT binding, whose range the B-rep
     # engine states once; the part is a B-rep leaf on that engine.
-    "machinome-engine-brep~=0.8.1",
+    "machinome-engine-brep~=0.9.0",
     # Arrays; the core pins the range.
     "numpy",
 ]

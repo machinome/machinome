@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome"
-version = "0.8.1"
+version = "0.9.0"
 description = "Source code for machines — a Python framework for mechanical design and simulation"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 requires-python = ">=3.11"
@@ -81,28 +81,28 @@ docs = [
 # for non-interactive use without it. A web still needs the viewer and its
 # browser; Chromium itself is a second step: `playwright install chromium`.
 viewer = [
-    "machinome-viewer~=0.8.1",
+    "machinome-viewer~=0.9.0",
 ]
 web-snapshot = [
-    "machinome-viewer[snapshot]~=0.8.1",
+    "machinome-viewer[snapshot]~=0.9.0",
 ]
 # `machinome.mechanics`, the mechanics helpers, the repository's distribution
 # machinome-mechanics, numbered with the set; the framework never imports
 # them.
 mechanics = [
-    "machinome-mechanics~=0.8.1",
+    "machinome-mechanics~=0.9.0",
 ]
 # The films, `machinome.movie` and the command `machinome movie`, the
 # repository's distribution machinome-movie, numbered with the set; its
 # Node side is installed by `machinome movie setup`.
 movie = [
-    "machinome-movie~=0.8.1",
+    "machinome-movie~=0.9.0",
 ]
 # The B-rep engine (`machinome.engine.brep`, resolved by its seam in
 # `machinome.engine`) is the distribution machinome-engine-brep, which
 # states the OCCT range.
 brep = [
-    "machinome-engine-brep~=0.8.1",
+    "machinome-engine-brep~=0.9.0",
 ]
 # The mesh engine (`machinome.engine.mesh`, resolved by its seam in
 # `machinome.engine`) is the distribution machinome-engine-mesh, over
@@ -111,7 +111,7 @@ brep = [
 # of such parts. No node extra includes it: a B-rep project needs it only
 # for a mesh question, which it may never ask.
 mesh = [
-    "machinome-engine-mesh~=0.8.1",
+    "machinome-engine-mesh~=0.9.0",
 ]
 # The node types over OCCT, each named by the last component of its address
 # and each the distribution machinome-node-<name>, which states its kernel
@@ -120,22 +120,22 @@ mesh = [
 #
 # `machinome.node.cadquery` (CadQueryNode).
 cadquery = [
-    "machinome-node-cadquery~=0.8.1",
+    "machinome-node-cadquery~=0.9.0",
 ]
 # `machinome.node.build123d` (Build123dNode, Build123dSheetNode and the
 # reducer of Svg artwork).
 build123d = [
-    "machinome-node-build123d~=0.8.1",
+    "machinome-node-build123d~=0.9.0",
 ]
 # `machinome.node.step` (StepNode, StepAssembly, `machinome import-step`),
 # which reads with CadQuery and the OCCT binding itself and requires the
 # CadQuery node type.
 step = [
-    "machinome-node-step~=0.8.1",
+    "machinome-node-step~=0.9.0",
 ]
 # `machinome.node.molejo` (MolejoNode), with molejo and its OCCT evaluator.
 molejo = [
-    "machinome-node-molejo~=0.8.1",
+    "machinome-node-molejo~=0.9.0",
 ]
 # The node types that need no B-rep engine, each named by the last
 # component of its address and each the distribution
@@ -147,43 +147,43 @@ molejo = [
 # (`machinome.viewer.openscad`); the OpenSCAD executable itself is no
 # extra's to install.
 openscad = [
-    "machinome-node-openscad~=0.8.1",
-    "machinome-viewer-openscad~=0.8.1",
+    "machinome-node-openscad~=0.9.0",
+    "machinome-viewer-openscad~=0.9.0",
 ]
 # The OpenSCAD viewer alone (`machinome.viewer.openscad`, the distribution
 # machinome-viewer-openscad), which requires the OpenSCAD node family for
 # its writer: `machinome snapshot --viewer openscad` on a model of any parts.
 viewer-openscad = [
-    "machinome-viewer-openscad~=0.8.1",
+    "machinome-viewer-openscad~=0.9.0",
 ]
 # `machinome.node.solid2` (Solid2Node), which renders with SolidPython over
 # the OpenSCAD node family and requires it, and the OpenSCAD viewer.
 solid2 = [
-    "machinome-node-solid2~=0.8.1",
-    "machinome-viewer-openscad~=0.8.1",
+    "machinome-node-solid2~=0.9.0",
+    "machinome-viewer-openscad~=0.9.0",
 ]
 # `machinome.node.jscad` (JScadNode), which runs the `jscad` command, a Node
 # program no pip extra installs.
 jscad = [
-    "machinome-node-jscad~=0.8.1",
+    "machinome-node-jscad~=0.9.0",
 ]
 # `machinome.node.stl` (StlNode), which reads meshes with trimesh, which the
 # core requires.
 stl = [
-    "machinome-node-stl~=0.8.1",
+    "machinome-node-stl~=0.9.0",
 ]
 # `machinome.node.freecad` (FreeCADAssemblyNode, FreeCADJoint), which reads
 # a native FreeCAD assembly through FreeCAD, a program no pip extra
 # installs, found through MACHINOME_FREECAD_ROOT; its occurrences are B-rep
 # leaves, so the distribution requires the B-rep engine.
 freecad = [
-    "machinome-node-freecad~=0.8.1",
+    "machinome-node-freecad~=0.9.0",
 ]
 # The machinome skills and the command `machinome skills` that installs
 # them into assistants' skill directories (`machinome.skills`), the
 # repository's distribution machinome-skills, numbered with the set.
 skills = [
-    "machinome-skills~=0.8.1",
+    "machinome-skills~=0.9.0",
 ]
 all = [
     "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2,jscad,stl,freecad]",
@@ -193,7 +193,7 @@ all = [
 # (`machinome.studio`), the repository's distribution machinome-studio,
 # numbered with the set.
 studio = [
-    "machinome-studio~=0.8.1",
+    "machinome-studio~=0.9.0",
 ]
 
 [project.urls]

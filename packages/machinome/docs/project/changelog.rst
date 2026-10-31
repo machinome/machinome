@@ -5,8 +5,38 @@ Changelog
 
 .. needs:: none
 
-Unreleased
-----------
+Machinome 0.9.0
+---------------
+
+Released on 31/Oct/2026
+
+**One repository, one release.** Every Machinome package now comes from one
+repository and one release: the framework, its engines and node types, the
+mechanics helpers, the browser viewer and the OpenSCAD viewer, the skills
+for assistants, the films and the studio, each installed by its extra and
+all numbered 0.9.0. ``machinome`` is the one command, to which ``machinome
+movie``, ``machinome skills`` and ``machinome studio`` belong beside
+``machinome viewer``, and every page of this manual says which extras it
+needs. A project's machines, tests and exports are unchanged: exports
+declare document versions 1 to 13, and the matching viewer 0.9.0 reads them
+with API 29.
+
+**What a project may have to follow**, each with what to change on
+:doc:`the upgrading page <upgrading>`:
+
+- a project of ``StlNode`` or ``JScadNode`` parts installs
+  ``machinome[stl]`` or ``machinome[jscad]``;
+- ``machinome_mechanics`` and ``machinome_viewer`` are ``machinome.mechanics``
+  and ``machinome.viewer.web``, with no alias;
+- ``machinome-mechanics`` is numbered with the framework, and every extra
+  installs the package of the framework's own release;
+- ``--renderer`` is refused for ``--viewer``, and the OpenSCAD viewer of
+  ``machinome snapshot`` is installed by ``machinome[viewer-openscad]``,
+  ``[openscad]`` or ``[solid2]``;
+- the ``machinome-viewer`` command is ``machinome viewer``, and the entry
+  point ``machinome.viewer`` is gone;
+- the studio and the films, run from their repositories until now, are
+  ``machinome studio`` and ``machinome movie``.
 
 * **The engines are packages of their own.** ``machinome[brep]`` installs
   the distribution ``machinome-engine-brep`` and ``machinome[mesh]``
@@ -987,6 +1017,7 @@ constructor-based models and direct transforms remain supported.
 .. toctree::
    :maxdepth: 1
 
+   ../releases/release-0.9
    ../releases/release-0.8
    ../releases/release-0.7
 

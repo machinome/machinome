@@ -4,7 +4,12 @@ Machinome Movie is numbered with Machinome; entries accumulate under
 `Unreleased` until the set is released. Each change adds its bullet in the
 cycle that lands it.
 
-## Unreleased
+## 0.9.0 — 31 October 2026
+
+The first release of Machinome Movie, released with Machinome 0.9.0 and
+numbered with it. Until it joined the Machinome repository it was the
+videomaker, kept in a repository of its own from 19 September 2026 and
+never published or numbered; the entries below record its whole history.
 
 - Videomaker is part of the Machinome repository,
   <https://github.com/machinome/machinome>, at `packages/machinome-movie/`,

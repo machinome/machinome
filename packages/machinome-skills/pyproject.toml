@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-skills"
-version = "0.8.1"
+version = "0.9.0"
 description = "The machinome skills for assistants that read Agent Skills, and the command machinome skills that installs them"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -23,7 +23,7 @@ keywords = ["machinome"]
 dependencies = [
     # The core whose command reads the group machinome.commands and whose
     # path extension admits this portion, numbered with it.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
 ]
 
 [project.urls]

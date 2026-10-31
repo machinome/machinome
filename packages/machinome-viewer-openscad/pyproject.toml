@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-viewer-openscad"
-version = "0.8.1"
+version = "0.9.0"
 description = "The OpenSCAD viewer of Machinome: a still of a machine drawn by the openscad executable"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -26,11 +26,11 @@ dependencies = [
     # The core whose seam this viewer is a provider of, released with it:
     # the set carries one version, and the pins between its packages are ~=
     # both ways.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     # The OpenSCAD node family's writer, which writes the SCAD this viewer
     # draws, and the contract of the openscad executable. The executable
     # itself is no package's to install.
-    "machinome-node-openscad~=0.8.1",
+    "machinome-node-openscad~=0.9.0",
 ]
 
 [project.urls]

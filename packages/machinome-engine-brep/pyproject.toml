@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome-engine-brep"
-version = "0.8.1"
+version = "0.9.0"
 description = "The B-rep engine of Machinome, on the OCCT kernel"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
@@ -27,7 +27,7 @@ dependencies = [
     # carries one version, and the pins between its packages are ~= both
     # ways. The contract number at the seam (machinome.engine.BREP_CONTRACT
     # against this module's CONTRACT) is the real guard.
-    "machinome~=0.8.1",
+    "machinome~=0.9.0",
     # The OCCT binding, in the range the pinned cadquery 2.7 requires. Every
     # node type over OCCT installs this engine through the core's brep
     # extra, so the range is stated here once and several extras resolve

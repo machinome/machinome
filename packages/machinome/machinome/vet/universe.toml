@@ -9,7 +9,7 @@
 
 [universe]
 name = "machinome"
-version = "0.8.1"
+version = "0.9.0"
 # The version equals machinome.__version__; a test pins it, and the
 # root's `.bumpversion.cfg` rewrites it with the others on a release.
 

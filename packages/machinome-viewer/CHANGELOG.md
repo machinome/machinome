@@ -3,7 +3,12 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
-## Unreleased
+## 0.9.0 — 31 October 2026
+
+Released with Machinome 0.9.0 and numbered with it, the first release of
+the viewer from the Machinome repository. It still declares viewer API 29
+and reads document versions 1 through 13; what changed is where it lives,
+how Machinome reaches it and the command that runs it.
 
 - Machinome Viewer is part of the Machinome repository,
   <https://github.com/machinome/machinome>, at

@@ -442,3 +442,278 @@ the change is not archived.
   whose import is the former one"; at 0.8.1 and 0.9.0 the index holds no
   other wheel of the version (it holds 0.1.0), so the reason no longer
   holds, though installing by path still does.
+
+## The day: 31 October 2026
+
+The pilot named the day 31 October 2026: `<d Month YYYY>` 31 October 2026,
+`<YYYY-MM-DD>` 2026-10-31, `<dd/Mon/YYYY>` 31/Oct/2026. Groups 6 to 8 were
+applied that day by a fresh applier on the same bench, its venv synced from
+the lock and `npm ci` and Chromium installed that day by the orchestrator.
+Tools as above. `<scratch>` for these groups is
+`/tmp/claude-1000/-home-asa-devel-machinome/56fde1bb-f65d-45ec-9043-bd2ec042abb7/scratchpad/C13-day/logs/`;
+the records were placed by `<scratch>/../work/day.py`, which reads every
+text of Decision 7 from design.md by its line (`block()`) and edits each
+file with exact-match asserts.
+
+## 6. The date and the bump
+
+### 6.1 The base
+
+The orchestrator named the head: the bench at 78276414, equal to `main`.
+Nine commits landed on it after the preparation's 1e9c5024 (the studio's
+third-party notices and credits, chapter 10 photographing through the web
+viewer, the identity's artwork licence and `TRADEMARKS.md`, the coverage
+target, and the CI corrections `pin-setup-uv`, `browser-snapshot-path` and
+`creation-test-identity` with their `HISTORY.rst` bullets).
+
+```
+$ git -C <bench> log --oneline -3          (<scratch>/base.log)
+78276414 Record the npm publish race that failed CI's OpenSpec CLI install
+da1ac5de The studio's session-opening fixture carries a git identity for the scaffold commit
+306bd75e CI's browser snapshot job names the test where it is: tests/test_web_viewer_capture.py
+$ git -C <bench> status --porcelain | wc -l
+0
+$ env -C <bench> make -s version
+0.8.1
+```
+
+### 6.2 The bump
+
+`env -C <bench> make bump VERSION=0.9.0` (`<scratch>/bump.log`): exit 0,
+3.0 s; "29 files changed, 97 insertions(+), 97 deletions(-)"
+(`<scratch>/bump-diffstat.txt`), the files of probe 3: `.bumpversion.cfg`,
+the eighteen manifests, the core's `machinome/__init__.py`, `docs/conf.py`
+(`release` and `viewer_version`), `machinome/vet/universe.toml`, the
+viewer's `__init__.py` and widget `package.json`, the movie's
+`js/package.json` and its own lock, the studio frontend's `package.json`,
+the root's `package-lock.json` (its three member entries) and `uv.lock`
+(36 lines). The mechanics manifest is among them (`version = "0.9.0"`,
+`machinome~=0.9.0`). npm printed the `EBADENGINE` warnings of probe 3 for
+Node 24.11.1 and wrote the locks. `make -s version`: 0.9.0; `git log -1`:
+78276414, no new commit; `git tag`: the 23 tags of before, none new.
+
+`env -C <bench> uv sync --python 3.12` (`<scratch>/uv-sync.log`): exit 0,
+"Installed 18 packages", each member `0.8.1 -> 0.9.0`.
+`importlib.metadata.version` read 0.8.1 for `machinome` and
+`machinome-mechanics` before it and 0.9.0 for both (and for
+`machinome-viewer`) after it (probe 12).
+
+### 6.3 The day's red
+
+| Test | Result |
+|---|---|
+| core `tests/test_release_records.py` (`<scratch>/red-6.3-records.log`) | 8 failed, 17 passed, 194 subtests passed |
+| viewer `tests/test_documentation.py` | 2 failed, 10 passed |
+| movie `tests/test_repository.py` | 17 passed |
+| studio `tests/test_documentation.py` | 23 passed, 232 subtests passed |
+| mechanics `tests/test_documentation.py` | 6 passed |
+
+The failures, each a record not yet dated:
+
+- `test_context7_states_the_release`: `'Machinome 0.9.0 (released 2026-10-10)'`
+  not found in `context7.json`'s rules, which open "Machinome 0.8.1
+  (released 2026-10-10)";
+- `test_each_product_records_the_release`, four subtests: the viewer's
+  newest section `'0.8.1 — 10 October 2026' != '0.9.0 — 10 October 2026'`,
+  the mechanics helpers' `'0.1.0 — 23 September 2026'`, the movie and the
+  studio "records no release";
+- `test_the_changelog_first_release_section_is_the_released_version`:
+  `'Machinome 0.8.1' != 'Machinome 0.9.0'`;
+- `test_the_history_top_entry_is_the_released_version`: `'0.8.1' != '0.9.0'`;
+- `test_the_release_note_has_the_dated_section`: `docs/releases/release-0.9.rst`
+  absent;
+- the viewer's `test_the_manual_states_the_release` (the changelog's first
+  release section starts `0.8.1 — 10 October 2026`) and
+  `test_describe_example_matches_package_versions` (`'0.8.1' == '0.9.0'`,
+  the `describe` example of `reference/viewer/cli.rst`).
+
+The undated date in these messages is `release_date`, still 10 October
+2026 until 7.1. The movie's, the studio's and the mechanics helpers'
+documentation tests pass undated, as in the rehearsal (5.2): they accept
+either state of their changelog, and the release-records test carries
+their products' red.
+
+## 7. The records
+
+Placed by `day.py` with the texts of Decision 7, verbatim, the date
+substituted:
+
+- 7.1 `docs/conf.py`: `version = '0.9'`, `release_date = '31 October 2026'`;
+  `viewer_api` `'29'` and `document_versions` `'1 to 13'` unchanged.
+- 7.2 `HISTORY.rst` (the root's; `packages/machinome/HISTORY.rst` is its
+  symlink): `Machinome 0.9.0 (2026-10-31)` over 28 dashes, then the opening
+  paragraph, then the bullets as they were.
+- 7.3 The manual's changelog: `Machinome 0.9.0` over 15 dashes, `Released
+  on 31/Oct/2026`, the opening and the moves, then the 15 bullets as they
+  were; the toctree gains `../releases/release-0.9` above
+  `../releases/release-0.8`.
+- 7.4 `docs/releases/release-0.9.rst`, new, verbatim.
+- 7.5 The status page: the first paragraph; in "What |version| is", the
+  second paragraph's first sentence (the paragraph rewrapped at 76
+  columns, its other words unchanged) and the release note's link
+  `</releases/release-0.9>`; "Packages"' first paragraph; the studio
+  paragraph; "Direction". The running-documents paragraph is unchanged.
+- 7.6 `context7.json`: the first rule's opening and "The matching viewer is
+  0.9.0, API 29,".
+- 7.7 The four products' changelogs: `## Unreleased` become `## 0.9.0 — 31
+  October 2026` with its paragraph, the entries under it as written; the
+  studio's preamble.
+- 7.8 `docs/reference/viewer/cli.rst`: `"version": "0.9.0"`. The viewer's
+  `openspec/specs/user-documentation/spec.md`: the requirement "The manual
+  states the 0.8.1 release" is "The manual states the 0.9.0 release",
+  machinome-viewer 0.9.0 released with Machinome 0.9.0 on 31 October 2026,
+  its changelog's newest release section `0.9.0 — 31 October 2026`, API 29
+  and document versions 1 through 13 unchanged; its scenarios "A maker
+  checks the 0.9.0 release they installed" and "A reader compares 0.9.0
+  with 0.8.1". `viewer-distribution/spec.md`: the version paragraph and the
+  scenario "The release pair is legible" say 0.9.0, released with
+  Machinome 0.9.0.
+
+### 7.9 The re-read
+
+`HISTORY.rst`'s 0.9.0 entry holds 20 bullets: the 16 of the line, the
+mechanics bullet of the preparation, then the three landed after the
+planning commit (`pin-setup-uv`, `browser-snapshot-path`,
+`creation-test-identity`), kept in their place after it. The manual's
+changelog holds its 15, the mechanics bullet last; nothing landed there
+after the preparation. The studio's `CHANGELOG.md` gained entries after the
+preparation (the third-party notices and credits); they stay under its 0.9.0
+heading as written. The opening's "ADR-182 to ADR-196 are new" holds: the
+ADRs of the line are 182 to 196, none later.
+
+`git -C <bench> grep -n "0\.8\.1"` (`<scratch>/grep-081-all.txt`, 961
+lines), the change's own directory, archives, `workflow/` and the ADRs set
+aside, finds:
+
+- the 0.8.1 records: `HISTORY.rst`'s 0.8.1 entry, the manual changelog's
+  0.8.1 section, the upgrading page's 0.8.1 part, the release note's 0.8.1
+  section, the viewer's `CHANGELOG.md` 0.8.1 section, `context7.json`'s
+  "It follows 0.8.1 (2026-10-10)", the viewer's spec "unchanged from 0.8.1"
+  and its scenario "compares 0.9.0 with 0.8.1";
+- the framework's baseline `openspec/specs/user-documentation/spec.md`
+  requirement "The 0.8.1 release is recorded", which this change's delta
+  replaces at the archive (10.1), and the `release-tooling` spec's
+  scenarios (`make bump VERSION=0.9.0` on a checkout at 0.8.1,
+  `dist/v0.8.1` as an example);
+- the tests' fixtures: `test_check_dist.py` (archive names under
+  `v0.8.1`), `test_docs_structure.py` and
+  `test_viewer_documentation_links.py` (the heading of the 0.8.1 part).
+
+Nothing else.
+
+## 8. Green and checked
+
+### 8.1 The tests, the suite, the manual
+
+| Test | Result |
+|---|---|
+| core `test_release_records.py` (`<scratch>/green-8.1-records.log`) | 21 passed, 199 subtests passed |
+| core `test_release_records.py`, `test_docs_structure.py`, `test_viewer_documentation_links.py`, `test_machinome_identity.py`, `test_profile_documentation.py` | 81 passed, 6714 subtests passed |
+| viewer `tests/test_documentation.py` | 12 passed |
+| movie `tests/test_repository.py` | 17 passed |
+| studio `tests/test_documentation.py` | 23 passed, 232 subtests passed |
+| mechanics `tests/test_documentation.py` | 6 passed |
+
+**`make test`** from the bench root (`<scratch>/make-test.log`): exit 0,
+22 min 59 s.
+
+| Package | Count |
+|---|---|
+| core (under coverage, 93 %) | 5049 passed, 9 skipped in 15 min 7 s |
+| mechanics helpers | 204 passed |
+| skills | 47 passed |
+| viewer widget (typecheck, vitest, build) | 1715 passed, 2 skipped (65 files passed, 1 skipped) |
+| viewer Python | 252 passed, 2 skipped |
+| movie Python | 322 passed |
+| movie Node `pure` and `stage` | 329 passed (31 files) |
+| studio frontend (`tsc -b`, build) and Python | 490 passed, 24 skipped |
+
+The core's 5049 are the preparation's 5047 and the two tests the commits
+after it added to `test_repository_layout.py` (the uv action's pin and the
+browser snapshot step); the studio's 490 the preparation's 485 and the five tests
+of `test_third_party_notices.py` added after it.
+The bench's npm installation is whole this time (`npm ci` that day), so the
+movie's Node tests and the studio's frontend ran on the bench.
+
+**`make docs`** (`<scratch>/make-docs.log`): "build succeeded.", exit 0,
+8.8 s, no warning. Read in the built HTML under
+`packages/machinome/docs/_build/html`:
+
+- `project/status.html`: "Machinome 0.9.0 was released on 31 October 2026.
+  It is the first release of the Machinome set from one repository: the
+  framework and every package beside it are numbered 0.9.0, licensed
+  GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the recipient's choice";
+  "What 0.9 is"; "each CAD kernel and node type is a package of the set";
+  "Packages": "All are numbered and released with the framework."; the
+  matching viewer 0.9.0, API 29, document versions 1 to 13; "It runs on
+  Linux only. Browser-delivery experiments are not a released capability.";
+  "Direction": "are packages of one repository, released together"; the
+  release note's link to `release-0.9.html`.
+- `project/changelog.html`: "Machinome 0.9.0", "Released on 31/Oct/2026",
+  "One repository, one release.", the six moves, then "The engines are
+  packages of their own."; the toctree lists release-0.9, 0.8 and 0.7.
+- `releases/release-0.9.html`: "Machinome 0.9: one repository, one
+  release", "Released on 31 October 2026.", its sections from "One
+  repository" to "Upgrading".
+- `project/upgrading.html`: "Upgrading from Machinome 0.8 to 0.9", "Machinome
+  0.9 brings the packages that grew beside the framework into its
+  repository and its release", the moves from "Install the extra of every
+  node type you use."
+
+**`make lint`** (`<scratch>/make-lint.log`): exit 2, as at the base (CI's
+`continue-on-error`): black "595 files would be reformatted, 198 files would
+be left unchanged, 1 file would fail to reformat."; flake8 2538 findings,
+the preparation's count.
+
+### 8.2 `make check`
+
+`env -C <bench> make check` (`<scratch>/make-check.log`): exit 0, 7 min
+33 s; two passes, the tree and the clean copy of its tracked files
+(`git ls-files`), each "Every distribution built, checked, installed and
+smoked; nothing uploaded."; 72 `twine check` PASSED (36 archives a pass);
+the smoke line of each of the eighteen distributions reads 0.9.0 in both
+passes, `machinome-mechanics 0.9.0 module .../machinome/mechanics/__init__.py
+numeric and symbolic` among them; no line of the output says 0.8.1. The
+core's sdist: 1237 entries from the tree (its ignored files after `make
+test`, which `MANIFEST.in`'s `recursive-include tests *` takes) and 1180
+from the clean copy.
+
+The clean copy holds tracked files only, so it lacks the one new file of
+the day, `docs/releases/release-0.9.rst`, which `MANIFEST.in` puts in the
+core's sdist. `scripts/check-dist` was therefore run once more on a scratch
+copy of the tracked files and that one new file (`git ls-files --cached
+--others --exclude-standard`, outside the bench,
+`<scratch>/check-dist-with-new-file.log`): exit 0, 3 min 33 s, 36 PASSED,
+every smoke line 0.9.0, none 0.8.1, the core's sdist 1181 entries (the
+clean copy's and the release note). The copy was removed. After the commit
+`make dist` builds from the commit, which holds it.
+
+### 8.3 The tree
+
+`git -C <bench> status --short` (`<scratch>/status.txt`, before this
+file and `tasks.md` were written): 41 entries, the bump's 29 and the 12
+files of group 7 that the bump does not touch (`HISTORY.rst`,
+`context7.json`, the manual's `project/changelog.rst` and
+`project/status.rst`, `releases/release-0.9.rst` new, `reference/viewer/cli.rst`,
+the four products' `CHANGELOG.md`, the viewer's two specs); `docs/conf.py`
+is in both. With `evidence.md` and `tasks.md`, 43, nothing else.
+
+`tasks.md` 6.1 to 8.3 ticked. No commit, tag, push or upload was made.
+
+### Departures from the design, for the orchestrator's review
+
+- The head is 78276414, not the preparation's commit: nine commits landed
+  after it (6.1); their bullets and entries stay in their place (7.9).
+- The movie's, the studio's and the mechanics helpers' documentation tests
+  are green before the records, not red (6.3); the release-records test
+  carries their red, as the rehearsal showed.
+- The viewer's spec requirement drops the 0.8.1 clause "the published 0.8.0
+  renumbered, with no change to the widget, the server or the capture",
+  which 0.9.0 does not satisfy, and says "unchanged from 0.8.1" of the API
+  and document versions; Decision 7 gives the requirement's content, not
+  its words.
+- The status page's second paragraph of "What |version| is" is rewrapped
+  around the new sentence.
+- Not changed: the movie's `CHANGELOG.md` preamble still says "entries
+  accumulate under `Unreleased` until the set is released", which Decision
+  7 leaves as it is; after the release it has no `Unreleased` section.
