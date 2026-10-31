@@ -40,8 +40,11 @@ progress. Nothing is tagged, pushed or uploaded by then.
    token must be one that may create projects, not one scoped to
    `machinome`. The packages pin each other `~=0.9.0` both ways, so no
    order helps: `machinome[viewer]` and every other extra resolves once all
-   are up. If the upload stops part way, `twine upload --skip-existing
-   dist/v0.9.0/*` completes it.
+   are up. PyPI limits the creation of new projects in one window and the
+   requests themselves, so some archives are refused: `make upload` uploads
+   one archive per request, five seconds apart, remembers in
+   `dist/v0.9.0/.uploaded` what the index holds and ends naming the refused
+   ones; `make upload` again later uploads them (since `upload-per-archive`).
 5. **Read the Docs.** The project `machinome` reads its configuration at
    `packages/machinome/.readthedocs.yaml` (Admin, Settings, the path of the
    configuration file); build `latest` and activate `v0.9.0`. The build

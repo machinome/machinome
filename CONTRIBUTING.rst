@@ -334,5 +334,8 @@ target run from the root, and no target uploads what another built:
 4. Tag the commit ``vX.Y.Z`` and push the branch and the tag: GitHub
    Actions runs the tests, builds the archives from the tag with ``make
    dist`` and attaches them to the tag's GitHub release.
-5. ``make upload`` uploads ``dist/vX.Y.Z`` to PyPI with twine, and nothing
-   else.
+5. ``make upload`` uploads ``dist/vX.Y.Z`` to PyPI with twine, one request
+   per archive five seconds apart, and nothing else; the folder's
+   ``.uploaded`` remembers what the index holds, which is never requested
+   again, and an archive PyPI refuses does not stop the others: the command
+   ends naming them, and ``make upload`` again later uploads them.

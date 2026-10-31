@@ -2,6 +2,20 @@
 History
 =======
 
+Unreleased
+----------
+
+* **``make upload`` uploads one archive per request.** PyPI refused the
+  0.9.0 upload part way, at its limit on creating new projects in one
+  window and then on the requests themselves, and twine stopped there, the
+  archives after it unsent and a rerun stopped at the same place. The
+  target now runs ``scripts/upload``: twine once per archive, five seconds
+  apart; the folder's ``.uploaded`` remembers what the index holds, never
+  requested again; a refused project's other archive is left for later;
+  the token is asked once; and the run ends naming the archives PyPI
+  refused, for ``make upload`` again later. A direct correction
+  (``upload-per-archive``).
+
 Machinome 0.9.0 (2026-10-31)
 ----------------------------
 

@@ -181,8 +181,13 @@ a change or an untracked file, naming them; otherwise it SHALL run
 `scripts/check-dist --out dist/v<version>` on a copy of the checked-out commit
 outside the repository, so the folder holds the archives of that commit and
 of nothing the checkout ignores, `<version>` being `current_version`.
-`make upload` SHALL upload with twine every archive of `dist/v<version>`, and
-SHALL refuse when that folder is absent or empty. No target SHALL depend on
+`make upload` SHALL upload with twine every archive of `dist/v<version>`, one
+request per archive, five seconds apart, remembering in the folder's
+`.uploaded` each archive the index accepted or already held and never
+requesting it again, an archive the index refuses stopping no other but its
+project's other archive in that run, the refused ones named at the end for a
+later run; it SHALL ask for the token once; and it SHALL refuse when that
+folder is absent or empty. No target SHALL depend on
 `dist` or on `upload`, `upload` SHALL have no prerequisite, and no recipe but
 `upload`'s SHALL run `twine upload`. `make check` SHALL run `scripts/check-dist`
 on the tree and then on a copy of the tracked files outside the repository,

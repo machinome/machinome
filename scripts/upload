@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# upload — what `make upload` runs: upload a release folder to PyPI with
+# twine, one request per archive, five seconds apart, remembering what the
+# index holds (ADR-192, amended by `upload-per-archive`).
+#
+# Usage: PYTHON=<python> scripts/upload dist/vX.Y.Z
+#
+# The folder's `.uploaded` lists the archives the index holds, each added
+# when twine accepts it or reports it as already there; an archive listed
+# there is never requested again. A refused archive stops no other, but
+# its project's other archive is not tried in the same run; the refused
+# ones are named at the end, for `make upload` again later. The token is
+# asked once, or taken from TWINE_PASSWORD.
+set -euo pipefail
+
+folder="${1:-}"
+[ -n "$folder" ] || { echo 'usage: scripts/upload dist/vX.Y.Z' >&2; exit 2; }
+python="${PYTHON:-python}"
+record="$folder/.uploaded"
+[ -n "$(ls -A "$folder" 2>/dev/null)" ] \
+  || { echo "make upload: no archives in $folder; make dist builds them" >&2; exit 1; }
+
+if [ -z "${TWINE_PASSWORD:-}" ]; then
+  printf 'Enter your API token: ' >&2
+  read -rs TWINE_PASSWORD
+  echo >&2
+fi
+export TWINE_USERNAME="${TWINE_USERNAME:-__token__}" TWINE_PASSWORD
+
+touch "$record"
+refused=
+refused_projects=' '
+requests=0
+for archive in "$folder"/*; do
+  name="$(basename "$archive")"
+  project="${name%%-[0-9]*}"
+  if grep -qxF "$name" "$record"; then
+    echo "make upload: $name is on the index"
+    continue
+  fi
+  case "$refused_projects" in
+    *" $project "*) refused="$refused $name"; continue ;;
+  esac
+  [ "$requests" -eq 0 ] || sleep 5
+  requests=$((requests + 1))
+  if "$python" -m twine upload --non-interactive --skip-existing "$archive"; then
+    echo "$name" >> "$record"
+  else
+    refused="$refused $name"
+    refused_projects="$refused_projects$project "
+  fi
+done
+
+[ -z "$refused" ] || {
+  echo "make upload: refused by PyPI, run make upload again later:$refused" >&2
+  exit 1
+}
+echo "make upload: every archive of $folder is on the index"

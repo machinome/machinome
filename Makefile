@@ -163,9 +163,8 @@ dist: ## Build, check and smoke every archive of the commit into dist/vX.Y.Z; up
 	echo "$$ scripts/check-dist --out $(RELEASE), in a copy of the commit $$(git rev-parse --short HEAD)"; \
 	cd "$$copy" && $(PYTHON) scripts/check-dist --out $(CURDIR)/$(RELEASE)
 
-upload: ## Upload dist/vX.Y.Z to PyPI with twine; run by no other target
-	@test -n "$$(ls -A $(RELEASE) 2>/dev/null)" || { echo 'make upload: no archives in $(RELEASE); make dist builds them' >&2; exit 1; }
-	$(PYTHON) -m twine upload $(RELEASE)/*
+upload: ## Upload dist/vX.Y.Z to PyPI with twine, one request per archive, five seconds apart, remembering what it holds; run by no other target
+	PYTHON=$(PYTHON) scripts/upload $(RELEASE)
 
 check: ## Build, check and smoke every archive from the tree and from a clean copy of its tracked files; keep nothing
 	$(PYTHON) scripts/check-dist

@@ -120,6 +120,20 @@ command a target runs.
 - Neutral: a contributor without make or uv still has the guide's install
   with pip and pytest from a package's directory.
 
+## Amendment (2026-10-31, direct correction `upload-per-archive`)
+
+The upload of Machinome 0.9.0 stopped at PyPI's limit on creating new
+projects in one window, four of fifteen created, then on the requests
+themselves, and twine's one request for every archive stopped there, the
+archives after it unsent; a rerun stopped at the same place and spent
+attempts on what was already up. `make upload` runs `scripts/upload`:
+twine once per archive, five seconds apart; the folder's `.uploaded`
+remembers each archive the index accepted or already held, never requested
+again; a refused project's other archive waits for the next run; the token
+is asked once; the run ends naming the refused archives, for `make upload`
+again when the window has passed. What is uploaded is unchanged: the bytes
+of `dist/v<current_version>`.
+
 ## References
 
 - `Makefile`, `.bumpversion.cfg`, `scripts/check-dist`,

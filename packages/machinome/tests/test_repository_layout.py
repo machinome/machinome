@@ -696,10 +696,24 @@ class TheMakefileTest(unittest.TestCase):
                 for target in ('dist', 'upload'):
                     self.assertNotIn(target, prerequisites,
                                      f'the rule {name} depends on {target}')
-                if name != 'upload':
-                    self.assertNotIn('twine upload', recipe,
-                                     f'the rule {name} runs twine upload')
-        self.assertIn('twine upload $(RELEASE)/*', rules['upload'][1])
+                self.assertNotIn('twine upload', recipe,
+                                 f'the rule {name} runs twine upload')
+        # One request per archive, by scripts/upload: PyPI refuses a new
+        # project past its limit on creations in one window and twine stops
+        # at the first refusal, so the script uploads each archive by itself,
+        # five seconds apart, remembers in the folder's `.uploaded` what the
+        # index holds and never requests it again, skips a refused project's
+        # other archive, and names the refused ones for a later run
+        # (`upload-per-archive`).
+        self.assertIn('scripts/upload $(RELEASE)', rules['upload'][1])
+        script = REPOSITORY / 'scripts' / 'upload'
+        self.assertTrue(script.is_file(), 'scripts/upload is absent')
+        self.assertTrue(os.access(script, os.X_OK),
+                        'scripts/upload is not executable')
+        text = script.read_text()
+        self.assertIn('twine upload --non-interactive --skip-existing', text)
+        self.assertIn('sleep 5', text)
+        self.assertIn('.uploaded', text)
         self.assertRegex(rules['dist'][1],
                          r'scripts/check-dist --out (\$\(CURDIR\)/)?'
                          r'\$\(RELEASE\)')
