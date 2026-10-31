@@ -632,10 +632,10 @@ stated. `pyproject.toml`, `machinome/__init__.py`,
 tests SHALL hold them to the version `pyproject.toml` states rather than
 to a literal. `docs/conf.py`'s release block SHALL be the one place the
 manual states the release date, the matching viewer's version and API,
-the document versions, the mechanics version and the framework's
+the document versions and the framework's
 licence; a page SHALL state each through its substitution
 (`|release_date|`, `|viewer_version|`, `|viewer_api|`,
-`|document_versions|`, `|mechanics_version|`, `|framework_licence|`),
+`|document_versions|`, `|framework_licence|`),
 never as a literal.
 
 The framework's licence SHALL be stated as GPL-2.0-or-later or
@@ -951,46 +951,31 @@ version `pyproject.toml` states, and `docs/conf.py`'s release block states
 the release date, 10 October 2026, the matching viewer 0.8.1, viewer API
 29 and document versions 1 to 13. The `viewer` and `web-snapshot` extras
 SHALL require the compatible release of `machinome-viewer` 0.8.1,
-`~=0.8.1`, since the viewer joined the set (change `join-viewer`). The
-changelog's first
-release section SHALL be `Machinome 0.8.1`, dated `Released on
-10/Oct/2026`, with no `Unreleased` section, opening with what a maker gets
+`~=0.8.1`, since the viewer joined the set (change `join-viewer`), until a
+later release moves the pins. The changelog SHALL keep a
+release section `Machinome 0.8.1`, dated `Released on
+10/Oct/2026`, below any later release's, opening with what a maker gets
 and sending a reader to the upgrading page for the changes a project may
-have to follow. `HISTORY.rst`'s top release entry SHALL be
-`Machinome 0.8.1 (2026-10-10)`; work landed after it SHALL be recorded as
-it lands in one `Unreleased` section above that entry, and the word SHALL
-appear nowhere else above it. `docs/releases/release-0.8.rst` SHALL end
+have to follow. `HISTORY.rst` SHALL keep the entry
+`Machinome 0.8.1 (2026-10-10)` below any later release's.
+`docs/releases/release-0.8.rst` SHALL end
 with a section naming 0.8.1 and dated 10 October 2026. `context7.json`
-SHALL state 0.8.1, its date and the matching viewer 0.8.1, API 29. The
-upgrading page SHALL open with a part for upgrading from 0.8.0 to 0.8.1,
-above the 0.7 to 0.8 part, which stays intact.
+SHALL name 0.8.1 and its date among the releases it lists. The
+upgrading page SHALL keep a part for upgrading from 0.8.0 to 0.8.1,
+below any later part and above the 0.7 to 0.8 part, which stays intact.
 
 #### Scenario: A reader checks which version the manual describes
 
-- **WHEN** a reader compares the installed package's version with the
-  manual's status page, changelog and history
-- **THEN** all state 0.8.1, released on 10 October 2026, and the
-  changelog's first release section is the 0.8.1 section
-
-#### Scenario: Work lands after the release
-
-- **WHEN** a change landed after 0.8.1 writes its entry in `HISTORY.rst`
-- **THEN** the entry sits in one `Unreleased` section above
-  `Machinome 0.8.1 (2026-10-10)`, the release's entry is unchanged, and a
-  second `Unreleased` section, or the word anywhere else above the
-  release's entry, fails the release-records test
+- **WHEN** a reader reads the changelog and the history after a later
+  release
+- **THEN** the 0.8.1 section and history entry still state 0.8.1, released
+  on 10 October 2026, below the later release's
 
 #### Scenario: A 0.8.0 user upgrades
 
 - **WHEN** a 0.8.0 user opens the upgrading page
-- **THEN** its first part names each change since 0.8.0 a project may
-  have to follow, with what to change
-
-#### Scenario: A maker installs the viewer extra
-
-- **WHEN** a maker installs `machinome[viewer]` 0.8.1
-- **THEN** the requirement names `machinome-viewer~=0.8.1`, the viewer
-  the manual declares as matching
+- **THEN** its part for 0.8.0 to 0.8.1 names each change since 0.8.0 a
+  project may have to follow, with what to change
 
 ### Requirement: A native FreeCAD assembly is documented as a how-to
 
@@ -1042,8 +1027,8 @@ The framework manual SHALL document the mechanics helpers, the package
 `machinome.mechanics` of the distribution machinome-mechanics, installed by the
 `mechanics` extra: a reference section, `reference/mechanics/`, listed in the
 reference part of the navigation, whose index names the distribution, its
-version through the `|mechanics_version|` substitution, its install line and
-its import, and lists every helper, followed by a conventions page and one
+version, the framework's, through the `|release|` substitution, its install
+line and its import, and lists every helper, followed by a conventions page and one
 page per formula family stating each helper's signature, frame, zero, sign and
 domain with an example; and a how-to guide, `howto/mechanism-formulas`, listed
 in the how-to part of the navigation, that installs the helpers, calculates a
@@ -1230,7 +1215,8 @@ The installation page SHALL name the `studio` extra with its prerequisites
 (the OpenSpec CLI, a logged-in agent backend, Chromium as a second step) and
 the distribution `machinome-studio` among the packages of the set under the
 set's licence. The status page SHALL state the studio's experimental standing
-and, until the set's next release is published, that no index serves it.
+and, from the release that includes it, nothing of an index that does not
+serve it.
 Every page SHALL spell the command `machinome studio` and the module forms at
 `machinome.studio`; none SHALL show `machinome-studio` as a command, `python -m
 floor`, `scripts/setup`, a clone of the studio's former repository or a
@@ -1418,4 +1404,66 @@ a phone's width without scrolling the page sideways.
 - **WHEN** the built installation page is opened 390 pixels wide
 - **THEN** the page's width is the viewport's, every entry's text wrapping
   within it
+
+### Requirement: The 0.9.0 release is recorded
+
+The release facts of Machinome 0.9.0 SHALL agree wherever they are stated:
+`current_version` of the root's `.bumpversion.cfg` states 0.9.0, and every
+manifest of the set, every pin between two of its distributions, every file
+that restates the version and every npm lock entry of a member state it,
+`machinome-mechanics` included. `docs/conf.py` SHALL state `release =
+'0.9.0'`, `version = '0.9'`, the release date the pilot names as
+`release_date`, the matching viewer 0.9.0, viewer API 29 and document
+versions 1 to 13. The changelog's first release section SHALL be
+`Machinome 0.9.0`, dated `Released on <dd/Mon/YYYY>`, with no `Unreleased`
+section above it, opening with what a maker gets and sending a reader to
+the upgrading page for the moves a project may have to follow, its bullets
+those written as each change landed. `HISTORY.rst`'s top release entry
+SHALL be `Machinome 0.9.0 (<YYYY-MM-DD>)`, opening with what 0.9 is, one
+repository of released packages under one licence, one version, one
+command, one manual and one release, and keeping every bullet of the road
+in the order the road ran them. `docs/releases/release-0.9.rst` SHALL be
+the release note of the 0.9 line, its title naming Machinome 0.9 and dated
+the release's day, reached from the changelog. The status page SHALL state
+the release through its substitutions and that every package of the set is
+numbered and released with the framework. `context7.json` SHALL state
+0.9.0, its date and the matching viewer 0.9.0, API 29. The changelogs of
+the browser viewer, the mechanics helpers, the films and the studio SHALL
+each have `0.9.0 — <d Month YYYY>` as their newest release section, the
+release's day, with no `Unreleased` section above it; for the films and the
+studio it is their first numbered release. The upgrading page SHALL open
+with a part for upgrading from 0.8 to 0.9 that names every move a 0.8
+project makes, each with what to change: the node types' extras, the former
+addresses `machinome_mechanics` and `machinome_viewer`, the version of
+`machinome-mechanics`, the viewer flag, the former commands
+`machinome-viewer` and `machinome-studio`, the entry point
+`machinome.viewer`, the studio's package `floor` and the films' command.
+
+#### Scenario: A reader checks which version the manual describes
+
+- **WHEN** a reader compares the installed package's version with the
+  manual's status page, changelog and history
+- **THEN** all state 0.9.0, released on the day the pilot named, and the
+  changelog's first release section is the 0.9.0 section
+
+#### Scenario: A version copy or a product's changelog is left behind
+
+- **WHEN** the set is bumped to 0.9.0 and the day is placed in the
+  framework's records but a product's changelog still opens with
+  `Unreleased`, or a copy of the version still states 0.8.1
+- **THEN** the release-records test fails naming the product or the copy
+
+#### Scenario: A 0.8 user upgrades
+
+- **WHEN** a 0.8.1 user opens the upgrading page
+- **THEN** its first part names each move of 0.9 with what to change, and
+  the documentation test fails naming a move the part does not spell
+
+#### Scenario: Work lands after the release
+
+- **WHEN** a change landed after 0.9.0 writes its entry in `HISTORY.rst`
+- **THEN** the entry sits in one `Unreleased` section above
+  `Machinome 0.9.0 (<YYYY-MM-DD>)`, the release's entry is unchanged, and a
+  second `Unreleased` section, or the word anywhere else above the
+  release's entry, fails the release-records test
 

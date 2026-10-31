@@ -89,8 +89,9 @@ The distribution SHALL expose `viewer`, `mechanics`, `skills`, `movie` and
 The default framework installation SHALL depend on none of them.
 `machinome-mechanics` is a distribution of the repository, at
 `packages/machinome-mechanics/`, whose package `machinome.mechanics` the
-framework never imports; the `mechanics` extra SHALL require it at a floor
-that its version in the repository satisfies. `machinome-viewer` is a
+framework never imports, numbered with the framework since Machinome
+0.9.0; the `mechanics` extra SHALL require it with the compatible-release
+pin `~=<version>`, the version being the framework's own. `machinome-viewer` is a
 distribution of the repository, at `packages/machinome-viewer/`, numbered with
 the framework, whose package `machinome.viewer.web` is the web provider of the
 framework's seam of viewers, `machinome.viewer`, which imports it at that
@@ -106,8 +107,8 @@ repository, at `packages/machinome-studio/`, whose package `machinome.studio`
 the framework never imports; the `studio` extra SHALL require it with the
 compatible-release pin `~=<version>`, the version being the framework's own.
 Current release material SHALL NOT state that the `studio` extra cannot
-resolve; until the set's next release is published, the status page SHALL
-state that no index serves `machinome-studio` yet.
+resolve, and the status page SHALL NOT state that no index serves
+`machinome-studio` once the release that includes it is recorded.
 
 The `viewer` extra and the `web-snapshot` extra SHALL require the viewer of
 the framework's own release with the compatible-release pin the set's
@@ -183,20 +184,28 @@ read the documents the release exports.
   `machinome studio` is a command of `machinome`, without the framework
   importing `machinome.studio`
 
-#### Scenario: A reader asks for the studio extra before publication
-
-- **WHEN** current guidance shows `pip install "machinome[studio]"` while no
-  index serves the set's release that includes the studio
-- **THEN** the status page says no index serves `machinome-studio` yet, no
-  other page says the extra cannot resolve, and the extra pins `~=` the
-  framework's version, a test failing naming the extra if it does not
-
 #### Scenario: The framework reaches the viewer through its seam
 
 - **WHEN** `pip install "machinome[viewer]"` has installed the viewer and a
   command of the framework serves, photographs or embeds through it
 - **THEN** the viewer is imported at `machinome.viewer.web` through the seam,
   no entry point is read and no viewer program is run
+
+#### Scenario: The mechanics extra pins the framework's release
+
+- **WHEN** the framework's `mechanics` extra and the manifest of
+  `machinome-mechanics` are read
+- **THEN** the extra is `machinome-mechanics~=<version>` and the package
+  requires `machinome~=<version>`, the version being `current_version` of
+  the root's `.bumpversion.cfg`, and the release-records test fails naming
+  either if it is a floor or another version
+
+#### Scenario: The status page records the studio as released
+
+- **WHEN** the release that includes `machinome-studio` is recorded, its
+  changelog section dated
+- **THEN** the status page states the studio's experimental standing and
+  says nothing of an index that does not serve it
 
 ### Requirement: The framework is the package directory `packages/machinome` of a monorepo
 
@@ -251,7 +260,7 @@ and `.gitignore`, the links `LICENSE` and `LICENSES`, its package directory
 `skills-distribution` and its history the set's. Their manual pages SHALL be
 the framework's manual's.
 
-Every distribution of the set but `machinome-mechanics` SHALL carry one
+Every distribution of the set SHALL carry one
 version, the set's, which `current_version` of the root's `.bumpversion.cfg`
 declares, `machinome-viewer` included, whose Python package's
 `__version__`, widget's `package.json` and entry in the root's npm lock SHALL
@@ -261,13 +270,11 @@ framework and an extension package and between two extension packages alike
 (`machinome-node-step` requires `machinome-node-cadquery`, and
 `machinome-node-solid2` and `machinome-viewer-openscad` require
 `machinome-node-openscad`).
-`machinome-mechanics` SHALL carry its own version, the version of its
-changelog's newest release section and of the manual's `mechanics_version`,
-and a requirement between it and the framework SHALL be a floor (`>=`) that
-the required distribution's version in the repository satisfies. The version
+`machinome-mechanics` is numbered with the set since Machinome 0.9.0, its
+0.1.0, released on its own, being history, and the manual SHALL state no
+version of its own for it. The version
 SHALL be bumped by the root `Makefile`'s `make bump` from that
-configuration, which names every manifest's version but that of
-`machinome-mechanics`, which it SHALL NOT name, every pin between the
+configuration, which names every manifest's version, every pin between the
 distributions of the set and the files that restate the set's version, the
 viewer's `__init__.py` and its widget's `package.json` among them; the
 root's npm lock SHALL be brought to it by npm and `uv.lock` by uv.
@@ -360,10 +367,11 @@ on the PATH before it builds; the CI SHALL run it through `make check` in a
 
 - **WHEN** the manifests under `packages/` and the root's `.bumpversion.cfg`
   are read
-- **THEN** every manifest's version but `machinome-mechanics`'s equals
-  `.bumpversion.cfg`'s `current_version`, the framework's included, every
+- **THEN** every manifest's version equals
+  `.bumpversion.cfg`'s `current_version`, the framework's and
+  `machinome-mechanics`'s included, every
   requirement between two distributions of the set is `~=` that version,
-  `.bumpversion.cfg` names every manifest but `machinome-mechanics`'s, the
+  `.bumpversion.cfg` names every manifest, the
   viewer's `__init__.py`, its widget's `package.json` and the root npm lock's
   entry for it state the same version, and the framework's `setup.cfg` holds
   no version table
@@ -465,24 +473,24 @@ on the PATH before it builds; the CI SHALL run it through `make check` in a
   layout test fails naming any other entry or an `__init__.py` at
   `machinome/`
 
-#### Scenario: The mechanics helpers carry their own version
+#### Scenario: The mechanics helpers are numbered with the set
 
-- **WHEN** the manifest of `machinome-mechanics`, its `CHANGELOG.md`, the
-  manual's `mechanics_version`, the framework's `mechanics` extra and
-  `.bumpversion.cfg` are read
-- **THEN** the manifest's version equals the changelog's newest release
-  section's and `mechanics_version`, the extra and the package's requirement
-  on the framework are floors the versions in the repository satisfy, and no
-  table of `.bumpversion.cfg` names the manifest
+- **WHEN** the manifest of `machinome-mechanics`, the framework's
+  `mechanics` extra, `.bumpversion.cfg` and the manual's release facts are
+  read
+- **THEN** the manifest's version is `current_version`, the extra and the
+  package's requirement on the framework are `~=` that version,
+  `.bumpversion.cfg` names the manifest in a version table and a pins
+  table, and the release facts hold no `mechanics_version`
 
 #### Scenario: The mechanics package is smoked from its wheel
 
 - **WHEN** `scripts/check-dist` installs the built wheels
 - **THEN** it installs `machinome-mechanics` from its own wheel by path,
   imports `machinome.mechanics`, finds its ten modules owned by its own
-  distribution inside the throwaway environment, its version its own, its
-  requirement `machinome>=0.8.0` and the framework's `mechanics` extra
-  naming it, computes a pose numerically and a deferred expression from the
+  distribution inside the throwaway environment, its version the
+  framework's, its requirement `machinome~=<version>` and the framework's
+  `mechanics` extra pinning it `~=` that version, computes a pose numerically and a deferred expression from the
   framework's animation time, and finds its licence texts
 
 #### Scenario: The viewer keeps its record in its directory

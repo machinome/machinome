@@ -66,14 +66,14 @@ the pilot's alone. No agent tags, pushes or uploads.
 
 ## 9. The day: integration and the archives (the orchestrator)
 
-- [ ] 9.1 Fast-forward the framework's `main` to "Release 0.9.0" (the line merged before it; the preparation reaches `main` with it).
-- [ ] 9.2 In the primary checkout at `main`: `make sync`, `git status --porcelain` empty, `make dist` (expected `dist/v0.9.0` with 36 archives, each `twine check --strict` PASSED), `ls dist/v0.9.0`, `make -n upload`. `make upload` is never run.
+- [x] 9.1 Fast-forward the framework's `main` to "Release 0.9.0" (the line merged before it; the preparation reaches `main` with it).
+- [x] 9.2 In the primary checkout at `main`: `make sync`, `git status --porcelain` empty, `make dist` (expected `dist/v0.9.0` with 36 archives, each `twine check --strict` PASSED), `ls dist/v0.9.0`, `make -n upload`. `make upload` is never run.
 
 ## 10. The day: the archive
 
-- [ ] 10.1 `evidence.md`: 9.1 and 9.2 recorded; the spec deltas synced into `openspec/specs/` (`user-documentation`, `framework-identity`, `mechanics-distribution`); `openspec validate --specs` green; the change archived as `archive/<date>-release-0-9-0/`; ADR disposition: ADR-187 amended in the preparation, nothing new.
-- [ ] 10.2 `workflow/ongoing/release-0.9.md`'s progress entry for cycle 10, the commits and counts; the day note stays in `ongoing/` until the pilot's steps are done.
-- [ ] 10.3 One commit on the bench, which touches `packages/machinome/openspec/` and `workflow/` alone (`git diff --stat`); the orchestrator fast-forwards `main` to it. The tag stays on "Release 0.9.0".
+- [x] 10.1 `evidence.md`: 9.1 and 9.2 recorded; the spec deltas synced into `openspec/specs/` (`user-documentation`, `framework-identity`, `mechanics-distribution`); `openspec validate --specs` green; the change archived as `archive/<date>-release-0-9-0/`; ADR disposition: ADR-187 amended in the preparation, nothing new.
+- [x] 10.2 `workflow/ongoing/release-0.9.md`'s progress entry for cycle 10, the commits and counts; the day note stays in `ongoing/` until the pilot's steps are done.
+- [x] 10.3 One commit on the bench, which touches `packages/machinome/openspec/` and `workflow/` alone (`git diff --stat`); the orchestrator fast-forwards `main` to it. The tag stays on "Release 0.9.0".
 
 ## 11. The pilot's steps (no agent runs these)
 

@@ -378,3 +378,60 @@ passed), chapters 1 to 3 and the first machine without build123d, chapter
 4 refused without it, chapter 10's stills through each viewer with its
 declaration. No project moves. Nothing pushed. Evidence:
 `packages/machinome/openspec/changes/archive/2026-10-13-manual-extras/evidence.md`.
+
+6. `release-0.9.0`. **Done** (31 October 2026). Cycle 10 of the list, the
+   pilot's day, named 31 October 2026. Branch `v0.9-release`, planning
+   commit 0266d3e6 on the closed line's head 5ae35987, ratified by the
+   orchestrator on 13 October 2026 with every Open Question's
+   recommendation; the preparation, "Prepare 0.9.0: the mechanics helpers
+   numbered with the set" (1e9c5024, 13 October 2026): the helpers `~=` the
+   set both ways in two tables of `.bumpversion.cfg` (ADR-187 amended), the
+   release-proof tests holding either state, the upgrading page's 0.9 part,
+   the day note `workflow/ongoing/release-0.9.0-day.md`. Between the
+   preparation and the day, on `main`: the studio's third-party notices,
+   chapter 10 through the web viewer, the credits' shape, the identity's
+   terms (`TRADEMARKS.md`) and the coverage rule (13 October), then the
+   three CI corrections of 28 to 31 October (`astral-sh/setup-uv` pinned to
+   a full release, the browser-snapshot job's test path, the studio's
+   session-opening fixture given a git identity) and one finding recorded
+   (the OpenSpec CLI install's npm publish race), after which the
+   monorepo's workflow completed green on GitHub for the first time (run
+   41042878530, attempt 2, on da1ac5de: every suite, `make check`). The
+   day, on the bench at 78276414 by a fresh applier: `make bump
+   VERSION=0.9.0` (29 files), `uv sync`, the release-records test and the
+   viewer's documentation test red naming each undated record (8 and 2
+   failures), the records of Decision 7 placed verbatim with the date
+   (`HISTORY.rst`'s `Machinome 0.9.0 (2026-10-31)` with its opening
+   paragraph and 20 bullets, the three CI bullets after the mechanics one;
+   the manual's changelog, `Released on 31/Oct/2026`, with 15 bullets and
+   the moves; `docs/releases/release-0.9.rst`; the status page's four
+   passages; `context7.json`; the four products' changelogs and the
+   studio's preamble; the viewer's `describe` example and its two specs),
+   the tests green; `make test` whole exit 0 in 23 min (the core 5049
+   passed, 9 skipped; the mechanics 204; the skills 47; the viewer 1715 and
+   252; the films 322 and 329; the studio 490, 24 skipped); `make docs`
+   clean, the four pages read in the HTML; `make lint` as the base; `make
+   check` exit 0, 36 archives from the tree and 36 from the clean copy,
+   every smoke line 0.9.0 (the clean copy of tracked files lacking the
+   untracked release note, `scripts/check-dist` run once more with it: 36
+   PASSED). Reviewed by the orchestrator: every Decision 7 block found
+   verbatim by a script, the record tests rerun (137 passed, 7193
+   subtests), the viewer's spec wording kept. Commit "Release 0.9.0",
+   5ce19b40, 43 files; `main` fast-forwarded to it; in the primary checkout
+   `make dist`: `dist/v0.9.0`, 36 archives from a copy of the commit, `twine
+   check --strict` 36 PASSED, every smoke line 0.9.0, nothing uploaded;
+   `make -n upload` prints the one twine line. The archive: the deltas
+   synced into `user-documentation` (one requirement added, four modified),
+   `framework-identity` (two modified) and `mechanics-distribution` (one
+   modified), the CLI's guard against dropped scenarios met by applying the
+   MODIFIED blocks first, each dropped scenario one Decision 11 replaces;
+   51 specs valid; the change at
+   `openspec/changes/archive/2026-10-31-release-0-9-0/`; no new ADR.
+   Departures kept: the viewer's `user-documentation` requirement worded by
+   the applier (Decision 7 gave its content); the movie's changelog
+   preamble unchanged. The pilot's steps, the day note's 1 to 8: the tag
+   `v0.9.0` on 5ce19b40, the push of `main` and the tag, `make upload`
+   with a token that may create fifteen projects, Read the Docs, Context7,
+   the former repositories, the 0.8.1 archives. Nothing tagged, pushed or
+   uploaded. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-31-release-0-9-0/evidence.md`.

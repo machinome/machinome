@@ -717,3 +717,101 @@ is in both. With `evidence.md` and `tasks.md`, 43, nothing else.
 - Not changed: the movie's `CHANGELOG.md` preamble still says "entries
   accumulate under `Unreleased` until the set is released", which Decision
   7 leaves as it is; after the release it has no `Unreleased` section.
+
+## 9. Integration and the archives (the orchestrator)
+
+### 9.1 The fast-forward
+
+The orchestrator reviewed the pause of 8.3 on 31 October 2026: the tree
+against Decision 6 (the bump's 29 files, the records of Decision 7,
+`evidence.md`, `tasks.md`, the untracked release note), every text block
+of Decision 7 found verbatim and dated in its record by a script over
+`design.md`, the smaller edits read in `git diff`, the viewer's spec
+wording kept, the logs' ends read (`make test` exit 0, `make check` exit
+0, `make docs` "build succeeded"), and its own rerun on the bench:
+`test_release_records.py`, `test_docs_structure.py`,
+`test_viewer_documentation_links.py`, `test_machinome_identity.py` and
+`test_repository_layout.py` together 137 passed, 7193 subtests; the
+viewer's documentation test 12, the movie's repository test 17, the
+studio's documentation test 23 (232 subtests), the mechanics package's 6;
+`openspec validate release-0-9-0 --strict` valid; the locks' diffs
+version lines alone. Commit "Release 0.9.0", 5ce19b40, 43 files, 602
+insertions, 180 deletions.
+
+```
+$ git -C /home/asa/devel/machinome/machinome merge --ff-only v0.9-release
+$ git -C /home/asa/devel/machinome/machinome log --oneline -1 main
+5ce19b40 Release 0.9.0
+```
+
+### 9.2 `make dist` in the primary checkout
+
+In `/home/asa/devel/machinome/machinome` at `main`: `make sync` earlier the
+same day (`uv sync`, `npm ci` adding 231 packages, Chromium), then after the
+fast-forward `uv sync --python 3.12` (the installed metadata of `machinome`
+and `machinome-mechanics` reading 0.9.0), `git status --porcelain` empty,
+`make -s version` 0.9.0.
+
+```
+$ make dist
+$ scripts/check-dist --out dist/v0.9.0, in a copy of the commit 5ce19b40
+...
+36 archives kept in /home/asa/devel/machinome/machinome/dist/v0.9.0
+Every distribution built, checked, installed and smoked; nothing uploaded.
+$ ls dist/v0.9.0 | wc -l
+36
+$ make -n upload
+test -n "$(ls -A dist/v0.9.0 2>/dev/null)" || { ...; exit 1; }
+/home/asa/devel/machinome/machinome/.venv/bin/python -m twine upload dist/v0.9.0/*
+```
+
+Exit 0; the sdist and the wheel of each of the eighteen packages; `twine
+check --strict` PASSED 36 times; every smoke line 0.9.0. The core's wheel
+`machinome-0.9.0-py3-none-any.whl` sha256 `94b4b81137eba92c…`, its sdist
+`machinome-0.9.0.tar.gz` sha256 `460b85a96bb55216…`. `make upload` was not
+run. The log: `<scratch>/C13-day/logs/make-dist-primary.log`, `<scratch>`
+being `/tmp/claude-1000/-home-asa-devel-machinome/56fde1bb-f65d-45ec-9043-bd2ec042abb7/scratchpad/`.
+
+## 10. The archive
+
+On 31 October 2026, after 9.2:
+
+- 10.1: `openspec archive release-0-9-0 --yes` from `<bench>/packages/machinome`
+  refused at first: "framework-identity MODIFIED failed for header '###
+  Requirement: Extras select independent Machinome products' - current spec
+  contains scenario(s) not present in the modified block: 'A reader asks for
+  the studio extra before publication'. Refresh the change spec before
+  archiving to avoid dropping scenarios. Aborted. No files were changed."
+  The CLI (1.6.0) refuses a MODIFIED block that drops a scenario of the
+  baseline, and Decision 11 drops four on purpose. The orchestrator
+  applied every MODIFIED block of the three deltas to its baseline by a
+  script that replaces the requirement's block wholesale, as the CLI does,
+  printing each block's dropped and added scenarios, each one Decision 11
+  names: `framework-identity`, "Extras select independent Machinome
+  products", dropped "A reader asks for the studio extra before
+  publication", added "The mechanics extra pins the framework's release"
+  and "The status page records the studio as released"; "The framework is
+  the package directory `packages/machinome` of a monorepo", dropped "The
+  mechanics helpers carry their own version", added "The mechanics helpers
+  are numbered with the set"; `mechanics-distribution`, "Framework
+  independence from mechanics helpers", none; `user-documentation`, "The
+  0.8.1 release is recorded", dropped "A maker installs the viewer extra"
+  (0.9.0 moves the pins) and "Work lands after the release" (it is the
+  0.9.0 requirement's), the other three none. Then the CLI, finding each
+  MODIFIED block equal to its baseline: "Applying changes to
+  openspec/specs/framework-identity/spec.md: ~ 2 modified;
+  mechanics-distribution: ~ 1 modified; user-documentation: + 1 added, ~ 4
+  modified. Totals: + 1, ~ 7, - 0, → 0. Specs updated successfully. Change
+  'release-0-9-0' archived as '2026-10-31-release-0-9-0'." The archive
+  holds this file; the change directory is gone. `openspec validate
+  --specs --strict` and `openspec validate --all --strict`: 51 passed, 0
+  failed each. The three baselines' diff: 129 insertions, 71 deletions.
+  ADR disposition: ADR-187 amended in the preparation (3.6), nothing new.
+- 10.2: the progress entry, entry 6 under "Progress" of
+  `workflow/ongoing/release-0.9.md` at the repository root; the day note
+  `workflow/ongoing/release-0.9.0-day.md` stays in `ongoing/` until the
+  pilot's steps are done.
+- 10.3: one commit on the bench touching `packages/machinome/openspec/` and
+  `workflow/` alone; `main` fast-forwarded to it. The tag stays the
+  pilot's, on "Release 0.9.0" (5ce19b40), the commit `dist/v0.9.0` was
+  built from.

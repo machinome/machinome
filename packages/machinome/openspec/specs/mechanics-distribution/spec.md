@@ -13,8 +13,10 @@ Installing machinome with the mechanics extra SHALL install the
 machinome-mechanics distribution, which lives in the repository at
 `packages/machinome-mechanics/` and ships the package `machinome.mechanics`,
 a portion of the `machinome` package that the core admits through its path
-extension and never imports. The extra SHALL require the distribution at a
-floor its version in the repository satisfies. No module of the former name
+extension and never imports. The extra SHALL require the distribution with
+the compatible-release pin `~=<version>`, the version being the
+framework's own: the distribution is numbered with the set since Machinome
+0.9.0. No module of the former name
 `machinome_mechanics` SHALL be provided, and no alias of it.
 
 #### Scenario: Motion without mechanics
