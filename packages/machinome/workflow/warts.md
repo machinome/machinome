@@ -2499,3 +2499,23 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   `ClaudeBackendAcceptanceTest.test_first_delivery_reports_last_pending_status_on_readiness_timeout`
   failed one whole-module run and passed every run alone; a timing flake,
   **recorded**, not fixed.
+
+# Finding from the workflow's second whole run (31 October 2026)
+
+- **CI installs the OpenSpec CLI from the live npm registry on every run,
+  so a publish race elsewhere breaks the `test` job.** The run on the push
+  of `creation-test-identity` (`main` at da1ac5de, 30 October 2026) got
+  `lint`, `docs` and `browser-snapshot` green and failed `test` before any
+  suite ran, at `npm install -g @fission-ai/openspec@1.6.0`: "No matching
+  version found for @posthog/core@^1.62.0". The registry's own times:
+  `posthog-node` 5.61.0, which the CLI's `posthog-node ^5.20.0` resolves
+  to, was published at 10:45:53 UTC requiring `@posthog/core ^1.62.0`;
+  `@posthog/core` 1.62.0 at 10:47:30; the step ran at 10:46:41, inside the
+  gap. The same install resolved on the morning run and resolves again on
+  31 October (a dry run adds 80 packages). The step installs the CLI "as a
+  maker installs it" (`join-studio`), so its dependency tree is resolved
+  afresh on every run and is held by no lock of the repository. A rerun of
+  the failed job is the remedy for this occurrence. **Recorded, for the
+  pilot:** whether CI should install the CLI through the root npm
+  workspace's lock, or keep the maker's install and accept such races, is
+  a `release-tooling` decision, not taken here.
