@@ -1,0 +1,10 @@
+test_framework_bank_matches_each_selected_history_at_each_request (test_loaded_control.LoadedControlTest.test_framework_bank_matches_each_selected_history_at_each_request) ... ok
+test_non_strict_event_landings_are_reached_once (test_loaded_control.LoadedControlTest.test_non_strict_event_landings_are_reached_once) ... ok
+test_partition_at_exact_release_does_not_lose_rearming (test_loaded_control.LoadedControlTest.test_partition_at_exact_release_does_not_lose_rearming) ... ok
+test_partitioning_the_key_travel_preserves_framework_events (test_loaded_control.LoadedControlTest.test_partitioning_the_key_travel_preserves_framework_events) ... ok
+test_snapshot_replays_both_sides_of_the_dispatch_handoff (test_loaded_control.LoadedControlTest.test_snapshot_replays_both_sides_of_the_dispatch_handoff) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.526s
+
+OK

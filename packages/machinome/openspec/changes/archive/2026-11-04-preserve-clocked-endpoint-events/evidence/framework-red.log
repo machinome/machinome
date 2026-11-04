@@ -1,0 +1,143 @@
+test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) ...
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=0, direction=-1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=0, direction=1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=1, direction=-1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=1, direction=1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=2, direction=-1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=2, direction=1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=3, direction=-1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=3, direction=1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=4, direction=-1) ... FAIL
+  test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=4, direction=1) ... FAIL
+test_partition_bank_and_order_independently (tests.test_clocked_endpoint.EndpointTest.test_partition_bank_and_order_independently) ... FAIL
+test_reconstructable_endpoint_control (tests.test_clocked_endpoint.EndpointTest.test_reconstructable_endpoint_control) ... ok
+test_strict_endpoint (tests.test_clocked_endpoint.EndpointTest.test_strict_endpoint) ... ok
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=0, direction=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=0, direction=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=1, direction=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=1, direction=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=2, direction=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=2, direction=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=3, direction=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=3, direction=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=4, direction=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) (form=4, direction=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 48, in test_exact_endpoint_and_partition
+    check_exact_endpoint_and_partition(form, direction)
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 22, in check_exact_endpoint_and_partition
+    assert split.state['count'] == 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_partition_bank_and_order_independently (tests.test_clocked_endpoint.EndpointTest.test_partition_bank_and_order_independently)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/test_clocked_endpoint.py", line 60, in test_partition_bank_and_order_independently
+    self.assertEqual(dict(split.state), dict(direct.state))
+AssertionError: {'count': 0, 'press': 0} != {'count': 1, 'press': 0}
+- {'count': 0, 'press': 0}
+?           ^
+
++ {'count': 1, 'press': 0}
+?           ^
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.102s
+
+FAILED (failures=11)

@@ -1,0 +1,98 @@
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.scad generated with 1793819481.4876206!
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.scad generated with 1793819481.4876206!
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.scad generated with 1793819481.4876206!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Job started with pid 982734
+ INFO -       node.base - waiting for /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl ...
+Geometries in cache: 1
+Geometry cache size in bytes: 728
+CGAL Polyhedrons in cache: 0
+CGAL cache size in bytes: 0
+Total rendering time: 0:00:00.000
+   Top level object is a 3D object:
+   Facets:          6
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl done!
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl generated with 1793819481.4876206!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl -> /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/elapsed_export/models/clocked_project/pendulum-Bob-cd9fb1e148cc.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/elapsed_export/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl -> /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/untimed_export/models/clocked_project/pendulum-Bob-cd9fb1e148cc.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/untimed_export/manifest.json written
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.scad generated with 1793819481.4876206!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Job started with pid 982783
+ INFO -       node.base - waiting for /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl ...
+Geometries in cache: 1
+Geometry cache size in bytes: 728
+CGAL Polyhedrons in cache: 0
+CGAL cache size in bytes: 0
+Total rendering time: 0:00:00.000
+   Top level object is a 3D object:
+   Facets:          6
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl done!
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl generated with 1793819481.4876206!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.scad generated with 1793819481.4876206!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Job started with pid 982784
+ INFO -       node.base - waiting for /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl ...
+Geometries in cache: 1
+Geometry cache size in bytes: 728
+CGAL Polyhedrons in cache: 0
+CGAL cache size in bytes: 0
+Total rendering time: 0:00:00.000
+   Top level object is a 3D object:
+   Facets:          6
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl done!
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.stl generated with 1793819481.4876206!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - /home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/tests/_build/clocked_project/pendulum-Bob-cd9fb1e148cc.scad generated with 1793819481.4876206!
+----------------------------------------------------------------------
+Ran 305 tests in 9.451s
+
+OK

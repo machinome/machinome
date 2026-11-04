@@ -3720,6 +3720,18 @@ and never poses.
   after, every event's value lies between them, and the clipped request's
   second end is the landing the stop gave it and not the value asked for
 
+#### Scenario: A measured descending non-strict endpoint commits exactly once
+
+- **WHEN** an empty clocked assembly starts `press` at `6.442137473829186`, starts integer `count` at zero, and commits `count + 1` on the rising comparison `press <= 1.0571271006818843`, and a request moves `press` exactly to that threshold
+- **THEN** the request commits once at the exact threshold, the bank contains that exact input and count one, and a zero-length request or continuation toward zero fires no duplicate
+- **AND** equivalent reversed, negated, difference and power-of-two-scaled comparisons retain their authored branch arithmetic and the same inclusive endpoint outcome
+
+#### Scenario: Partitioning the measured endpoint preserves the bank and event sequence
+
+- **WHEN** the measured descending request is performed once directly to zero and separately as requests to the exact threshold and then zero
+- **THEN** both executions finish with identical bank values and one event at the exact threshold with identical targets and event order, while fractions remain relative to each request
+- **AND** strict twins defer the event until the request containing their first representable far-side landing, and simultaneous events, adjacent-float event ordering and atomic refusal retain this requirement's existing semantics
+
 ### Requirement: A bound stops a clocked request on its path
 
 Under a CLOCKED root a joint coordinate's declared `range` SHALL be a STOP on

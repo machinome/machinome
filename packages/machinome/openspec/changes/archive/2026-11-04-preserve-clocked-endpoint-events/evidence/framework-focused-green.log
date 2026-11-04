@@ -1,0 +1,9 @@
+test_exact_endpoint_and_partition (tests.test_clocked_endpoint.EndpointTest.test_exact_endpoint_and_partition) ... ok
+test_partition_bank_and_order_independently (tests.test_clocked_endpoint.EndpointTest.test_partition_bank_and_order_independently) ... ok
+test_reconstructable_endpoint_control (tests.test_clocked_endpoint.EndpointTest.test_reconstructable_endpoint_control) ... ok
+test_strict_endpoint (tests.test_clocked_endpoint.EndpointTest.test_strict_endpoint) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.098s
+
+OK

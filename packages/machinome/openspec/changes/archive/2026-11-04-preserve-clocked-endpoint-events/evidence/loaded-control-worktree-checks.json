@@ -1,0 +1,404 @@
+{
+  "scope": "Check the public clocked bank against the saved selected numeric histories.\n\nThis is a geometry-free Python integration audit. It supplies no browser\nequivalence, new contact certificate, or next-ordinary-stroke controller.\nThe original endpoint-failure record is retained unchanged.\n",
+  "complete": true,
+  "installed_in_reconstruction": false,
+  "python": "/tmp/enigma-validation-runtime.SJdnVd/environment/bin/python",
+  "machinome_version": "0.9.0",
+  "framework_module": "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events/packages/machinome/machinome/simulation/sim.py",
+  "framework_checkout": "/home/asa/devel/machinome/machinome/WTs/preserve-clocked-endpoint-events",
+  "framework_head": "5166fd9d1341328eb1671ab375c493b0ff03bf1c",
+  "framework_status": "M packages/machinome/machinome/simulation/clocked.py\n?? packages/machinome/tests/test_clocked_endpoint.py",
+  "framework_module_sha256": "cb265faa5c82d865ec0d4d4b16aa2f77c822878a47969301c9f1d782370c1664",
+  "reference_program_id": "0afb2e3b2b5b1db1af8db4576a9cac87e51f25ba9fa0a850dcf36712df1bf013",
+  "sources": {
+    "sources/loaded-sequence-study.json": "d280d2472b44d775bde41c590ac26d1bca55b0f74620f88c22f37a4441fb9ed8",
+    "sources/loaded-control-compile.json": "70357aa619fdd825d039b7509c3bb439eaf1b145247c581478cc2faaa2f31a9c",
+    "simulation/loaded_control.py": "8b323787491591f83d56a3226c1952cb7c45d61444a1883ecd476547eb6eb6c4",
+    "simulation/loaded_control_data.py": "e6ebb2dbc50093ce0b11865fdee135fc1cc8ce5c8426138747749498f3973836",
+    "simulation/loaded_sequence.py": "184f795e2db748fa44e9c6ddc60f13d14e2883830dc7db9c7ef842b2db304bfa",
+    "simulation/tools/check_loaded_control.py": "c027947585d55adc00ddea0f078fcb17e6d63caddc950bb6979691ba38d9293f",
+    "simulation/tools/compile_loaded_control.py": "b0f5706e297b8e73b4a0e2ede30d5b4cfbb4f68ec4ac552a3913b880e28862e3",
+    "simulation/tools/probe_clocked_endpoint.py": "715315c1bdc6ae5f4b6914f271bbd655130d5b27263f977122bd39c6036d4af9",
+    "tests/test_loaded_control.py": "083b1f8238d87e213e4ee8701c9a8cc75ddc8d0918c918f0fa49d1a7098b8921",
+    "sources/clocked-endpoint-reproduction.json": "544985d04f2e73659c1b14fc2edac2d172122d85f6fd17c218a7351b6c73cdfa"
+  },
+  "histories": [
+    {
+      "case": "complete",
+      "sampled_banks": 80,
+      "commits": [
+        {
+          "value": 5.933835446697223,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 6.983224514367938,
+          "targets": [
+            "stage",
+            "middle_index"
+          ]
+        },
+        {
+          "value": 1.0561163642939144,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 6.442137473829186,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 1.0571271006818843,
+          "targets": [
+            "stage"
+          ]
+        }
+      ],
+      "final_bank": {
+        "middle_index": 23,
+        "press": 0.0,
+        "right_index": 49,
+        "stage": 6
+      },
+      "partition_equivalent": true,
+      "replay_equivalent": true
+    },
+    {
+      "case": "loaded early abort",
+      "sampled_banks": 120,
+      "commits": [
+        {
+          "value": 5.933835446697223,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 6.983224514367938,
+          "targets": [
+            "stage",
+            "middle_index"
+          ]
+        },
+        {
+          "value": 1.0561163642939144,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 6.442137473829186,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 1.0571271006818843,
+          "targets": [
+            "stage"
+          ]
+        }
+      ],
+      "final_bank": {
+        "middle_index": 23,
+        "press": 0.0,
+        "right_index": 49,
+        "stage": 6
+      },
+      "partition_equivalent": true,
+      "replay_equivalent": true
+    },
+    {
+      "case": "pending repress",
+      "sampled_banks": 120,
+      "commits": [
+        {
+          "value": 5.933835446697223,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 6.983224514367938,
+          "targets": [
+            "stage",
+            "middle_index"
+          ]
+        },
+        {
+          "value": 1.0561163642939144,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 6.442137473829186,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 1.0571271006818843,
+          "targets": [
+            "stage"
+          ]
+        }
+      ],
+      "final_bank": {
+        "middle_index": 23,
+        "press": 0.0,
+        "right_index": 49,
+        "stage": 6
+      },
+      "partition_equivalent": true,
+      "replay_equivalent": true
+    },
+    {
+      "case": "rollback repress",
+      "sampled_banks": 160,
+      "commits": [
+        {
+          "value": 5.933835446697223,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 3.17893507365278,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 1.0561163642939144,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 6.442137473829186,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 1.0571271006818843,
+          "targets": [
+            "stage"
+          ]
+        }
+      ],
+      "final_bank": {
+        "middle_index": 22,
+        "press": 0.0,
+        "right_index": 49,
+        "stage": 6
+      },
+      "partition_equivalent": true,
+      "replay_equivalent": true
+    },
+    {
+      "case": "following early abort",
+      "sampled_banks": 120,
+      "commits": [
+        {
+          "value": 5.933835446697223,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 6.983224514367938,
+          "targets": [
+            "stage",
+            "middle_index"
+          ]
+        },
+        {
+          "value": 1.0561163642939144,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 6.442137473829186,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 1.0571271006818843,
+          "targets": [
+            "stage"
+          ]
+        }
+      ],
+      "final_bank": {
+        "middle_index": 23,
+        "press": 0.0,
+        "right_index": 49,
+        "stage": 6
+      },
+      "partition_equivalent": true,
+      "replay_equivalent": true
+    },
+    {
+      "case": "following repress",
+      "sampled_banks": 120,
+      "commits": [
+        {
+          "value": 5.933835446697223,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 6.983224514367938,
+          "targets": [
+            "stage",
+            "middle_index"
+          ]
+        },
+        {
+          "value": 1.0561163642939144,
+          "targets": [
+            "stage"
+          ]
+        },
+        {
+          "value": 6.442137473829186,
+          "targets": [
+            "stage",
+            "right_index"
+          ]
+        },
+        {
+          "value": 1.0571271006818843,
+          "targets": [
+            "stage"
+          ]
+        }
+      ],
+      "final_bank": {
+        "middle_index": 23,
+        "press": 0.0,
+        "right_index": 49,
+        "stage": 6
+      },
+      "partition_equivalent": true,
+      "replay_equivalent": true
+    }
+  ],
+  "endpoint_probe": {
+    "start_mm": 6.442137473829186,
+    "threshold_mm": 1.0571271006818843,
+    "endpoint": {
+      "initial": {
+        "count": 0,
+        "press": 6.442137473829186
+      },
+      "identity": "eb925e6234a351a755ce4a36ee1a521b9a82b6febf743dd782c83d185595eb8b",
+      "requests": [
+        {
+          "target": 1.0571271006818843,
+          "state": {
+            "count": 1,
+            "press": 1.0571271006818843
+          },
+          "commits": [
+            {
+              "value": 1.0571271006818843,
+              "targets": {
+                "count": 1
+              }
+            }
+          ]
+        }
+      ],
+      "final": {
+        "count": 1,
+        "press": 1.0571271006818843
+      }
+    },
+    "direct": {
+      "initial": {
+        "count": 0,
+        "press": 6.442137473829186
+      },
+      "identity": "eb925e6234a351a755ce4a36ee1a521b9a82b6febf743dd782c83d185595eb8b",
+      "requests": [
+        {
+          "target": 0.0,
+          "state": {
+            "count": 1,
+            "press": 0.0
+          },
+          "commits": [
+            {
+              "value": 1.0571271006818843,
+              "targets": {
+                "count": 1
+              }
+            }
+          ]
+        }
+      ],
+      "final": {
+        "count": 1,
+        "press": 0.0
+      }
+    },
+    "partitioned": {
+      "initial": {
+        "count": 0,
+        "press": 6.442137473829186
+      },
+      "identity": "eb925e6234a351a755ce4a36ee1a521b9a82b6febf743dd782c83d185595eb8b",
+      "requests": [
+        {
+          "target": 1.0571271006818843,
+          "state": {
+            "count": 1,
+            "press": 1.0571271006818843
+          },
+          "commits": [
+            {
+              "value": 1.0571271006818843,
+              "targets": {
+                "count": 1
+              }
+            }
+          ]
+        },
+        {
+          "target": 0.0,
+          "state": {
+            "count": 1,
+            "press": 0.0
+          },
+          "commits": []
+        }
+      ],
+      "final": {
+        "count": 1,
+        "press": 0.0
+      }
+    }
+  }
+}

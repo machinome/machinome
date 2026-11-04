@@ -6,6 +6,168 @@
   },
   "machines": [
     {
+      "name": "EndpointRelease",
+      "document": {
+        "format": "machinome-export",
+        "version": 8,
+        "drivers": {
+          "press": {
+            "default": 6.442137473829186,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "0f09a8ac1d4ba50a1ea698a2909de40b47adaf97177b27eb6837f44d0ecf1969",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "press",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "((-1 * press) - -1.0571271006818843)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "press": "affine"
+              },
+              "description": "(press, count) commits count",
+              "stated_by": "Release"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "press",
+            "to": 0.0
+          }
+        },
+        {
+          "reset": true
+        },
+        {
+          "move": {
+            "input": "press",
+            "to": 1.0571271006818843
+          }
+        },
+        {
+          "move": {
+            "input": "press",
+            "to": 1.0571271006818843
+          }
+        },
+        {
+          "move": {
+            "input": "press",
+            "to": 0.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 1,
+            "press": 0.0
+          },
+          "admitted": -6.442137473829186,
+          "origin": 6.442137473829186,
+          "end": 0.0,
+          "commits": [
+            {
+              "relations": [
+                "(press, count) commits count"
+              ],
+              "fraction": 0.8359042934155934,
+              "value": 1.0571271006818843,
+              "targets": {
+                "count": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 0,
+            "press": 6.442137473829186
+          }
+        },
+        {
+          "bank": {
+            "count": 1,
+            "press": 1.0571271006818843
+          },
+          "admitted": -5.385010373147302,
+          "origin": 6.442137473829186,
+          "end": 1.0571271006818843,
+          "commits": [
+            {
+              "relations": [
+                "(press, count) commits count"
+              ],
+              "fraction": 1.0,
+              "value": 1.0571271006818843,
+              "targets": {
+                "count": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 1,
+            "press": 1.0571271006818843
+          },
+          "admitted": 0.0,
+          "origin": 1.0571271006818843,
+          "end": 1.0571271006818843,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 1,
+            "press": 0.0
+          },
+          "admitted": -1.0571271006818843,
+          "origin": 1.0571271006818843,
+          "end": 0.0,
+          "commits": [],
+          "stops": []
+        }
+      ]
+    },
+    {
       "name": "Counter",
       "document": {
         "format": "machinome-export",

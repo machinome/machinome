@@ -1,0 +1,12 @@
+test_an_aborted_stroke_before_indexing_returns_without_a_step (test_pawl_cycle.PawlCycleTest.test_an_aborted_stroke_before_indexing_returns_without_a_step) ... ok
+test_complete_strokes_retain_one_rotor_pitch_each (test_pawl_cycle.PawlCycleTest.test_complete_strokes_retain_one_rotor_pitch_each) ... ok
+test_partitioning_requests_preserves_events_and_pose (test_pawl_cycle.PawlCycleTest.test_partitioning_requests_preserves_events_and_pose) ... ok
+test_physical_key_stops_bound_requested_travel (test_pawl_cycle.PawlCycleTest.test_physical_key_stops_bound_requested_travel) ... ok
+test_repressing_before_pawl_release_does_not_step_twice (test_pawl_cycle.PawlCycleTest.test_repressing_before_pawl_release_does_not_step_twice) ... ok
+test_restore_replays_the_unreleased_branch (test_pawl_cycle.PawlCycleTest.test_restore_replays_the_unreleased_branch) ... ok
+test_same_key_and_rotor_position_retain_distinct_contact_branches (test_pawl_cycle.PawlCycleTest.test_same_key_and_rotor_position_retain_distinct_contact_branches) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 10.643s
+
+OK

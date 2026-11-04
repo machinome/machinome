@@ -77,7 +77,7 @@ from machinome.simulation.enumeration import (  # noqa: E402
 #: Where the corpus machines live. Each is a class of one of these
 #: modules, addressed by class name.
 MODULES = ('calculator', 'clearing', 'counter', 'decorative', 'freeze',
-           'gate', 'lock', 'outside', 'pawl', 'pendulum', 'register',
+           'gate', 'lock', 'endpoint', 'outside', 'pawl', 'pendulum', 'register',
            'ties', 'units')
 
 #: The keys of a published document the CLOCKED executor is answerable
@@ -141,6 +141,14 @@ REQUIRED = (
 #: One entry per machine: its class name and the script applied to it,
 #: step by step. Every step is recorded, refusals included.
 CORPUS = (
+    # Enigma I: a non-reconstructable inclusive endpoint is authoritative.
+    {'name': 'EndpointRelease', 'script': [
+        {'move': {'input': 'press', 'to': 0.0}},
+        {'reset': True},
+        {'move': {'input': 'press', 'to': 1.0571271006818843}},
+        {'move': {'input': 'press', 'to': 1.0571271006818843}},
+        {'move': {'input': 'press', 'to': 0.0}},
+    ]},
     # Cycle 1's counter: three strokes with a carry, a FALLING step that
     # fires nothing, a snapshot, a restore, a reset, and a request that
     # would cross more surfaces than one relation is admitted.

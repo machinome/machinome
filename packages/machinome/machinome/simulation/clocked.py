@@ -94,6 +94,27 @@ def _enter():
 ##############################################
 # One compiled committing relation
 
+class _RequestSteps(dict):
+    """An admitted request keeps its exact endpoint when solving surfaces.
+
+    The shared solver already accepts an ``along`` evaluator. Interior
+    arithmetic stays the ordinary affine path; only its terminal reading
+    uses the target the request actually admitted, rather than reconstructing
+    it by subtraction and addition.
+    """
+
+    def __init__(self, steps, input_id, endpoint):
+        super().__init__(steps)
+        self.input_id = input_id
+        self.endpoint = endpoint
+
+    def along(self, start, fraction):
+        values = {name: start[name] + self[name] * fraction for name in start}
+        if fraction == 1.0:
+            values[self.input_id] = self.endpoint
+        return values
+
+
 class Committing:
     """One committing relation, compiled against one clocked tree.
 
@@ -139,9 +160,9 @@ class Committing:
         does."""
         return input_id in self.jumps
 
-    def next_event(self, bank, input_id, start, delta):
+    def next_event(self, bank, input_id, start, delta, endpoint):
         """The earliest RISING crossing of this relation's level on the
-        straight path from `start` to `start + delta`, as
+        straight path from `start` to the admitted `endpoint`, as
         `(fraction, landing)`, or None.
 
         `fraction` is the fraction of THIS path, which the caller
@@ -158,6 +179,7 @@ class Committing:
         standing[input_id] = start
         steps = {identifier: 0.0 for identifier in self.source_ids}
         steps[input_id] = delta
+        steps = _RequestSteps(steps, input_id, endpoint)
         found = self._located(jump, standing, steps, input_id, delta)
         if not found:
             return None
@@ -172,7 +194,6 @@ class Committing:
             return _branch_of(jump, level_at(value))
 
         direction = math.copysign(1.0, delta)
-        endpoint = start + delta
         scale = max(abs(start), abs(endpoint))
         for index, (where, _level) in enumerate(found):
             if where == 0.0:
@@ -194,7 +215,8 @@ class Committing:
                 before = _branch_of(jump, self._level_at(
                     jump, standing, steps, (edges[index] + where) / 2.0))
             landing = far_side_of(
-                branch_at, before, start + delta * where, direction,
+                branch_at, before, (endpoint if where == 1.0
+                                    else start + delta * where), direction,
                 lambda: _unlanded(self, jump), scale=scale)
             if direction * (landing - endpoint) > 0.0:
                 # The landing lies BEYOND this request's endpoint, which
@@ -2161,7 +2183,7 @@ class Clocked:
             delta = target - current
             if delta == 0.0:
                 break
-            event = self._next_event(working, input_id, current, delta)
+            event = self._next_event(working, input_id, current, delta, target)
             if event is None:
                 break
             landing, firing = event
@@ -2260,7 +2282,7 @@ class Clocked:
             if bounded.level.evaluate(held) > level.threshold:
                 raise _commit_out_of_range(level, held, input_id, by, to)
 
-    def _next_event(self, bank, input_id, current, delta):
+    def _next_event(self, bank, input_id, current, delta, endpoint):
         """The next event on the remaining path: its landing, and every
         relation that fires there.
 
@@ -2274,7 +2296,7 @@ class Clocked:
         for relation in self.relations:
             if not relation.moves_with(input_id):
                 continue
-            found = relation.next_event(bank, input_id, current, delta)
+            found = relation.next_event(bank, input_id, current, delta, endpoint)
             if found is None:
                 continue
             where, landing = found

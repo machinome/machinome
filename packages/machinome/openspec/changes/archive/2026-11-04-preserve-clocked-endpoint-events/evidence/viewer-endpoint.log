@@ -1,0 +1,4 @@
+{"step":0,"actual":[{"relations":["(press, count) commits count"],"fraction":0.8359042934155934,"value":1.0571271006818843,"targets":{"count":1}}],"expected":[{"relations":["(press, count) commits count"],"fraction":0.8359042934155934,"value":1.0571271006818843,"targets":{"count":1}}]}
+{"step":2,"actual":[],"expected":[{"relations":["(press, count) commits count"],"fraction":1,"value":1.0571271006818843,"targets":{"count":1}}]}
+{"step":3,"actual":[],"expected":[]}
+{"step":4,"actual":[],"expected":[]}
