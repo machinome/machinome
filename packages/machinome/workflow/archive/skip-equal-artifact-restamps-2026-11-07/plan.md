@@ -1,9 +1,10 @@
 # Avoid exact-equal artifact timestamp writes
 
-Status: maintenance plan approved by root's delegated review under active pilot
-goal authority, 2026-11-07; apply authorized after planning commit gates. No cure for
-Enigma's unexplained delayed ctime changes is claimed. This note is evidence
-and intent; the OpenSpec proposal is the reviewable contract.
+Status: implemented maintenance correction, 2026-11-07; source proof and one
+canonical WT-runtime caller check passed. Root owns local integration and the
+installed plain-build acceptance after handoff. No cure for Enigma's unexplained
+delayed ctime changes is claimed. This note preserves the finding and plan;
+the archived OpenSpec record and synchronized baseline own the final contract.
 
 Origin: `/mnt/data/machinome-projects/enigma-i`, ordinary declared
 `simulation.candidate_machine:CandidateMachineInspection`, source publication
@@ -54,3 +55,15 @@ must hold an `ArtifactSnapshot` across matching-mtime content-proven record
 refresh; green must preserve that pin while updating the record. Caller checks
 then use the WT-owned runtime and, after authorized integration, the installed
 runtime's plain canonical build, without hand-editing cache or document data.
+
+Resolution: `currency.restamp` now preserves the existing integer/index protocol
+and returns without an artifact write when exact desiredmtime already holds;
+the caller's proof/record and all consumption guards are unchanged. Real red
+showed four STL/BREP pin failures after successful record refresh. Green is
+226 planned regression tests plus60subtests, no skips, and a final five-test/
+four-subtest focused gate. Canonical project60c6d8c then passed its one ordinary
+WT-runtime build in64.303s, preserving the document and all543 referenced model
+byte hashes with no errors.json. Evidence and implementation/authority records
+are in core `openspec/changes/archive/2026-11-07-skip-equal-artifact-restamps/`.
+The no-op correction is closed; root's installed-runtime receipt remains a
+separate delivery gate, with no further public/API/lamp work in this cycle.

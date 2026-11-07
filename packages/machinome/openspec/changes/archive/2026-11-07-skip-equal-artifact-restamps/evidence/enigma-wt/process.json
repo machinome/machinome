@@ -1,0 +1,71 @@
+{
+  "complete": true,
+  "project_revision": "60c6d8cb6193d67fecb410d0a1b0a8571938f37d",
+  "framework_planning_commit": "750a361d0ff51c50063f3636f0258d6529f68fae",
+  "parent": {
+    "pid": 1688574,
+    "start_ticks": "25266992",
+    "mount_namespace": "mnt:[4026531841]"
+  },
+  "command": [
+    "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/bin/machinome",
+    "build"
+  ],
+  "cwd": "/mnt/data/machinome-projects/enigma-i",
+  "build_root": "/mnt/data/machinome-projects/enigma-i/_build",
+  "native_lock": "/tmp/enigma-native-secondary-20261107.lock",
+  "reference": "simulation.candidate_machine:CandidateMachineInspection",
+  "runtime": {
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "executable": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/bin/python",
+    "packages": {
+      "machinome": "0.9.0",
+      "machinome-node-step": "0.9.0",
+      "machinome-node-cadquery": "0.9.0",
+      "machinome-engine-brep": "0.9.0",
+      "machinome-engine-mesh": "0.9.0",
+      "machinome-viewer": "0.9.0",
+      "cadquery": "2.7.0",
+      "molejo": "0.2.0"
+    },
+    "currency": {
+      "path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome/machinome/currency.py",
+      "sha256": "db79b8a7afad2b43a7e3a8e5b2a1d7cc2233e784ec3579e6cbfb4936886e142e"
+    },
+    "artifact": {
+      "path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome/machinome/_artifact.py",
+      "sha256": "a5f386b92a20f59c6d2b432d90f46bf275095f2206314a7550187fdc76232547"
+    },
+    "pieces": {
+      "path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome/machinome/core/pieces.py",
+      "sha256": "84a16d79e65b4ba64a3b5636a6d42fb9a8c336875c96570e27acf7e913609932"
+    },
+    "step_path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome-node-step/machinome/node/step.py"
+  },
+  "queued_at": "2026-11-07T22:36:34.696163+00:00",
+  "document_sha256_before": "f6ffa7958cf787d2d5b06f246a11d380ef4b3851f8585756a653650629ddbf6a",
+  "timeout_seconds": 420,
+  "no_manual_document_or_cache_edits": true,
+  "original_guards_and_retry_unchanged": true,
+  "instrumentation": "Source/runtime/hash receipt only; no sitecustomize, trace or behavior hook in caller command",
+  "timed_out": false,
+  "started_at": "2026-11-07T22:36:35.568908+00:00",
+  "child": {
+    "pid": 1688642,
+    "start_ticks": "25267605",
+    "mount_namespace": "mnt:[4026531841]"
+  },
+  "returncode": 0,
+  "elapsed_seconds": 64.30337077798322,
+  "finished_at": "2026-11-07T22:37:39.872280+00:00",
+  "project_revision_after": "60c6d8cb6193d67fecb410d0a1b0a8571938f37d",
+  "inputs_unchanged": true,
+  "changed_inputs": [],
+  "core_source_unchanged": true,
+  "document_sha256_after": "f6ffa7958cf787d2d5b06f246a11d380ef4b3851f8585756a653650629ddbf6a",
+  "models_unchanged": true,
+  "referenced_models_before": 543,
+  "referenced_models_after": 543,
+  "errors_json": null,
+  "build_log_sha256": "f55fe94737048e6960092f89b1d2d512f85ea323b7d8076e1bd46e30b6970865"
+}

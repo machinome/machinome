@@ -62,6 +62,7 @@ import ast
 import hashlib
 import json
 import logging
+import operator
 import os
 import tempfile
 import time
@@ -1548,6 +1549,9 @@ def restamp(artifact, mtime_ns):
     """Give a content-verified artifact the current node mtime, so the
     fast path serves every later build.
 
+    An exact-equal stamp needs no write: preserve the artifact identity a
+    consumer may already hold. The caller still refreshes its source record.
+
     Best effort on purpose. Where the artifact filesystem cannot store the
     exact stamp -- the coarse-resolution case build-pipeline already
     covers -- this will not achieve equality, and that is not a failure:
@@ -1556,6 +1560,9 @@ def restamp(artifact, mtime_ns):
     does not, loop or reconsider.
     """
     try:
+        mtime_ns = operator.index(mtime_ns)
+        if os.stat(artifact).st_mtime_ns == mtime_ns:
+            return
         os.utime(artifact, ns=(time.time_ns(), mtime_ns))
     except OSError as error:
         logger.debug('Could not restamp %s: %s', artifact, error)

@@ -37,6 +37,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from machinome import currency
+from machinome._artifact import ArtifactSnapshot
 from machinome.core import pieces
 from machinome.core.builder import Builder, BuildOutcome
 from machinome.core.loader import load_node
@@ -409,6 +410,58 @@ class ContentVerifiedCurrencyTest(ScratchProjectTest):
                          node.block.source_fingerprint)
         self.assertEqual(self.renders(), [])
 
+    def test_matching_mtime_legacy_upgrade_preserves_pinned_artifact(self):
+        node = self.build()
+        self.renders()
+        for artifact in (node.block.stl_file, node.block.brep_file):
+            with self.subTest(artifact=artifact):
+                currency.record(artifact, node.block.source_digest)
+                self.assertIsNone(currency.recorded_fingerprint(artifact))
+                self.assertEqual(os.stat(artifact).st_mtime_ns,
+                                 node.block.mtime_ns)
+
+                with ArtifactSnapshot(artifact) as snapshot:
+                    before = snapshot.read_bytes()
+                    self.assertTrue(node.block._up_to_date(artifact))
+                    self.assertEqual(currency.recorded_digest(artifact),
+                                     node.block.source_digest)
+                    self.assertEqual(currency.recorded_fingerprint(artifact),
+                                     node.block.source_fingerprint)
+                    snapshot.validate()
+                    self.assertEqual(snapshot.read_bytes(), before)
+        self.assertEqual(self.renders(), [])
+
+    def test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact(self):
+        block_source = os.path.join(self.root, self.package, 'block.py')
+        future = time.time_ns() + 60 * 10 ** 9
+        os.utime(block_source, ns=(future, future))
+        node = self.build()
+        self.renders()
+        old_fingerprint = node.block.source_fingerprint
+
+        # A contributor's metadata changes without changing its retained
+        # bytes or the source maximum: the real fingerprint miss must still
+        # prove content and refresh the sidecar.
+        self.write('dimensions.py', DIMENSIONS)
+        changed = load_node(self.reference)
+        self.assertEqual(changed.block.mtime_ns, future)
+        self.assertNotEqual(changed.block.source_fingerprint, old_fingerprint)
+        for artifact in (node.block.stl_file, node.block.brep_file):
+            with self.subTest(artifact=artifact):
+                self.assertEqual(os.stat(artifact).st_mtime_ns, future)
+                self.assertEqual(currency.recorded_fingerprint(artifact),
+                                 old_fingerprint)
+                with ArtifactSnapshot(artifact) as snapshot:
+                    before = snapshot.read_bytes()
+                    self.assertTrue(changed.block._up_to_date(artifact))
+                    self.assertEqual(currency.recorded_digest(artifact),
+                                     changed.block.source_digest)
+                    self.assertEqual(currency.recorded_fingerprint(artifact),
+                                     changed.block.source_fingerprint)
+                    snapshot.validate()
+                    self.assertEqual(snapshot.read_bytes(), before)
+        self.assertEqual(self.renders(), [])
+
     def test_every_published_artifact_records_its_source_fingerprint(self):
         node = self.build()
         # A build writes no `.scad` for an exact leaf (`scad-presentation`):
@@ -543,6 +596,47 @@ class SweptSidecarTest(ScratchProjectTest):
             document = published.read()
 
         self.assertNotIn(currency.SIDECAR_SUFFIX, document)
+
+
+class RestampErrorTest(TestCase):
+    """A failed timestamp optimization neither throws nor alters the pin."""
+
+    def test_equal_float_timestamp_keeps_the_integer_protocol_refusal(self):
+        with tempfile.TemporaryDirectory(prefix='currency-restamp-') as root:
+            artifact = os.path.join(root, 'part.stl')
+            with open(artifact, 'wb') as output:
+                output.write(b'artifact\n')
+            # This fixed small integer is exactly representable as a float:
+            # ordinary equality must not turn an invalid ns input into a hit.
+            os.utime(artifact, ns=(1_000_000, 1_000_000))
+            with ArtifactSnapshot(artifact) as snapshot:
+                with self.assertRaises(TypeError):
+                    currency.restamp(artifact, 1_000_000.0)
+                snapshot.validate()
+
+    def test_stat_error_is_best_effort(self):
+        with tempfile.TemporaryDirectory(prefix='currency-restamp-') as root:
+            artifact = os.path.join(root, 'part.stl')
+            with open(artifact, 'wb') as output:
+                output.write(b'artifact\n')
+            with ArtifactSnapshot(artifact) as snapshot:
+                with patch('machinome.currency.os.stat',
+                           side_effect=PermissionError('stat denied')):
+                    currency.restamp(artifact,
+                                     snapshot.observation.mtime_ns + 1_000_000)
+                snapshot.validate()
+
+    def test_timestamp_write_error_is_best_effort(self):
+        with tempfile.TemporaryDirectory(prefix='currency-restamp-') as root:
+            artifact = os.path.join(root, 'part.stl')
+            with open(artifact, 'wb') as output:
+                output.write(b'artifact\n')
+            with ArtifactSnapshot(artifact) as snapshot:
+                with patch('machinome.currency.os.utime',
+                           side_effect=PermissionError('utime denied')):
+                    currency.restamp(artifact,
+                                     snapshot.observation.mtime_ns + 1_000_000)
+                snapshot.validate()
 
 
 class TransientRecordTest(TestCase):

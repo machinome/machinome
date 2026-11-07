@@ -1,0 +1,58 @@
+{
+  "evidence/enigma-wt/build.log": {
+    "bytes": 98,
+    "sha256": "f55fe94737048e6960092f89b1d2d512f85ea323b7d8076e1bd46e30b6970865"
+  },
+  "evidence/enigma-wt/inputs.json": {
+    "bytes": 254897,
+    "sha256": "c4d4a86ea86e32c9388fdf0c6b839a7d01651cb4fc91ddec4b5537ee32edf409"
+  },
+  "evidence/enigma-wt/models-after.json": {
+    "bytes": 95198,
+    "sha256": "8fc7973666b99cbdb1b7a4f81115b872bcf1ef77e006b2c8a1f0525344816985"
+  },
+  "evidence/enigma-wt/models-before.json": {
+    "bytes": 95198,
+    "sha256": "8fc7973666b99cbdb1b7a4f81115b872bcf1ef77e006b2c8a1f0525344816985"
+  },
+  "evidence/enigma-wt/process.json": {
+    "bytes": 3136,
+    "sha256": "07f0ce28dffc55d3973f0190382def0266e106ddc74cedd02c03517c6bceec40"
+  },
+  "evidence/enigma-wt/run.py": {
+    "bytes": 7174,
+    "sha256": "ebb9abf4120c1804f1227e90cb942f1f1a783e5edf833abc3fb77d769c7b70d8"
+  },
+  "evidence/enigma-wt/runtime.json": {
+    "bytes": 1274,
+    "sha256": "66afb4bdaf687b0a6d73f05a42b88d25de0d46047800ebc43e7ee65677d51e6b"
+  },
+  "evidence/environment.json": {
+    "bytes": 1052,
+    "sha256": "6dc58f00dee547db7a92c849c51755b80b39a70676fac30243152fdb0e47ee2c"
+  },
+  "evidence/final-green.log": {
+    "bytes": 128,
+    "sha256": "4b959d11a3670c0abadae43e96ebb96b7d429ff4daf11fb788d725a904ba85a8"
+  },
+  "evidence/green.log": {
+    "bytes": 128,
+    "sha256": "0f4d446c0f99edecc72d063bb78e0059c1cac79a3b143b9d968de01ea286bfb1"
+  },
+  "evidence/input-red.log": {
+    "bytes": 1360,
+    "sha256": "c7d320a4ff54459a1e762a338505cbfcbeea2255a8234d32ca92ceaffd9a553e"
+  },
+  "evidence/red.log": {
+    "bytes": 11935,
+    "sha256": "96217d4efeab555e83c97e3b839acc151bc1e463fbd5f43672aee2bc18934d38"
+  },
+  "evidence/regressions.log": {
+    "bytes": 2632,
+    "sha256": "244a736143a150689f6d099dedf09b9218ef740309b15e90c4ed4ccf09390337"
+  },
+  "evidence/verification.json": {
+    "bytes": 3310,
+    "sha256": "d8559d8172af83cba93c27461d4fa64b5f42f8865b47387a6eb206d369037031"
+  }
+}

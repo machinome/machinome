@@ -1,0 +1,22 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ RestampErrorTest.test_equal_float_timestamp_keeps_the_integer_protocol_refusal _
+
+self = <tests.test_content_verified_currency.RestampErrorTest testMethod=test_equal_float_timestamp_keeps_the_integer_protocol_refusal>
+
+    def test_equal_float_timestamp_keeps_the_integer_protocol_refusal(self):
+        with tempfile.TemporaryDirectory(prefix='currency-restamp-') as root:
+            artifact = os.path.join(root, 'part.stl')
+            with open(artifact, 'wb') as output:
+                output.write(b'artifact\n')
+            # This fixed small integer is exactly representable as a float:
+            # ordinary equality must not turn an invalid ns input into a hit.
+            os.utime(artifact, ns=(1_000_000, 1_000_000))
+            with ArtifactSnapshot(artifact) as snapshot:
+>               with self.assertRaises(TypeError):
+E               AssertionError: TypeError not raised
+
+tests/test_content_verified_currency.py:613: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_content_verified_currency.py::RestampErrorTest::test_equal_float_timestamp_keeps_the_integer_protocol_refusal
+1 failed, 27 deselected in 0.28s

@@ -1,0 +1,204 @@
+..                                                                   [100%]
+=================================== FAILURES ===================================
+_ ContentVerifiedCurrencyTest.test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact (artifact='/tmp/machinome-currency-haqalc58/_build/currency_fixture_0/block-Block-211d0bb8cf4f.stl') _
+
+self = <tests.test_content_verified_currency.ContentVerifiedCurrencyTest testMethod=test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact>
+
+    def test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact(self):
+        block_source = os.path.join(self.root, self.package, 'block.py')
+        future = time.time_ns() + 60 * 10 ** 9
+        os.utime(block_source, ns=(future, future))
+        node = self.build()
+        self.renders()
+        old_fingerprint = node.block.source_fingerprint
+    
+        # A contributor's metadata changes without changing its retained
+        # bytes or the source maximum: the real fingerprint miss must still
+        # prove content and refresh the sidecar.
+        self.write('dimensions.py', DIMENSIONS)
+        changed = load_node(self.reference)
+        self.assertEqual(changed.block.mtime_ns, future)
+        self.assertNotEqual(changed.block.source_fingerprint, old_fingerprint)
+        for artifact in (node.block.stl_file, node.block.brep_file):
+            with self.subTest(artifact=artifact):
+                self.assertEqual(os.stat(artifact).st_mtime_ns, future)
+                self.assertEqual(currency.recorded_fingerprint(artifact),
+                                 old_fingerprint)
+                with ArtifactSnapshot(artifact) as snapshot:
+                    before = snapshot.read_bytes()
+                    self.assertTrue(changed.block._up_to_date(artifact))
+                    self.assertEqual(currency.recorded_digest(artifact),
+                                     changed.block.source_digest)
+                    self.assertEqual(currency.recorded_fingerprint(artifact),
+                                     changed.block.source_fingerprint)
+>                   snapshot.validate()
+
+tests/test_content_verified_currency.py:461: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <machinome._artifact.ArtifactSnapshot object at 0x7760d2fac770>
+
+    def validate(self):
+        """Require both the open file and its path to keep one identity."""
+        if self.closed:
+            raise ValueError('artifact snapshot is closed')
+        opened = ArtifactObservation.from_stat(
+            self.observation.realpath, os.fstat(self._stream.fileno()))
+        try:
+            current = observe_artifact(self.path)
+        except OSError:
+            current = None
+        if opened != self.observation or current != self.observation:
+>           raise ArtifactChanged(
+                f'Artifact changed while consumed: {self.path}')
+E           machinome._artifact.ArtifactChanged: Artifact changed while consumed: /tmp/machinome-currency-haqalc58/_build/currency_fixture_0/block-Block-211d0bb8cf4f.stl
+
+machinome/_artifact.py:113: ArtifactChanged
+_ ContentVerifiedCurrencyTest.test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact (artifact='/tmp/machinome-currency-haqalc58/_build/currency_fixture_0/block-Block-211d0bb8cf4f.brep') _
+
+self = <tests.test_content_verified_currency.ContentVerifiedCurrencyTest testMethod=test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact>
+
+    def test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact(self):
+        block_source = os.path.join(self.root, self.package, 'block.py')
+        future = time.time_ns() + 60 * 10 ** 9
+        os.utime(block_source, ns=(future, future))
+        node = self.build()
+        self.renders()
+        old_fingerprint = node.block.source_fingerprint
+    
+        # A contributor's metadata changes without changing its retained
+        # bytes or the source maximum: the real fingerprint miss must still
+        # prove content and refresh the sidecar.
+        self.write('dimensions.py', DIMENSIONS)
+        changed = load_node(self.reference)
+        self.assertEqual(changed.block.mtime_ns, future)
+        self.assertNotEqual(changed.block.source_fingerprint, old_fingerprint)
+        for artifact in (node.block.stl_file, node.block.brep_file):
+            with self.subTest(artifact=artifact):
+                self.assertEqual(os.stat(artifact).st_mtime_ns, future)
+                self.assertEqual(currency.recorded_fingerprint(artifact),
+                                 old_fingerprint)
+                with ArtifactSnapshot(artifact) as snapshot:
+                    before = snapshot.read_bytes()
+                    self.assertTrue(changed.block._up_to_date(artifact))
+                    self.assertEqual(currency.recorded_digest(artifact),
+                                     changed.block.source_digest)
+                    self.assertEqual(currency.recorded_fingerprint(artifact),
+                                     changed.block.source_fingerprint)
+>                   snapshot.validate()
+
+tests/test_content_verified_currency.py:461: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <machinome._artifact.ArtifactSnapshot object at 0x7760a6791310>
+
+    def validate(self):
+        """Require both the open file and its path to keep one identity."""
+        if self.closed:
+            raise ValueError('artifact snapshot is closed')
+        opened = ArtifactObservation.from_stat(
+            self.observation.realpath, os.fstat(self._stream.fileno()))
+        try:
+            current = observe_artifact(self.path)
+        except OSError:
+            current = None
+        if opened != self.observation or current != self.observation:
+>           raise ArtifactChanged(
+                f'Artifact changed while consumed: {self.path}')
+E           machinome._artifact.ArtifactChanged: Artifact changed while consumed: /tmp/machinome-currency-haqalc58/_build/currency_fixture_0/block-Block-211d0bb8cf4f.brep
+
+machinome/_artifact.py:113: ArtifactChanged
+_ ContentVerifiedCurrencyTest.test_matching_mtime_legacy_upgrade_preserves_pinned_artifact (artifact='/tmp/machinome-currency-vzropu58/_build/currency_fixture_1/block-Block-211d0bb8cf4f.stl') _
+
+self = <tests.test_content_verified_currency.ContentVerifiedCurrencyTest testMethod=test_matching_mtime_legacy_upgrade_preserves_pinned_artifact>
+
+    def test_matching_mtime_legacy_upgrade_preserves_pinned_artifact(self):
+        node = self.build()
+        self.renders()
+        for artifact in (node.block.stl_file, node.block.brep_file):
+            with self.subTest(artifact=artifact):
+                currency.record(artifact, node.block.source_digest)
+                self.assertIsNone(currency.recorded_fingerprint(artifact))
+                self.assertEqual(os.stat(artifact).st_mtime_ns,
+                                 node.block.mtime_ns)
+    
+                with ArtifactSnapshot(artifact) as snapshot:
+                    before = snapshot.read_bytes()
+                    self.assertTrue(node.block._up_to_date(artifact))
+                    self.assertEqual(currency.recorded_digest(artifact),
+                                     node.block.source_digest)
+                    self.assertEqual(currency.recorded_fingerprint(artifact),
+                                     node.block.source_fingerprint)
+>                   snapshot.validate()
+
+tests/test_content_verified_currency.py:430: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <machinome._artifact.ArtifactSnapshot object at 0x7760a4d2aa20>
+
+    def validate(self):
+        """Require both the open file and its path to keep one identity."""
+        if self.closed:
+            raise ValueError('artifact snapshot is closed')
+        opened = ArtifactObservation.from_stat(
+            self.observation.realpath, os.fstat(self._stream.fileno()))
+        try:
+            current = observe_artifact(self.path)
+        except OSError:
+            current = None
+        if opened != self.observation or current != self.observation:
+>           raise ArtifactChanged(
+                f'Artifact changed while consumed: {self.path}')
+E           machinome._artifact.ArtifactChanged: Artifact changed while consumed: /tmp/machinome-currency-vzropu58/_build/currency_fixture_1/block-Block-211d0bb8cf4f.stl
+
+machinome/_artifact.py:113: ArtifactChanged
+_ ContentVerifiedCurrencyTest.test_matching_mtime_legacy_upgrade_preserves_pinned_artifact (artifact='/tmp/machinome-currency-vzropu58/_build/currency_fixture_1/block-Block-211d0bb8cf4f.brep') _
+
+self = <tests.test_content_verified_currency.ContentVerifiedCurrencyTest testMethod=test_matching_mtime_legacy_upgrade_preserves_pinned_artifact>
+
+    def test_matching_mtime_legacy_upgrade_preserves_pinned_artifact(self):
+        node = self.build()
+        self.renders()
+        for artifact in (node.block.stl_file, node.block.brep_file):
+            with self.subTest(artifact=artifact):
+                currency.record(artifact, node.block.source_digest)
+                self.assertIsNone(currency.recorded_fingerprint(artifact))
+                self.assertEqual(os.stat(artifact).st_mtime_ns,
+                                 node.block.mtime_ns)
+    
+                with ArtifactSnapshot(artifact) as snapshot:
+                    before = snapshot.read_bytes()
+                    self.assertTrue(node.block._up_to_date(artifact))
+                    self.assertEqual(currency.recorded_digest(artifact),
+                                     node.block.source_digest)
+                    self.assertEqual(currency.recorded_fingerprint(artifact),
+                                     node.block.source_fingerprint)
+>                   snapshot.validate()
+
+tests/test_content_verified_currency.py:430: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <machinome._artifact.ArtifactSnapshot object at 0x7760a4d25490>
+
+    def validate(self):
+        """Require both the open file and its path to keep one identity."""
+        if self.closed:
+            raise ValueError('artifact snapshot is closed')
+        opened = ArtifactObservation.from_stat(
+            self.observation.realpath, os.fstat(self._stream.fileno()))
+        try:
+            current = observe_artifact(self.path)
+        except OSError:
+            current = None
+        if opened != self.observation or current != self.observation:
+>           raise ArtifactChanged(
+                f'Artifact changed while consumed: {self.path}')
+E           machinome._artifact.ArtifactChanged: Artifact changed while consumed: /tmp/machinome-currency-vzropu58/_build/currency_fixture_1/block-Block-211d0bb8cf4f.brep
+
+machinome/_artifact.py:113: ArtifactChanged
+=========================== short test summary info ============================
+SUBFAILED(artifact='/tmp/machinome-currency-haqalc58/_build/currency_fixture_0/block-Block-211d0bb8cf4f.stl') tests/test_content_verified_currency.py::ContentVerifiedCurrencyTest::test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact
+SUBFAILED(artifact='/tmp/machinome-currency-haqalc58/_build/currency_fixture_0/block-Block-211d0bb8cf4f.brep') tests/test_content_verified_currency.py::ContentVerifiedCurrencyTest::test_matching_mtime_fingerprint_refresh_preserves_pinned_artifact
+SUBFAILED(artifact='/tmp/machinome-currency-vzropu58/_build/currency_fixture_1/block-Block-211d0bb8cf4f.stl') tests/test_content_verified_currency.py::ContentVerifiedCurrencyTest::test_matching_mtime_legacy_upgrade_preserves_pinned_artifact
+SUBFAILED(artifact='/tmp/machinome-currency-vzropu58/_build/currency_fixture_1/block-Block-211d0bb8cf4f.brep') tests/test_content_verified_currency.py::ContentVerifiedCurrencyTest::test_matching_mtime_legacy_upgrade_preserves_pinned_artifact
+4 failed, 2 passed, 23 deselected in 4.51s

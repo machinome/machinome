@@ -1,0 +1,25 @@
+........................................................................................................................ [ 53%]
+..........................................................................................................   [100%]
+=============================== warnings summary ===============================
+tests/test_leaf_contract_recipe.py::SourceRecipeTest::test_a_recipe_reaches_every_artifact
+  /home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/lib/python3.12/site-packages/build123d/objects_curve.py:1353: DeprecationWarning: The 'PointArcTangentLine' object is deprecated and will be removed in a future version.
+    class PointArcTangentLine(BaseEdgeObject):
+
+tests/test_leaf_contract_recipe.py::SourceRecipeTest::test_a_recipe_reaches_every_artifact
+  /home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/lib/python3.12/site-packages/build123d/objects_curve.py:1432: DeprecationWarning: The 'PointArcTangentArc' object is deprecated and will be removed in a future version.
+    class PointArcTangentArc(BaseEdgeObject):
+
+tests/test_leaf_contract_recipe.py::SourceRecipeTest::test_a_recipe_reaches_every_artifact
+  /home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/lib/python3.12/site-packages/build123d/objects_curve.py:1586: DeprecationWarning: The 'ArcArcTangentLine' object is deprecated and will be removed in a future version.
+    class ArcArcTangentLine(BaseEdgeObject):
+
+tests/test_leaf_contract_recipe.py::SourceRecipeTest::test_a_recipe_reaches_every_artifact
+  /home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/lib/python3.12/site-packages/build123d/objects_curve.py:1682: DeprecationWarning: The 'ArcArcTangentArc' object is deprecated and will be removed in a future version.
+    class ArcArcTangentArc(BaseEdgeObject):
+
+tests/test_build_publication.py::SweepByDeclarationTest::test_a_family_leaf_keeps_its_scad_through_a_changed_document
+  /home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome/machinome/node/assembly.py:108: FutureWarning: Machine.render() bound port 'height'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then Machine re-renders per binding as before.
+    children = _rest(assembly, render)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+226 passed, 5 warnings, 60 subtests passed in 22.57s

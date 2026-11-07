@@ -1,0 +1,19 @@
+{
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "executable": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/.venv/bin/python",
+  "packages": {
+    "machinome": "0.9.0",
+    "machinome-node-cadquery": "0.9.0",
+    "machinome-node-step": "0.9.0",
+    "machinome-engine-brep": "0.9.0",
+    "machinome-engine-mesh": "0.9.0",
+    "machinome-viewer": "0.9.0",
+    "cadquery": "2.7.0",
+    "molejo": "0.2.0"
+  },
+  "currency_path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome/machinome/currency.py",
+  "currency_sha256": "db79b8a7afad2b43a7e3a8e5b2a1d7cc2233e784ec3579e6cbfb4936886e142e",
+  "cq_node_path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome-node-cadquery/machinome/node/cadquery.py",
+  "step_node_path": "/home/asa/devel/machinome/machinome/WTs/skip-equal-artifact-restamps/packages/machinome-node-step/machinome/node/step.py",
+  "lock_sha256": "8e6e9a0555a8cbd4866ff93480fb282e0966fee7e30f26e566ccd4f8633749c9"
+}
