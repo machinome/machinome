@@ -1,0 +1,181 @@
+
+> @machinome/viewer@0.9.0 test
+> vitest run --run src/tree.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget
+
+ ❯ src/tree.test.ts (69 tests | 8 failed) 126ms
+   ✓ materialForColor > uses the development viewer normal material when no color is supplied 1ms
+   ✓ materialForColor > keeps the standard material for an explicit color 1ms
+   ✓ WidgetTree fresh-load identity order > reserves sibling mesh and material identities in document order before either STL completes 4ms
+   ✓ WidgetTree fresh-load identity order > reserves a model and its two markings in declaration order, with each marking policy intact 3ms
+   ✓ WidgetTree fresh-load identity order > disposes a locally reserved mesh and material when its fetch rejects 3ms
+   ✓ WidgetTree fresh-load identity order > disposes returned geometry and marking material when decal preparation rejects 1ms
+   ✓ WidgetTree fresh-load identity order > disposes returned geometry and its reserved material when normal preparation rejects 1ms
+   ✓ WidgetTree targeted updates > uses model path and mtime together as geometry identity 2ms
+   ✓ WidgetTree targeted updates > replaces only the named artifact and leaves an unknown path alone 3ms
+   ✓ WidgetTree targeted updates > keeps the old tree when fetching a changed document mesh fails 1ms
+   ✓ WidgetTree targeted updates > does not partially update siblings when one replacement fails 1ms
+   ✓ WidgetTree targeted updates > does not refetch a manifest reconcile that follows an artifact update for the same artifact 1ms
+   ✓ WidgetTree targeted updates > reconciles structure and operations without refetching unchanged geometry 1ms
+   ✓ WidgetTree assembly navigation > exposes stable paths and effective inherited colours 1ms
+   ✓ WidgetTree assembly navigation > validates node paths and filters the rendered tree by focus and visibility 1ms
+   ✓ WidgetTree assembly navigation > hides geometry owned by focus ancestors while retaining their transforms 1ms
+   ✓ WidgetTree assembly navigation > keeps a shown child occluded while its ancestor remains hidden 0ms
+   ✓ WidgetTree driver-aware updates > re-evaluates only the operations naming a changed driver 4ms
+   ✓ WidgetTree driver-aware updates > moves the carriage to the pose the new driver value implies 1ms
+   ✓ WidgetTree driver-aware updates > keeps animating $t operations from the time transport 1ms
+   ✓ WidgetTree driver-aware updates > recomputes everything when nothing is named as changed 1ms
+   ✓ WidgetTree driver-aware updates > reads `animated` off the parsed tree, not a substring 1ms
+   ✓ WidgetTree driver-aware updates > is not animated for a document a committed bank poses 14ms
+   ✓ WidgetTree driver-aware updates > is not animated for an ELAPSED clocked document either: the clock is not $t 1ms
+   ✓ WidgetTree driver-aware updates > IS animated where a document reads BOTH, and the two advance different values 2ms
+   ✓ WidgetTree driver-aware updates > forgets a node's free variables when its operations are replaced 1ms
+   ✓ WidgetTree bindings: the timeline follows a binding (D6) > is animated through a binding, though no operation text contains $t 0ms
+   ✓ WidgetTree bindings: the timeline follows a binding (D6) > moves the operation when time changes, through the binding 1ms
+   ✓ WidgetTree bindings: the timeline follows a binding (D6) > without a table, an operation that is only a binding name is neither animated nor moved 0ms
+   ✓ WidgetTree bindings: driver dependence follows the table (D6) > re-evaluates when the driver reached through a binding changes, and not another 1ms
+   ✓ WidgetTree bindings: driver dependence follows the table (D6) > carries dependence through a chain of two entries 1ms
+   ✓ WidgetTree bindings: a bound document poses as the flat one it names (D11) > matches a flat document element for element 1ms
+   ✓ WidgetTree bindings: a republish that changes only the table (D6) > follows the table from $t to a driver, though "_b3" never changed 1ms
+   ✓ WidgetTree bindings: a republish that changes only the table (D6) > the mirror: follows the table from a driver to $t 1ms
+   ✓ WidgetTree bindings: a republish that changes only the table (D6) > a republish carrying an equal table invalidates nothing 1ms
+   ✓ WidgetTree draws the markings a part carries > loads one mesh per entry, in document order, through the model path 2ms
+   ✓ WidgetTree draws the markings a part carries > puts the decals in a group of their own inside the part's group 1ms
+   ✓ WidgetTree draws the markings a part carries > gives each decal the colour its own entry declares 1ms
+   ✓ WidgetTree draws the markings a part carries > adds nothing at all to a node that carries no markings 1ms
+   ✓ WidgetTree draws the markings a part carries > draws a decal over the surface with the material design D3 states 1ms
+   ✓ MARKING_LIFT > is the ratified 0.15 document units 0ms
+   ✓ MARKING_LIFT > moves each vertex along its own normal, by exactly the lift 1ms
+   ✓ MARKING_LIFT > lifts the fixture's wrapped decal OUTWARD, every vertex of it 11ms
+   ✓ MARKING_LIFT > welds the sheet before lifting it, so it cannot tear open 3ms
+   ✓ WidgetTree markings under the filters that select direct meshes > does not draw an ancestor's decals while its own surface is not drawn 1ms
+   ✓ WidgetTree markings under the filters that select direct meshes > leaves a decal's material alone when the part's inherited colour moves 1ms
+   ✓ WidgetTree markings under the filters that select direct meshes > leaves a decal's geometry alone when the part's own model is replaced 1ms
+   ✓ WidgetTree assembly over a marked document > reads back exactly the snapshot its unmarked twin reads back 1ms
+   ✓ WidgetTree assembly over a marked document > hides a marked part's decals with it and restores them with it 2ms
+   ✓ WidgetTree markings reload on their own currency > refetches a marking whose mtime moved, and not the part it is on 2ms
+   ✓ WidgetTree markings reload on their own currency > refetches a marking whose model path moved, and not the part 1ms
+   ✓ WidgetTree markings reload on their own currency > refetches a part whose model moved, and none of its markings 1ms
+   ✓ WidgetTree markings reload on their own currency > removes a marking dropped from the list and leaves the rest standing 1ms
+   ✓ WidgetTree markings reload on their own currency > drops the group when the whole markings key disappears 1ms
+   ✓ WidgetTree markings reload on their own currency > creates the group for a marking added to a node that had none 1ms
+   ✓ WidgetTree markings reload on their own currency > keeps document order when a marking is inserted before another 1ms
+   ✓ WidgetTree markings reload on their own currency > replaces the material of a retained marking whose colour moved, with no refetch 1ms
+   ✓ WidgetTree markings reload on their own currency > routes artifactChanged to the marking that owns the path, and to it alone 2ms
+   ✓ WidgetTree markings reload on their own currency > does not refetch the reconcile that follows a marking's artifact update 1ms
+   ✓ WidgetTree markings reload on their own currency > leaves the whole previous scene standing when a decal fetch rejects 2ms
+   ✓ a decal is part of the surface a control is bound to > is collected by the traverse rebuildPartControls performs 3ms
+   × WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: sqrt(min(0, (2 - press))) 12ms
+     → expected [Function] to throw an error
+   × WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: (1 / (2 - press)) 1ms
+     → expected [Function] to throw an error
+   × WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: (-1 / (2 - press)) 1ms
+     → expected [Function] to throw an error
+   × WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: ((press > 1) ? press.missing : 0) 1ms
+     → expected [Function] to throw error matching /arm.*operation 0/i but got 'Cannot use \'in\' operator to search …'
+   × WidgetTree atomic rendered transforms > refuses a non-finite translation operand before copying any matrix: sqrt(-press) 4ms
+     → expected [Function] to throw an error
+   × WidgetTree atomic rendered transforms > refuses a non-finite translation operand before copying any matrix: (1 / (1 - press)) 1ms
+     → expected [Function] to throw an error
+   × WidgetTree atomic rendered transforms > refuses a non-finite translation operand before copying any matrix: (-1 / (1 - press)) 2ms
+     → expected [Function] to throw an error
+   × WidgetTree atomic rendered transforms > refuses finite locals whose ancestor composition overflows, including unchanged descendants 1ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: sqrt(min(0, (2 - press)))
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: (1 / (2 - press))
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: (-1 / (2 - press))
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/tree.test.ts:1314:10
+    1312|       const target = expression.includes('sqrt') ? 3 : 2;
+    1313|       expect(() => tree.update(scope({ ...standing, press: target }), …
+    1314|         .toThrow(/arm.*operation 0/i);
+       |          ^
+    1315|       expect(matrices(tree)).toEqual(before);
+    1316|       // Re-evaluating the original bank must not reuse the failed can…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > retains the whole tree and scope after a later rotation refuses: ((press > 1) ? press.missing : 0)
+AssertionError: expected [Function] to throw error matching /arm.*operation 0/i but got 'Cannot use \'in\' operator to search …'
+
+- Expected: 
+/arm.*operation 0/i
+
++ Received: 
+"Cannot use 'in' operator to search for 'missing' in 2"
+
+ ❯ src/tree.test.ts:1314:10
+    1312|       const target = expression.includes('sqrt') ? 3 : 2;
+    1313|       expect(() => tree.update(scope({ ...standing, press: target }), …
+    1314|         .toThrow(/arm.*operation 0/i);
+       |          ^
+    1315|       expect(matrices(tree)).toEqual(before);
+    1316|       // Re-evaluating the original bank must not reuse the failed can…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > refuses a non-finite translation operand before copying any matrix: sqrt(-press)
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > refuses a non-finite translation operand before copying any matrix: (1 / (1 - press))
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > refuses a non-finite translation operand before copying any matrix: (-1 / (1 - press))
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/tree.test.ts:1342:10
+    1340|       const before = matrices(tree);
+    1341|       expect(() => tree.update({ time: 0, drivers: { press: 1 } }, sel…
+    1342|         .toThrow(/last.*operation 0/i);
+       |          ^
+    1343|       expect(matrices(tree)).toEqual(before);
+    1344|       tree.dispose();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/tree.test.ts > WidgetTree atomic rendered transforms > refuses finite locals whose ancestor composition overflows, including unchanged descendants
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/tree.test.ts:1358:8
+    1356|     const before = matrices(tree);
+    1357|     expect(() => tree.update({ time: 0, drivers: { press: 1e308 } }, s…
+    1358|       .toThrow(/parent\/body.*compos/i);
+       |        ^
+    1359|     expect(matrices(tree)).toEqual(before);
+    1360|     tree.dispose();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 61 passed (69)
+   Start at  20:12:41
+   Duration  953ms (transform 283ms, setup 0ms, collect 408ms, tests 126ms, environment 0ms, prepare 155ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget
+npm error workspace @machinome/viewer@0.9.0
+npm error location /home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget
+npm error command failed
+npm error command sh -c vitest run --run src/tree.test.ts

@@ -678,13 +678,49 @@ export class WidgetTree {
   // document's driver values). `changed` bounds the work: a node whose
   // free variables none of it touches keeps the matrix it has.
   update(scope: EvalScope, changed: Changed = 'all'): void {
-    withExpressions(() => this.updateScoped(scope, changed));
+    withExpressions(() => {
+      // A clocked request poses BEFORE assigning its bank. Prepare every
+      // affected transform before touching the scene, so a later sibling's
+      // domain error cannot leave an earlier sibling at the refused bank.
+      const prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4 }> = [];
+      this.prepareTransforms(scope, changed, [], undefined, false, prepared);
+      prepared.forEach(({ tree, matrix }) => tree.group.matrix.copy(matrix));
+      this.updateShapes(scope, changed);
+    });
   }
 
-  private updateScoped(scope: EvalScope, changed: Changed): void {
-    if (this.needsUpdate(changed)) {
-      this.group.matrix.copy(operationsMatrix(this.operations, scope));
+  private prepareTransforms(
+    scope: EvalScope, changed: Changed, path: string[],
+    parent: (() => THREE.Matrix4) | undefined, ancestorChanged: boolean,
+    prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4 }>,
+  ): void {
+    const ownChanged = this.needsUpdate(changed);
+    const matrix = ownChanged
+      ? operationsMatrixScoped(this.operations, scope, path)
+      : this.group.matrix;
+    // Only construct composed matrices on paths with an affected placement.
+    // The traversal still visits every node to apply the existing dependency
+    // rule, but an unrelated branch keeps its cheap, expression-free path.
+    let world: THREE.Matrix4 | undefined;
+    const composed = (): THREE.Matrix4 => {
+      if (world === undefined) {
+        world = parent === undefined ? matrix
+          : new THREE.Matrix4().multiplyMatrices(parent(), matrix);
+      }
+      return world;
+    };
+    // An unchanged descendant still inherits its changed ancestor's world
+    // placement; finite local operands alone cannot rule out overflow there.
+    if ((ownChanged || ancestorChanged) && !composed().elements.every(Number.isFinite)) {
+      throw new Error(`Cannot pose ${posePath(path)}: transform composition is not finite.`);
     }
+    if (ownChanged) prepared.push({ tree: this, matrix });
+    this.children.forEach((child) => child.prepareTransforms(
+      scope, changed, [...path, child.name], composed,
+      ownChanged || ancestorChanged, prepared));
+  }
+
+  private updateShapes(scope: EvalScope, changed: Changed): void {
     // Shape follows the same rule pose does, off its own dependency
     // set: a spring is re-evaluated on the frames its `params`
     // expressions name a changed input, and a driver none of them names
@@ -693,7 +729,7 @@ export class WidgetTree {
       this.flexible.evaluate(scope);
     }
     for (const child of this.children) {
-      child.update(scope, changed);
+      child.updateShapes(scope, changed);
     }
   }
 
@@ -846,24 +882,49 @@ export function operationsMatrix(ops: RawOperation[], scope: EvalScope): THREE.M
   return withExpressions(() => operationsMatrixScoped(ops, scope));
 }
 
-function operationsMatrixScoped(ops: RawOperation[], scope: EvalScope): THREE.Matrix4 {
+function posePath(path: readonly string[]): string {
+  return path.length === 0 ? '<root>' : path.join('/');
+}
+
+function expressionPreview(value: unknown): string {
+  const source = JSON.stringify(value);
+  return source.length > 160 ? `${source.slice(0, 160)}…` : source;
+}
+
+function operationsMatrixScoped(ops: RawOperation[], scope: EvalScope,
+                                path: readonly string[] = []): THREE.Matrix4 {
   const matrix = new THREE.Matrix4();
   const step = new THREE.Matrix4();
   const axis = new THREE.Vector3();
 
-  for (const op of ops) {
-    if (op[0] === 'r') {
-      const angle = evalExpr(op[1], scope) * (Math.PI / 180);
-      axis.set(op[2][0], op[2][1], op[2][2]).normalize();
-      step.makeRotationAxis(axis, angle);
-    } else {
-      step.makeTranslation(
-        evalExpr(op[1][0], scope),
-        evalExpr(op[1][1], scope),
-        evalExpr(op[1][2], scope),
-      );
+  for (const [index, op] of ops.entries()) {
+    const evaluate = (source: string): number => {
+      const value = evalExpr(source, scope);
+      if (!Number.isFinite(value)) {
+        throw new Error(`expression ${expressionPreview(source)} evaluated to ${String(value)}`);
+      }
+      return value;
+    };
+    try {
+      if (op[0] === 'r') {
+        const angle = evaluate(op[1]) * (Math.PI / 180);
+        axis.set(op[2][0], op[2][1], op[2][2]).normalize();
+        step.makeRotationAxis(axis, angle);
+      } else {
+        step.makeTranslation(
+          evaluate(op[1][0]),
+          evaluate(op[1][1]),
+          evaluate(op[1][2]),
+        );
+      }
+      matrix.premultiply(step);
+      if (!matrix.elements.every(Number.isFinite)) {
+        throw new Error('local transform is not finite');
+      }
+    } catch (error) {
+      const context = `${posePath(path)} operation ${index} (${op[0]}, ${expressionPreview(op[1])})`;
+      throw new Error(`Cannot pose ${context}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    matrix.premultiply(step);
   }
   return matrix;
 }

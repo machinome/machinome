@@ -1,0 +1,15 @@
+
+> @machinome/viewer@0.9.0 test
+> vitest run --run src/tree.test.ts src/flexible.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget
+
+ ✓ src/flexible.test.ts (18 tests) 76ms
+ ✓ src/tree.test.ts (69 tests) 134ms
+
+ Test Files  2 passed (2)
+      Tests  87 passed (87)
+   Start at  20:14:19
+   Duration  1.17s (transform 482ms, setup 0ms, collect 904ms, tests 210ms, environment 0ms, prepare 278ms)
+

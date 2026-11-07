@@ -1,0 +1,2 @@
+[tool.machinome]
+root = "model.py:PoseAdmission"

@@ -1,0 +1,1018 @@
+{
+  "complete": true,
+  "domain_refusal_passed": true,
+  "no_server_started": true,
+  "viewer_public_api_only": true,
+  "no_delivery_interface": true,
+  "report_sha256": "be3db8aa1567874d17cb37f654f53a4232e21840b2a9cca263fb9a9bbef9afd7",
+  "viewer_metadata": {
+    "path": "/home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js",
+    "index": "/home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget/index.html",
+    "apiVersion": 29,
+    "documentVersions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "version": "0.9.0"
+  },
+  "assets": {
+    "/home/asa/devel/machinome/machinome/WTs/refuse-nonfinite-clocked-pose/packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js": "ac3621ef83eedc32cdd276f8cc5f537b26454de1dc744fcf937a66ff8ecaa609",
+    "/mnt/data/machinome-projects/enigma-i-worktrees/rotor/sources/derived/ordinary-flank-visible-v1/viewer.json": "3bc17a362ce89e2c12c61fbbda76f02d541e3b318fa1deea5b94eebc2b9fbadd",
+    "/mnt/data/machinome-projects/enigma-i-worktrees/rotor/sources/derived/ordinary-flank-visible-v1/sources/derived/ordinary-flank-visible-v1/source-right-pawl-__CachedRightPawl_,_simulation_ordinary_flank_visible.py__-548bd819d481.stl": "3fe7bb32858b687c2b09bb1fcb4faa9414c2f6c6e98c2893ece2a5398fe51e68"
+  },
+  "page_errors": [],
+  "results": {
+    "admitted": [
+      {
+        "press": -0.0,
+        "state": {
+          "press": -0.0,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": -0.0,
+        "screen": {
+          "rect": {
+            "x": 263.10312199613134,
+            "y": 59.428267692032044,
+            "width": 239.9369629735811,
+            "height": 467.3676820693505
+          },
+          "point": {
+            "x": 451.6250214753736,
+            "y": 159.57848527832144
+          }
+        }
+      },
+      {
+        "press": 0.0928407785948925,
+        "state": {
+          "press": 0.0928407785948925,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.0928407785948925,
+        "screen": {
+          "rect": {
+            "x": 263.0481763800391,
+            "y": 58.93401868409577,
+            "width": 239.95380643974022,
+            "height": 467.4847698846232
+          },
+          "point": {
+            "x": 451.5833100112635,
+            "y": 159.109326516515
+          }
+        }
+      },
+      {
+        "press": 0.18568443984445823,
+        "state": {
+          "press": 0.18568443984445823,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09284366124956574,
+        "screen": {
+          "rect": {
+            "x": 262.9926963779113,
+            "y": 58.43908983153043,
+            "width": 239.97116826823185,
+            "height": 467.6024764783238
+          },
+          "point": {
+            "x": 451.5414714458077,
+            "y": 158.63962050545697
+          }
+        }
+      },
+      {
+        "press": 0.27853093844160415,
+        "state": {
+          "press": 0.27853093844160415,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09284649859714592,
+        "screen": {
+          "rect": {
+            "x": 262.9366808193666,
+            "y": 57.94347976320293,
+            "width": 239.9890496794386,
+            "height": 467.72080309593446
+          },
+          "point": {
+            "x": 451.49950556749695,
+            "y": 158.16936614090315
+          }
+        }
+      },
+      {
+        "press": 0.37138022907785206,
+        "state": {
+          "press": 0.37138022907785206,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09284929063624792,
+        "screen": {
+          "rect": {
+            "x": 262.88012853052373,
+            "y": 57.44718710614426,
+            "width": 240.00745189710335,
+            "height": 467.83975098393614
+          },
+          "point": {
+            "x": 451.4574121639621,
+            "y": 157.69856231698773
+          }
+        }
+      },
+      {
+        "press": 0.4642322664433609,
+        "state": {
+          "press": 0.4642322664433609,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09285203736550884,
+        "screen": {
+          "rect": {
+            "x": 262.82303833398834,
+            "y": 56.95021048554862,
+            "width": 240.02637614834242,
+            "height": 467.95932138980686
+          },
+          "point": {
+            "x": 451.4151910219717,
+            "y": 157.2272079262215
+          }
+        }
+      },
+      {
+        "press": 0.557087005226951,
+        "state": {
+          "press": 0.557087005226951,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09285473878359007,
+        "screen": {
+          "rect": {
+            "x": 262.7654090488327,
+            "y": 56.4525485247694,
+            "width": 240.04582366366327,
+            "height": 468.0795155620253
+          },
+          "point": {
+            "x": 451.37284192742527,
+            "y": 156.7553018594891
+          }
+        }
+      },
+      {
+        "press": 0.6499444001161231,
+        "state": {
+          "press": 0.6499444001161231,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.0928573948891721,
+        "screen": {
+          "rect": {
+            "x": 262.70723949057543,
+            "y": 55.95419984531292,
+            "width": 240.06579567698714,
+            "height": 468.2003347500764
+          },
+          "point": {
+            "x": 451.330364665351,
+            "y": 156.28284300604358
+          }
+        }
+      },
+      {
+        "press": 0.7428044057970811,
+        "state": {
+          "press": 0.7428044057970811,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09286000568095798,
+        "screen": {
+          "rect": {
+            "x": 262.6485284711674,
+            "y": 55.455163066838985,
+            "width": 240.08629342566144,
+            "height": 468.32178020444917
+          },
+          "point": {
+            "x": 451.2877590199014,
+            "y": 155.80983025350668
+          }
+        }
+      },
+      {
+        "press": 0.8356669769547567,
+        "state": {
+          "press": 0.8356669769547567,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.0928625711576756,
+        "screen": {
+          "rect": {
+            "x": 262.5892747989714,
+            "y": 54.95543680715439,
+            "width": 240.10731815048013,
+            "height": 468.44385317664074
+          },
+          "point": {
+            "x": 451.2450247743486,
+            "y": 155.33626248786314
+          }
+        }
+      },
+      {
+        "press": 0.9285320682728279,
+        "state": {
+          "press": 0.9285320682728279,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09286509131807119,
+        "screen": {
+          "rect": {
+            "x": 262.52947727874385,
+            "y": 54.45501968221153,
+            "width": 240.12887109570102,
+            "height": 468.5665549191591
+          },
+          "point": {
+            "x": 451.2021617110804,
+            "y": 154.86213859345992
+          }
+        }
+      },
+      {
+        "press": 1.0213996344337444,
+        "state": {
+          "press": 1.0213996344337444,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09286756616091651,
+        "screen": {
+          "rect": {
+            "x": 262.4691347116152,
+            "y": 53.95391030610261,
+            "width": 240.15095350906688,
+            "height": 468.6898866855252
+          },
+          "point": {
+            "x": 451.1591696115963,
+            "y": 154.38745745300088
+          }
+        }
+      },
+      {
+        "press": 1.1142696301187474,
+        "state": {
+          "press": 1.1142696301187474,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09286999568500298,
+        "screen": {
+          "rect": {
+            "x": 262.40824589507554,
+            "y": 53.452107291058596,
+            "width": 240.17356664181733,
+            "height": 468.8138497302733
+          },
+          "point": {
+            "x": 451.1160482565034,
+            "y": 153.91221794754574
+          }
+        }
+      },
+      {
+        "press": 1.2071420100078922,
+        "state": {
+          "press": 1.2071420100078922,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09287237988914487,
+        "screen": {
+          "rect": {
+            "x": 262.3468096229519,
+            "y": 52.949609247444215,
+            "width": 240.19671174871223,
+            "height": 468.93844530895626
+          },
+          "point": {
+            "x": 451.07279742551157,
+            "y": 153.43641895650626
+          }
+        }
+      },
+      {
+        "press": 1.3000167287800708,
+        "state": {
+          "press": 1.3000167287800708,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09287471877217857,
+        "screen": {
+          "rect": {
+            "x": 262.28482468539033,
+            "y": 52.44641478375337,
+            "width": 240.22039008805024,
+            "height": 469.0636746781466
+          },
+          "point": {
+            "x": 451.02941689742977,
+            "y": 152.9600593576419
+          }
+        }
+      },
+      {
+        "press": 1.3928937411130344,
+        "state": {
+          "press": 1.3928937411130344,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09287701233296364,
+        "screen": {
+          "rect": {
+            "x": 262.22228986884136,
+            "y": 51.9425225066105,
+            "width": 240.24460292168123,
+            "height": 469.1895390954343
+          },
+          "point": {
+            "x": 450.98590645016236,
+            "y": 152.4831380270607
+          }
+        }
+      },
+      {
+        "press": 1.4857730016834145,
+        "state": {
+          "press": 1.4857730016834145,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.0928792605703801,
+        "screen": {
+          "rect": {
+            "x": 262.15920395603246,
+            "y": 51.43793102075903,
+            "width": 240.2693515150347,
+            "height": 469.31603981944056
+          },
+          "point": {
+            "x": 450.9422658607026,
+            "y": 152.0056538392106
+          }
+        }
+      },
+      {
+        "press": 1.578654465166746,
+        "state": {
+          "press": 1.578654465166746,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09288146348333148,
+        "screen": {
+          "rect": {
+            "x": 262.09556572596006,
+            "y": 50.932638929066584,
+            "width": 240.29463713712693,
+            "height": 469.4431781098049
+          },
+          "point": {
+            "x": 450.8984949051312,
+            "y": 151.52760566688193
+          }
+        }
+      },
+      {
+        "press": 1.6715380862374873,
+        "state": {
+          "press": 1.6715380862374873,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09288362107074133,
+        "screen": {
+          "rect": {
+            "x": 262.03137395386034,
+            "y": 50.42664483251473,
+            "width": 240.32046106059067,
+            "height": 469.5709552271999
+          },
+          "point": {
+            "x": 450.85459335861015,
+            "y": 151.0489923812004
+          }
+        }
+      },
+      {
+        "press": 1.7644238195690463,
+        "state": {
+          "press": 1.7644238195690463,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09288573333155892,
+        "screen": {
+          "rect": {
+            "x": 261.9666274111989,
+            "y": 49.91994733019891,
+            "width": 240.34682456168377,
+            "height": 469.6993724333268
+          },
+          "point": {
+            "x": 450.810560995379,
+            "y": 150.56981285162607
+          }
+        }
+      },
+      {
+        "press": 1.857311619833798,
+        "state": {
+          "press": 1.857311619833798,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09288780026475174,
+        "screen": {
+          "rect": {
+            "x": 261.90132486564454,
+            "y": 49.41254501932381,
+            "width": 240.37372892031658,
+            "height": 469.8284309909196
+          },
+          "point": {
+            "x": 450.76639758875046,
+            "y": 150.09006594594945
+          }
+        }
+      },
+      {
+        "press": 1.9502014417031095,
+        "state": {
+          "press": 1.9502014417031095,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.0928898218693115,
+        "screen": {
+          "rect": {
+            "x": 261.83546508105417,
+            "y": 48.90443649520072,
+            "width": 240.40117542006595,
+            "height": 469.9581321637474
+          },
+          "point": {
+            "x": 450.722102911106,
+            "y": 149.60975053028943
+          }
+        }
+      },
+      {
+        "press": 2.0430932398473614,
+        "state": {
+          "press": 2.0430932398473614,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09289179814425186,
+        "screen": {
+          "rect": {
+            "x": 261.76904681745356,
+            "y": 48.39562035124301,
+            "width": 240.42916534819364,
+            "height": 470.08847721661573
+          },
+          "point": {
+            "x": 450.6776767338914,
+            "y": 149.12886546908925
+          }
+        }
+      },
+      {
+        "press": 2.1359869689359705,
+        "state": {
+          "press": 2.1359869689359705,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09289372908860916,
+        "screen": {
+          "rect": {
+            "x": 261.7020688310155,
+            "y": 47.886095178962975,
+            "width": 240.4576999956695,
+            "height": 470.21946741536925
+          },
+          "point": {
+            "x": 450.633118827613,
+            "y": 148.64740962511354
+          }
+        }
+      },
+      {
+        "press": 2.228882583637411,
+        "state": {
+          "press": 2.228882583637411,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09289561470144037,
+        "screen": {
+          "rect": {
+            "x": 261.63452987404094,
+            "y": 47.37585956796738,
+            "width": 240.48678065718786,
+            "height": 470.3511040268961
+          },
+          "point": {
+            "x": 450.58842896183137,
+            "y": 148.16538185944512
+          }
+        }
+      },
+      {
+        "press": 2.321780038619235,
+        "state": {
+          "press": 2.321780038619235,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.092897454981824,
+        "screen": {
+          "rect": {
+            "x": 261.56642869494215,
+            "y": 46.864912105957025,
+            "width": 240.51640863118553,
+            "height": 470.48338831912474
+          },
+          "point": {
+            "x": 450.5436069051593,
+            "y": 147.68278103148376
+          }
+        }
+      },
+      {
+        "press": 2.4146792885480997,
+        "state": {
+          "press": 2.4146792885480997,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09289924992886478,
+        "screen": {
+          "rect": {
+            "x": 261.4977640382184,
+            "y": 46.35325137871842,
+            "width": 240.54658521986636,
+            "height": 470.616321561033
+          },
+          "point": {
+            "x": 450.49865242525624,
+            "y": 147.19960599893977
+          }
+        }
+      },
+      {
+        "press": 2.5075802880897844,
+        "state": {
+          "press": 2.5075802880897844,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09290099954168474,
+        "screen": {
+          "rect": {
+            "x": 261.4285346444411,
+            "y": 45.84087597012429,
+            "width": 240.5773117292136,
+            "height": 470.7499050226442
+          },
+          "point": {
+            "x": 450.45356528882314,
+            "y": 146.71585561783377
+          }
+        }
+      },
+      {
+        "press": 2.600482991909215,
+        "state": {
+          "press": 2.600482991909215,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09290270381943078,
+        "screen": {
+          "rect": {
+            "x": 261.3587392502309,
+            "y": 45.32778446212914,
+            "width": 240.6085894690146,
+            "height": 470.8841399750315
+          },
+          "point": {
+            "x": 450.4083452615995,
+            "y": 146.23152874249303
+          }
+        }
+      },
+      {
+        "press": 2.6933873546704863,
+        "state": {
+          "press": 2.6933873546704863,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09290436276127112,
+        "screen": {
+          "rect": {
+            "x": 261.28837658823727,
+            "y": 44.81397543476341,
+            "width": 240.64041975287927,
+            "height": 471.0190276903231
+          },
+          "point": {
+            "x": 450.3629921083567,
+            "y": 145.74662422554695
+          }
+        }
+      },
+      {
+        "press": 2.786293331036882,
+        "state": {
+          "press": 2.786293331036882,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09290597636639575,
+        "screen": {
+          "rect": {
+            "x": 261.2174453871219,
+            "y": 44.29944746613339,
+            "width": 240.67280389825765,
+            "height": 471.1545694416983
+          },
+          "point": {
+            "x": 450.3175055928958,
+            "y": 145.2611409179259
+          }
+        }
+      },
+      {
+        "press": 2.879200875670901,
+        "state": {
+          "press": 2.879200875670901,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09290754463401907,
+        "screen": {
+          "rect": {
+            "x": 261.14594437153323,
+            "y": 43.78419913241432,
+            "width": 240.70574322646434,
+            "height": 471.2907665033971
+          },
+          "point": {
+            "x": 450.27188547804093,
+            "y": 144.77507766885654
+          }
+        }
+      },
+      {
+        "press": 2.9721099432342735,
+        "state": {
+          "press": 2.9721099432342735,
+          "left_index": 13,
+          "middle_index": 49,
+          "right_index": 82,
+          "stage": 0
+        },
+        "admitted": 0.09290906756337236,
+        "screen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        }
+      }
+    ],
+    "refusals": [
+      {
+        "target": 2.9721109432342736,
+        "error": "Error: Cannot pose pawl operation 0 (r, \"((_b3 + (((12.140131003537453 + acos((((((246.43639977715472 - _b6) * 0.9776361762826971) + ((72.96158725593065 - _b9) * 0.2103033685496913)) + 0.2) / 45.52951\u2026): expression \"((_b3 + (((12.140131003537453 + acos((((((246.43639977715472 - _b6) * 0.9776361762826971) + ((72.96158725593065 - _b9) * 0.2103033685496913)) + 0.2) / 45.52951\u2026 evaluated to NaN",
+        "result": null,
+        "before": {
+          "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+          "bank": {
+            "press": 2.9721099432342735,
+            "left_index": 13,
+            "middle_index": 49,
+            "right_index": 82,
+            "stage": 0
+          }
+        },
+        "after": {
+          "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+          "bank": {
+            "press": 2.9721099432342735,
+            "left_index": 13,
+            "middle_index": 49,
+            "right_index": 82,
+            "stage": 0
+          }
+        },
+        "beforeScreen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        },
+        "afterScreen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        },
+        "unchanged": true
+      },
+      {
+        "target": -1e-06,
+        "error": "Error: Cannot pose pawl operation 0 (r, \"((_b3 + (((12.140131003537453 + acos((((((246.43639977715472 - _b6) * 0.9776361762826971) + ((72.96158725593065 - _b9) * 0.2103033685496913)) + 0.2) / 45.52951\u2026): expression \"((_b3 + (((12.140131003537453 + acos((((((246.43639977715472 - _b6) * 0.9776361762826971) + ((72.96158725593065 - _b9) * 0.2103033685496913)) + 0.2) / 45.52951\u2026 evaluated to NaN",
+        "result": null,
+        "before": {
+          "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+          "bank": {
+            "press": 2.9721099432342735,
+            "left_index": 13,
+            "middle_index": 49,
+            "right_index": 82,
+            "stage": 0
+          }
+        },
+        "after": {
+          "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+          "bank": {
+            "press": 2.9721099432342735,
+            "left_index": 13,
+            "middle_index": 49,
+            "right_index": 82,
+            "stage": 0
+          }
+        },
+        "beforeScreen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        },
+        "afterScreen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        },
+        "unchanged": true
+      },
+      {
+        "target": 11.638939362171001,
+        "error": "Error: Cannot pose pawl operation 0 (r, \"((_b3 + (((12.140131003537453 + acos((((((246.43639977715472 - _b6) * 0.9776361762826971) + ((72.96158725593065 - _b9) * 0.2103033685496913)) + 0.2) / 45.52951\u2026): expression \"((_b3 + (((12.140131003537453 + acos((((((246.43639977715472 - _b6) * 0.9776361762826971) + ((72.96158725593065 - _b9) * 0.2103033685496913)) + 0.2) / 45.52951\u2026 evaluated to NaN",
+        "result": null,
+        "before": {
+          "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+          "bank": {
+            "press": 2.9721099432342735,
+            "left_index": 13,
+            "middle_index": 49,
+            "right_index": 82,
+            "stage": 0
+          }
+        },
+        "after": {
+          "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+          "bank": {
+            "press": 2.9721099432342735,
+            "left_index": 13,
+            "middle_index": 49,
+            "right_index": 82,
+            "stage": 0
+          }
+        },
+        "beforeScreen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        },
+        "afterScreen": {
+          "rect": {
+            "x": 261.0738722620927,
+            "y": 43.26822900785,
+            "width": 240.73923906269226,
+            "height": 471.42762015071423
+          },
+          "point": {
+            "x": 450.2261315256367,
+            "y": 144.2884333258602
+          }
+        },
+        "unchanged": true
+      }
+    ],
+    "restored": {
+      "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+      "bank": {
+        "press": 0,
+        "left_index": 13,
+        "middle_index": 49,
+        "right_index": 82,
+        "stage": 0
+      }
+    },
+    "initial": {
+      "identity": "1658c162ed3ee8c77257c3caa233f1562b8bc7f7f9a70f831683cc982400fe15",
+      "bank": {
+        "press": 0,
+        "left_index": 13,
+        "middle_index": 49,
+        "right_index": 82,
+        "stage": 0
+      }
+    },
+    "assembly": {
+      "name": "VisibleFlankDomainTrial",
+      "path": [],
+      "color": null,
+      "model": false,
+      "children": [
+        {
+          "name": "pawl",
+          "path": [
+            "pawl"
+          ],
+          "color": null,
+          "model": false,
+          "children": [
+            {
+              "name": "body",
+              "path": [
+                "pawl",
+                "body"
+              ],
+              "color": "#9b9d9f",
+              "model": true,
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "rotor",
+          "path": [
+            "rotor"
+          ],
+          "color": null,
+          "model": false,
+          "children": []
+        }
+      ]
+    },
+    "renderedBodyPath": [
+      "pawl",
+      "body"
+    ],
+    "apiVersion": 29
+  },
+  "pictures": {
+    "/tmp/pose-enigma-final/visible-valid.png": "f814f9a166d3976c1fdc66f99455c55b60d2aa81fcb22bc679a019ddd3fb1a13",
+    "/tmp/pose-enigma-final/visible-outside.png": "f814f9a166d3976c1fdc66f99455c55b60d2aa81fcb22bc679a019ddd3fb1a13"
+  },
+  "nonfinite_public_observations": [],
+  "checker_sha256": "29ad24292106defe1259922077b8d555ab086f934e5f1eb50582d47dab53a497"
+}

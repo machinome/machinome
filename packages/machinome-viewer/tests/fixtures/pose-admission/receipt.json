@@ -1,0 +1,78 @@
+{
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "packages": {
+    "machinome": "0.9.0",
+    "machinome-node-stl": "0.9.0",
+    "machinome-viewer": "0.9.0"
+  },
+  "standard_producer": "machinome export model.py:PoseAdmission --no-widget",
+  "document_edited": false,
+  "native_cad": false,
+  "refusals": [
+    {
+      "target": 2.000001,
+      "before": {
+        "count": 0,
+        "independent": 0.0,
+        "press": 0.0
+      },
+      "after": {
+        "count": 0,
+        "independent": 0.0,
+        "press": 0.0
+      },
+      "joint_before": 0.0,
+      "joint_after": 0.0,
+      "records_unchanged": true,
+      "refusal": "math domain error"
+    },
+    {
+      "target": -1e-06,
+      "before": {
+        "count": 0,
+        "independent": 0.0,
+        "press": 0.0
+      },
+      "after": {
+        "count": 0,
+        "independent": 0.0,
+        "press": 0.0
+      },
+      "joint_before": 0.0,
+      "joint_after": 0.0,
+      "records_unchanged": true,
+      "refusal": "math domain error"
+    },
+    {
+      "target": 3.0,
+      "before": {
+        "count": 0,
+        "independent": 0.0,
+        "press": 0.0
+      },
+      "after": {
+        "count": 0,
+        "independent": 0.0,
+        "press": 0.0
+      },
+      "joint_before": 0.0,
+      "joint_after": 0.0,
+      "records_unchanged": true,
+      "refusal": "math domain error"
+    }
+  ],
+  "valid_bank": {
+    "count": 1,
+    "independent": 4,
+    "press": 1.5
+  },
+  "valid_event_count": 1,
+  "sha256": {
+    "model.py": "e3c41b9a30e9c11886bed69bafb8b9ac52786d493200b6dec217c32295028e8a",
+    "regenerate.py": "8392d161eb7850310f253443902181f38c2dff1a6a87518a373a650f2c08eae6",
+    "tetrahedron.stl": "5fca697b927875b16881a854338ace9baaa02525c6844a744d35a137e1bbb6ff",
+    "pyproject.toml": "dcee4dcd977517b76542fbadb57e5b587726af10f63e19060d20ba0e975ea310",
+    "manifest.json": "39e04e92b6b96a4f41dfcc49efd7938b67d8a6ce2b00492bf87b5b8993888d53",
+    "models/tetrahedron-__Body_,_model.py__-9ad6ec96dc3f.stl": "6cf99faef8613e6d88e560e693f247dfbb8fe4ffdcc06c38cb289b2675696053"
+  }
+}

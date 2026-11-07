@@ -1,0 +1,36 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ ClockedPoseAdmissionTest.test_invalid_move_instruction_restore_keep_bank_pixels_and_recovery _
+
+self = <tests.test_clocked_pose_admission.ClockedPoseAdmissionTest testMethod=test_invalid_move_instruction_restore_keep_bank_pixels_and_recovery>
+
+    def test_invalid_move_instruction_restore_keep_bank_pixels_and_recovery(self):
+        page = self.page
+        origin = page.evaluate('machine.snapshot()')
+        screens = page.evaluate('visible()')
+        self.assertTrue(all(part is not None for part in screens))
+        self.assert_finite(screens)
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        before = page.locator('#host').screenshot(path=str(SHOTS / 'before.png'))
+        receipts = []
+        # All requests use the real rendered descendant. The +3 request
+        # crosses three commits, so a bank-only guard cannot fake rollback.
+        for operation in ["machine.move('press',{to:2.000001})",
+                          "machine.move('press',{to:-0.000001})",
+                          "machine.move('press',{to:3})",
+                          "machine.trigger('Invalid')",
+                          "machine.restore({...machine.snapshot(),bank:{...machine.state(),press:3,count:7}})"]:
+            answer = page.evaluate('''operation => {
+              let error = null, result = null;
+              try { result = eval(operation); } catch (e) { error = String(e.message); }
+              viewer.setView(viewer.view());
+              return {error, result, snapshot:machine.snapshot(), screens:visible()};
+            }''', operation)
+            receipts.append(answer)
+>           self.assertIsNotNone(answer['error'], operation + ' accepted invalid final pose')
+E           AssertionError: unexpectedly None : machine.move('press',{to:2.000001}) accepted invalid final pose
+
+tests/test_clocked_pose_admission.py:83: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_clocked_pose_admission.py::ClockedPoseAdmissionTest::test_invalid_move_instruction_restore_keep_bank_pixels_and_recovery
+1 failed in 1.41s

@@ -1278,3 +1278,88 @@ describe('a decal is part of the surface a control is bound to', () => {
     expect(meshes).toContain(tree.children[0].markings[0].mesh);
   });
 });
+
+
+// Enigma's rendered final-pose refusal: bank rollback alone cannot restore a
+// sibling already copied into the live scene. These use the actual evaluator.
+describe('WidgetTree atomic rendered transforms', () => {
+  const standing = { press: 1, independent: 0 };
+  const selected = (id: string) => ({ time: false, drivers: new Set([id]) });
+  const matrices = (tree: WidgetTree): number[][] => [
+    [...tree.group.matrix.elements], ...tree.children.flatMap(matrices),
+  ];
+  const document = (expression: string) => root([
+    leaf({ name: 'earlier', operations: [['t', ['(_shared + independent)', '0', '0']]] }),
+    { name: 'arm', type: 'assembly', color: null,
+      operations: [['r', expression, [0, 0, 1]]],
+      children: [leaf({ name: 'body', operations: [['t', ['3', '0', '0']]] })] },
+  ]);
+  const table = () => bindings([
+    { name: '_unused', expression: 'sqrt(-1)' },
+    { name: '_shared', expression: '(press * 10)' },
+  ]);
+
+  for (const expression of [
+    'sqrt(min(0, (2 - press)))',
+    '(1 / (2 - press))',
+    '(-1 / (2 - press))',
+    '((press > 1) ? press.missing : 0)',
+  ]) {
+    it(`retains the whole tree and scope after a later rotation refuses: ${expression}`, async () => {
+      const bound = table();
+      const tree = new WidgetTree(document(expression), '/build/', null, bound);
+      await tree.loaded;
+      const scope = (bank: Record<string, number>) => clockedScope(bank, 0, bound);
+      tree.update(scope(standing));
+      const before = matrices(tree);
+      const target = expression.includes('sqrt') ? 3 : 2;
+      expect(() => tree.update(scope({ ...standing, press: target }), selected('press')))
+        .toThrow(/arm.*operation 0/i);
+      expect(matrices(tree)).toEqual(before);
+      // Re-evaluating the original bank must not reuse the failed candidate.
+      tree.update(scope({ ...standing }));
+      expect(matrices(tree)).toEqual(before);
+      expect(() => tree.update(scope({ ...standing, press: target }), selected('press'))).toThrow();
+      vi.mocked(evalExpr).mockClear();
+      tree.update(scope({ ...standing, independent: 4 }), selected('independent'));
+      expect(tree.children[0].group.matrix.elements[12]).toBe(14);
+      expect(tree.children[1].group.matrix.elements).toEqual(before[2]);
+      expect(evaluations()).not.toContain(expression);
+      const valid = expression.includes('missing') ? 0.5 : 1.5;
+      tree.update(scope({ press: valid, independent: 4 }), selected('press'));
+      expect(matrices(tree).flat().every(Number.isFinite)).toBe(true);
+      tree.dispose();
+    });
+  }
+
+  it.each(['sqrt(-press)', '(1 / (1 - press))', '(-1 / (1 - press))'])(
+    'refuses a non-finite translation operand before copying any matrix: %s', async (expression) => {
+      const tree = new WidgetTree(root([
+        leaf({ name: 'first', operations: [['t', ['press', '0', '0']]] }),
+        leaf({ name: 'last', operations: [['t', ['0', expression, '0']]] }),
+      ]), '/build/');
+      await tree.loaded;
+      tree.update({ time: 0, drivers: { press: 0 } });
+      const before = matrices(tree);
+      expect(() => tree.update({ time: 0, drivers: { press: 1 } }, selected('press')))
+        .toThrow(/last.*operation 0/i);
+      expect(matrices(tree)).toEqual(before);
+      tree.dispose();
+    });
+
+  it('refuses finite locals whose ancestor composition overflows, including unchanged descendants', async () => {
+    const tree = new WidgetTree(root([{
+      name: 'parent', type: 'assembly', color: null,
+      operations: [['t', ['press', '0', '0']]], children: [
+        leaf({ name: 'body', operations: [['t', ['1e308', '0', '0']]] }),
+      ],
+    }]), '/build/');
+    await tree.loaded;
+    tree.update({ time: 0, drivers: { press: 0 } });
+    const before = matrices(tree);
+    expect(() => tree.update({ time: 0, drivers: { press: 1e308 } }, selected('press')))
+      .toThrow(/parent\/body.*compos/i);
+    expect(matrices(tree)).toEqual(before);
+    tree.dispose();
+  });
+});

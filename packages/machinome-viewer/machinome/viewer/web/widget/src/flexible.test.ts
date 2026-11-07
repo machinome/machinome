@@ -192,6 +192,25 @@ describe('a flexible node mounts geometry from its spec', () => {
 });
 
 describe('flexible geometry is gated the way pose is', () => {
+  it('does not refill an earlier spring before a later transform refuses', async () => {
+    const tree = await mounted(engine([
+      spring(),
+      { name: 'later', type: 'AssemblyNode', color: null,
+        operations: [['t', ['sqrt(1 - valvetrain.lift)', '0', '0']]], children: [] },
+    ]));
+    const attribute = positionsOf(meshOf(tree.children[0]));
+    const before = Array.from(attribute.array);
+    const version = attribute.version;
+    const count = evaluations();
+    expect(() => tree.update(scope(12), {
+      time: false, drivers: new Set(['valvetrain.lift']),
+    })).toThrow(/later.*operation 0/);
+    expect(evaluations()).toBe(count);
+    expect(Array.from(attribute.array)).toEqual(before);
+    expect(attribute.version).toBe(version);
+    tree.dispose();
+  });
+
   it('refills the buffers it already owns when its driver moves', async () => {
     const tree = await mounted();
     const mesh = meshOf(tree.children[0]);

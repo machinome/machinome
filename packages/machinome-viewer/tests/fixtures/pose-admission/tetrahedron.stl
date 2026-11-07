@@ -1,0 +1,30 @@
+solid authored_tetrahedron
+facet normal 0 0 -1
+outer loop
+vertex 0 0 0
+vertex 0 4 0
+vertex 8 0 0
+endloop
+endfacet
+facet normal 0 -1 0
+outer loop
+vertex 0 0 0
+vertex 8 0 0
+vertex 0 0 4
+endloop
+endfacet
+facet normal -1 0 0
+outer loop
+vertex 0 0 0
+vertex 0 0 4
+vertex 0 4 0
+endloop
+endfacet
+facet normal 1 2 2
+outer loop
+vertex 8 0 0
+vertex 0 4 0
+vertex 0 0 4
+endloop
+endfacet
+endsolid authored_tetrahedron

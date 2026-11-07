@@ -1,0 +1,190 @@
+{
+  "format": "machinome-export",
+  "version": 8,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "independent": {
+      "default": 0.0,
+      "range": [
+        -1.0,
+        1.0
+      ],
+      "unit": "mm",
+      "dtype": null,
+      "scale": null
+    },
+    "press": {
+      "default": 0.0,
+      "range": [
+        0.0,
+        2.0
+      ],
+      "unit": "mm",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "states": {
+    "count": {
+      "default": 0,
+      "range": null,
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    }
+  },
+  "instructions": {
+    "Invalid": {
+      "targets": {
+        "press": 3.0
+      },
+      "duration": 0.1
+    }
+  },
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(press * 10)"
+    }
+  ],
+  "clocked": {
+    "identity": "dcdc82405352c9cfdc7354410ec7b5d6ee2d6443e9d2fb7202d04a793c3b310e",
+    "clock": null,
+    "own": "_own",
+    "commits": [
+      {
+        "sources": [
+          "press",
+          "count"
+        ],
+        "targets": [
+          "count"
+        ],
+        "at": {
+          "primitive": "floor",
+          "level": "press"
+        },
+        "law": [
+          "(count + 1)"
+        ],
+        "shapes": {
+          "press": "affine"
+        },
+        "description": "(press, count) commits count",
+        "stated_by": "PoseAdmission"
+      }
+    ],
+    "bounds": [],
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    }
+  },
+  "root": {
+    "name": "PoseAdmission",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1794082542.0573473,
+    "operations": [],
+    "children": [
+      {
+        "name": "earlier",
+        "type": "LeafNode",
+        "color": "#d65b24",
+        "mtime": 1794082542.0573473,
+        "operations": [
+          [
+            "t",
+            [
+              "(_b0 + independent)",
+              "0",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "-15",
+              "-10",
+              "0"
+            ]
+          ]
+        ],
+        "model": "models/tetrahedron-__Body_,_model.py__-9ad6ec96dc3f.stl",
+        "piece": "0ab95d4a08f1"
+      },
+      {
+        "name": "arm",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1794082542.0573473,
+        "operations": [
+          [
+            "r",
+            "((_b0 * 3) + sqrt(min(0.0, min(press, (2.0 - press)))))",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "10",
+              "10",
+              "0"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "body",
+            "type": "LeafNode",
+            "color": "#d65b24",
+            "mtime": 1794082542.0573473,
+            "operations": [
+              [
+                "t",
+                [
+                  "5",
+                  "0",
+                  "0"
+                ]
+              ]
+            ],
+            "model": "models/tetrahedron-__Body_,_model.py__-9ad6ec96dc3f.stl",
+            "piece": "0ab95d4a08f1"
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "0ab95d4a08f1",
+      "name": "Body",
+      "sources": [
+        "tetrahedron.stl"
+      ],
+      "models": [
+        "models/tetrahedron-__Body_,_model.py__-9ad6ec96dc3f.stl"
+      ],
+      "count": 2,
+      "size": [
+        8.0,
+        4.0,
+        4.0
+      ],
+      "volume": 21.333333333333332,
+      "watertight": true
+    }
+  ],
+  "source": {
+    "revision": "da27c6727311db623071e678eb27028db6c88dfa",
+    "dirty": true
+  }
+}
