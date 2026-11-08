@@ -1,0 +1,29 @@
+{
+  "base": "6f07b083d3e9a4194d5f982ce200ae9dc6ffe4b9",
+  "planning_commit": "d7884a33b942dc9f57ba605eb5490b78ebbdb4d2",
+  "worktree": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "executable": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/bin/python",
+  "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+  "imports": {
+    "machinome.color": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/color.py",
+    "machinome.core.serializer": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/core/serializer.py",
+    "machinome.viewer.web.capture": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/capture.py"
+  },
+  "files": {
+    "packages/machinome/machinome/color.py": "baff129357275308121cd426d0df95b8e4f79da7b58e2601d542e24d50f7ba50",
+    "packages/machinome/machinome/core/serializer.py": "b7fe3521ca11c76f852206fef900ef71ac284dfc5784fffccdde5ed2de43fdc6",
+    "packages/machinome/machinome/node/base.py": "d2c03621c3508497b1a6fc5cd1c71e07f8aac565c0cd42d8077d8af5219847ba",
+    "packages/machinome-viewer/machinome/viewer/web/capture.py": "b03d72722533894b71583620666a8b1864c2668af6625661cc3cbe62ba04fbdf",
+    "packages/machinome-viewer/machinome/viewer/web/widget/package.json": "131895c3a914923520836c059b65eb872ad3e63221d790411e5915875a1ce336",
+    "packages/machinome-viewer/machinome/viewer/web/widget/src/types.ts": "1f70f457e9185ec2e0c51895247ec59b753ec975c6e45fa0f592a2545750f9e0",
+    "packages/machinome-viewer/machinome/viewer/web/widget/src/color.ts": "a160988988dffd2e0b8b46d5ee5ccdb1a2f8c5e3cd7f1e635933905a1f7b9e53",
+    "packages/machinome-viewer/machinome/viewer/web/widget/src/presentation.ts": "dc6e6ee46fdccbf782371d6f0e132c23bfca23ffa437743dc60497599a422cb3",
+    "packages/machinome-viewer/machinome/viewer/web/widget/src/tree.ts": "508a13584fb906928cd8b9fdd547cfda8d7ed7a5d9552970124ed3d186152b83",
+    "packages/machinome-viewer/machinome/viewer/web/widget/src/viewer.ts": "400c4f30f07b3910684a93438920c55f0cbbdf02e81f9973c8a9643dec078ac3",
+    "packages/machinome-viewer/machinome/viewer/web/widget/src/run/program.ts": "12fc4d2fa32273ea20fc663eb8295b1aca9da4308025d372ec1cd84695e07ea1",
+    "packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js": "6cbf780531873e17a8386c5086c54ad2eeabf1a62fb2d8eba306a96634192b16",
+    "uv.lock": "8e6e9a0555a8cbd4866ff93480fb282e0966fee7e30f26e566ccd4f8633749c9",
+    "package-lock.json": "4cc6875ee3bcecdff37fb2f86bd0e8ec863e151723f906652cccb7172715be8f"
+  }
+}

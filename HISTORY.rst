@@ -5,6 +5,12 @@ History
 Unreleased
 ----------
 
+* ``machinome.color.color_when`` selects two fixed colors on the same body
+  from model state, without changing geometry or part identity. Ordinary
+  live publication requires document 14 and viewer API 30; reset, restore
+  and replay follow the standing state. This is visual color, without
+  emission physics (``color-model-lamps``, ``read-model-color-choice``).
+
 * **``make upload`` uploads one archive per request.** PyPI refused the
   0.9.0 upload part way, at its limit on creating new projects in one
   window and then on the requests themselves, and twine stopped there, the

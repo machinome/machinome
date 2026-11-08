@@ -52,6 +52,15 @@ def test_the_pages_are_in_the_manual():
     assert (ROOT / 'workflow/documentation.md').is_file()
 
 
+def test_model_color_is_an_unreleased_source_capability():
+    assert widget()['machinomeViewerApi'] == 30
+    assert widget()['machinomeDocumentVersions'] == list(range(1, 15))
+    entry = (ROOT / 'CHANGELOG.md').read_text().split('## Unreleased\n')[1].split('\n## ')[0]
+    assert 'Viewer API 30' in entry
+    assert 'document versions 1 through 14' in entry
+    assert '{when, on, off}' in entry
+
+
 def test_docs_contains_no_development_records():
     assert (ROOT / 'workflow/adrs/README.md').is_file()
     assert not (ROOT / 'workflow/release-0.2.md').exists()
@@ -82,17 +91,17 @@ def test_the_manual_states_the_release():
     assert current.startswith(f"{version} — {date.strftime('%-d %B %Y')}"), current[:40]
     assert 'unreleased' not in current.lower()
     assert f'Machinome {version}' in current
-    versions = widget()['machinomeDocumentVersions']
-    assert f"viewer API {widget()['machinomeViewerApi']}" in current
-    assert f'document versions {versions[0]} through {versions[-1]}' in current
+    assert 'viewer API 29' in current
+    assert 'document versions 1 through 13' in current
     assert 'released-viewer-api' not in (MANUAL / 'conf.py').read_text()
     assert version == conf_value('viewer_version')
 
 
-def test_the_release_facts_are_the_widget_s():
-    versions = widget()['machinomeDocumentVersions']
-    assert conf_value('viewer_api') == str(widget()['machinomeViewerApi'])
-    assert conf_value('document_versions') == f'{versions[0]} to {versions[-1]}'
+def test_release_facts_stay_separate_from_current_source_capability():
+    assert conf_value('viewer_api') == '29'
+    assert conf_value('document_versions') == '1 to 13'
+    assert conf_value('source_viewer_api') == str(widget()['machinomeViewerApi'])
+    assert conf_value('source_document_versions') == '1 to 14'
     assert conf_value('viewer_version') == widget()['version']
 
 
@@ -124,8 +133,8 @@ def test_describe_example_matches_package_versions():
     example = json.loads(block[1])
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
     assert example['version'] == project['version'] == widget()['version']
-    assert example['apiVersion'] == widget()['machinomeViewerApi']
-    assert example['documentVersions'] == widget()['machinomeDocumentVersions']
+    assert example['apiVersion'] == int(conf_value('viewer_api'))
+    assert example['documentVersions'] == list(range(1, 14))
     assert '/machinome/viewer/web/widget/' in example['path']
 
 
@@ -153,7 +162,7 @@ def test_profile_contact_is_documented_as_part_of_the_release():
     # record below pins what 0.7.0 declared (OpenSpec
     # `track-a-part-on-screen`, D9).
     assert widget()['machinomeViewerApi'] >= 27
-    assert widget()['machinomeDocumentVersions'][-1] == 13
+    assert 13 in widget()['machinomeDocumentVersions']
     compatibility = (MANUAL / 'reference/viewer/compatibility.rst').read_text()
     running = (MANUAL / 'reference/viewer/running.rst').read_text()
     changelog = (ROOT / 'CHANGELOG.md').read_text()
@@ -174,7 +183,7 @@ def test_film_annotations_are_documented_as_part_of_the_0_8_0_release():
     API 28 arrives in 0.8.0, and the recorded 0.7.1 facts stay at API 27."""
     # 28 or later: `on-demand-clocked` declares 29 on top of it.
     assert widget()['machinomeViewerApi'] >= 28
-    assert widget()['machinomeDocumentVersions'] == list(range(1, 14))
+    assert set(range(1, 14)) <= set(widget()['machinomeDocumentVersions'])
     compatibility = flat('reference/viewer/compatibility.rst')
     assert 'This release declares:' in compatibility
     assert '**Viewer API** |viewer_api|' in compatibility
@@ -213,8 +222,8 @@ def test_on_demand_clocked_capture_is_documented():
     """OpenSpec `on-demand-clocked`: API 29, released in 0.8.0; the
     manual states the on-demand rules for a clocked machine, and the
     0.8.0 changelog section records it."""
-    assert widget()['machinomeViewerApi'] == 29
-    assert widget()['machinomeDocumentVersions'] == list(range(1, 14))
+    assert widget()['machinomeViewerApi'] >= 29
+    assert set(range(1, 14)) <= set(widget()['machinomeDocumentVersions'])
     mount = flat('reference/viewer/mount.rst')
     assert 'accepts a clocked machine' in mount
     assert 'refuses a running program' in mount

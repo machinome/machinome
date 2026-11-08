@@ -1,0 +1,101 @@
+{
+  "allocation": "root-declared-lamp-browser-memory-20261108-01-baseline",
+  "argv": [
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/bin/python",
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma_browser_probe.py",
+    "--mode",
+    "baseline",
+    "--bundle",
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js",
+    "--output",
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma-memory-baseline",
+    "--document",
+    "/mnt/data/machinome-projects/enigma-i/_build/viewer.json"
+  ],
+  "supervisor": {
+    "pid": 2574424,
+    "birth": 1794171971.06,
+    "ppid": 571723,
+    "name": "python",
+    "status": "running"
+  },
+  "child": {
+    "pid": 2574428,
+    "birth": 1794171971.16,
+    "ppid": 2574424,
+    "name": "python",
+    "status": "running"
+  },
+  "returncode": 1,
+  "stop_reason": null,
+  "wall_seconds_including_cleanup": 71.86598921898985,
+  "wall_limit": 180,
+  "aggregate_rss_limit": 8589934592,
+  "peak_aggregate_rss": 4629803008,
+  "peak_sampled_aggregate_pss": 4343998464,
+  "preflight": {
+    "mem_available": 13322883072,
+    "minimum_start_available": 10737418240,
+    "allocation": "root-declared-lamp-browser-memory-20261108-01-baseline",
+    "heavy_jobs_excluded_by_root_coordination": true
+  },
+  "owned_identities": [
+    {
+      "pid": 2574428,
+      "birth": 1794171971.16,
+      "ppid": 2574424,
+      "name": "python",
+      "status": "sleeping"
+    },
+    {
+      "pid": 2574432,
+      "birth": 1794171972.28,
+      "ppid": 2574428,
+      "name": "MainThread",
+      "status": "sleeping"
+    },
+    {
+      "pid": 2574446,
+      "birth": 1794171972.63,
+      "ppid": 2574432,
+      "name": "chrome-headless-shell",
+      "status": "sleeping"
+    },
+    {
+      "pid": 2574448,
+      "birth": 1794171972.65,
+      "ppid": 2574424,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2574449,
+      "birth": 1794171972.65,
+      "ppid": 2574424,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2574467,
+      "birth": 1794171972.7,
+      "ppid": 2574424,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2574473,
+      "birth": 1794171972.72,
+      "ppid": 2574424,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2574465,
+      "birth": 1794171972.69,
+      "ppid": 2574424,
+      "name": "chrome-headless",
+      "status": "zombie"
+    }
+  ],
+  "remaining_owned": []
+}

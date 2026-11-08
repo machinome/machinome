@@ -1,0 +1,84 @@
+{
+  "format": "machinome-export",
+  "version": 14,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "powered": {
+      "default": 0.0,
+      "range": [
+        0.0,
+        1.0
+      ],
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "root": {
+    "name": "PropertyPosed",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1794169617.0781124,
+    "operations": [],
+    "children": [
+      {
+        "name": "source",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1794169617.0781124,
+        "operations": [],
+        "children": []
+      },
+      {
+        "name": "lamps",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1794169617.0781124,
+        "operations": [],
+        "children": [
+          {
+            "name": "bulbs-0",
+            "type": "LeafNode",
+            "color": {
+              "when": "(powered > 0.5)",
+              "on": "#ffd978",
+              "off": "#e5dfce"
+            },
+            "mtime": 1794169617.0781124,
+            "operations": [],
+            "model": "models/color_project/model-ObservedGlass-cd6c95724b92.stl",
+            "piece": "64d3c619575c"
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "64d3c619575c",
+      "name": "ObservedGlass",
+      "sources": [
+        "color_project/model.py"
+      ],
+      "models": [
+        "models/color_project/model-ObservedGlass-cd6c95724b92.stl"
+      ],
+      "count": 1,
+      "size": [
+        12.0,
+        12.0,
+        6.0
+      ],
+      "volume": 864.0,
+      "watertight": true
+    }
+  ],
+  "source": {
+    "revision": "d7884a33b942dc9f57ba605eb5490b78ebbdb4d2",
+    "dirty": true
+  }
+}

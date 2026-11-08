@@ -327,11 +327,17 @@ class ReleaseRecordsTest(TestCase):
         self.assertNotIn('unreleased',
                          head.replace(UNRELEASED, '\n', 1).lower())
 
-    def test_the_status_page_describes_nothing_as_unreleased(self):
+    def test_status_separates_unreleased_source_from_the_released_facts(self):
         status = (ROOT / 'docs/project/status.rst').read_text().lower()
-        self.assertNotIn('unreleased', status)
-        self.assertNotIn('current source', status)
-        self.assertNotIn('since |release|', status)
+        title = 'current source after this release\n---------------------------------\n'
+        before, current = status.split(title, 1)
+        current, after = current.split('what |version| is', 1)
+        self.assertNotIn('unreleased', before + after)
+        self.assertIn('unreleased', current)
+        self.assertIn('color_when', current)
+        self.assertIn('|source_viewer_api|', current)
+        self.assertIn('|source_document_versions|', current)
+        self.assertIn('color_when', self.history.split(f'Machinome {self.version}')[0])
 
     def test_the_release_note_has_the_dated_section(self):
         """A release's note is the page of its major.minor line: a `.0`

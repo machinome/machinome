@@ -1,0 +1,29 @@
+{
+  "pages": 12,
+  "viewports": [
+    1440,
+    390
+  ],
+  "local_links": 279,
+  "mobile_menu": "passed",
+  "search": "passed",
+  "interactive_example": "passed",
+  "reference_examples": {
+    "pascaline": {
+      "elapsed": 1,
+      "outcomes": [
+        {
+          "handle": 0,
+          "input": "units_entry",
+          "status": "completed",
+          "admitted": 1
+        }
+      ]
+    },
+    "calculator": {
+      "admitted": 360,
+      "restored": true
+    }
+  },
+  "browser_errors": []
+}

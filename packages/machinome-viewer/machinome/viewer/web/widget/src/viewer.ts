@@ -80,12 +80,13 @@ import {
 import type {
   LoadedControl, Ray, SweepMode, Vec3, WorldLine,
 } from './partControls';
-import { API_VERSION } from './version';
+import { API_VERSION, DOCUMENT_VERSIONS } from './version';
 import {
   boundsOnScreen, projectToViewport, searchPoint, worldBounds,
 } from './screen';
 import type { CanvasBounds, Point, ScreenRect } from './screen';
 import { highlightRequest, MaterialPresentation } from './presentation';
+import { assertColor } from './color';
 import type {
   HighlightOptions, HighlightRequest, OthersMode,
 } from './presentation';
@@ -1659,7 +1660,7 @@ export async function mount(
     if (disposed) return;
     // Prepare all geometry before replacing any of the last good document's
     // driver, binding or runtime state. A failed required asset changes none.
-    const next = new WidgetTree(document.root, baseUrl, null, table);
+    const next = new WidgetTree(document.root, baseUrl, null, table, undefined, presentation);
     pendingTrees.add(next);
     try {
       await next.loaded;
@@ -2091,22 +2092,47 @@ export async function mount(
       notifyAssemblyChange();
     },
     async manifestChanged() {
-      const { document, table, program, controls: declared } =
+      const { document, table, program, machine: incomingMachine, controls: declared } =
         await loadDocument(sourceUrl);
       assertCaptureDocument(document);
       // Installed before the update that follows (design D6): a
       // republish carrying a different table invalidates the free set
       // of every node that reads it differently, whether or not that
       // node's own operations changed.
-      // Cleared BEFORE the reconcile, because `setColor` replaces
-      // materials and a lifted emissive would be restored onto a
-      // material nothing is showing any more (design D7).
-      partSurface.clear();
-      presentation.forget();
-      await tree?.reconcile(document.root, baseUrl, null, table);
+      // Prepare assets and admit the incoming presentation before clearing
+      // any standing overlays. Read its candidate bank after the awaits,
+      // with the incoming table, without mutating the standing runtime.
+      const keepMachine = incomingMachine !== null && machine !== undefined
+        && loadedMachine?.identity === incomingMachine.identity;
+      const candidateScope = (): EvalScope => {
+        if (document.version === 14 && incomingMachine !== null) {
+          return clockedScope(keepMachine ? drawnBank ?? machine!.state()
+            : incomingMachine.initial, time, table);
+        }
+        if (document.version !== 14 && machine !== undefined) {
+          return clockedScope(drawnBank ?? machine.state(), time, table);
+        }
+        if (program !== null) {
+          const keep = runtime !== undefined && loadedProgram?.identity === program.identity;
+          return poseScope(keep ? bank : program.initial, program.clock,
+            keep ? elapsedSeconds : 0, table);
+        }
+        const current = drivers.drivers();
+        const values = Object.fromEntries(Object.entries(document.drivers ?? {}).map(
+          ([id, declaration]) => [id, id in current ? drivers.driver(id) : declaration.default]));
+        return clockedScope(values, time, table);
+      };
+      await tree?.reconcile(document.root, baseUrl, null, table, candidateScope, () => {
+        partSurface.clear();
+        presentation.forget();
+      });
       if (disposed) return;
       drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
       bindingsTable = table;
+      if (document.version === 14) {
+        if (keepMachine) loadedMachine = incomingMachine;
+        else startMachine(incomingMachine);
+      }
       await startRuntime(document, program, true);
       if (disposed) { runtime?.dispose(); runtime = undefined; return; }
       if (tree) {
@@ -2818,7 +2844,7 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // the bundle and `bundle.py` both read (`machinomeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
-export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+export const RENDERED_VERSIONS: readonly number[] = DOCUMENT_VERSIONS;
 const DOCUMENT_FORMAT = 'machinome-export';
 const LEGACY_DOCUMENT_FORMAT = 'solid-node-export';
 
@@ -2990,7 +3016,7 @@ function assertRenderableScoped(document: Manifest,
   const machine = clocked
     ? loadClocked(document as ClockedDocument, sourceUrl, table) : null;
   const program = !clocked
-    && (document.version >= 5
+    && ((document.version >= 5 && document.version < 14)
         || (document as RunDocument).program !== undefined)
     ? loadProgram(document as RunDocument, sourceUrl, table)
     : null;
@@ -3055,6 +3081,8 @@ function assertRenderableScoped(document: Manifest,
     // the program and the controls table already stand on. A node with
     // no key reaches exactly the validation it reached before.
     assertMarkings(node, sourceUrl);
+    assertColor(node.color, document.version, `${sourceUrl} node ${node.name}`);
+    if (node.color !== null && typeof node.color === 'object') note(node.color.when);
     for (const operation of node.operations) {
       const expressions = operation[0] === 'r'
         ? [operation[1]] : operation[1];

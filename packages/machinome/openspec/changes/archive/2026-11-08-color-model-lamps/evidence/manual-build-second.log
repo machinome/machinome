@@ -1,0 +1,212 @@
+Running Sphinx v9.1.0
+loading translations [en]... done
+building [mo]: targets for 0 po files that are out of date
+writing output... 
+building [html]: targets for 88 source files that are out of date
+updating environment: [new config] 88 added, 0 changed, 0 removed
+reading sources... [  1%] concepts/clocked
+reading sources... [  2%] concepts/execution-models
+reading sources... [  3%] concepts/joints
+reading sources... [  5%] concepts/node-tree
+reading sources... [  6%] concepts/publishing
+reading sources... [  7%] concepts/relations
+reading sources... [  8%] concepts/rest-and-motion
+reading sources... [  9%] concepts/running
+reading sources... [ 10%] concepts/values
+reading sources... [ 11%] examples
+reading sources... [ 12%] howto/assistant-skills
+reading sources... [ 14%] howto/backends
+reading sources... [ 15%] howto/browser-viewer
+reading sources... [ 16%] howto/declare-a-movie
+reading sources... [ 17%] howto/draw-a-movie-stage
+reading sources... [ 18%] howto/embed-the-viewer
+reading sources... [ 19%] howto/fast-tests
+reading sources... [ 20%] howto/film-a-movie
+reading sources... [ 22%] howto/flexible-parts
+reading sources... [ 23%] howto/freecad-assemblies
+reading sources... [ 24%] howto/fusion
+reading sources... [ 25%] howto/imported-parts
+reading sources... [ 26%] howto/markings
+reading sources... [ 27%] howto/mechanism-formulas
+reading sources... [ 28%] howto/open-a-studio-project
+reading sources... [ 30%] howto/repeat-and-vary
+reading sources... [ 31%] howto/several-models
+reading sources... [ 32%] howto/share-an-export
+reading sources... [ 33%] howto/sheet-parts
+reading sources... [ 34%] howto/simulate-existing
+reading sources... [ 35%] howto/studio-agents
+reading sources... [ 36%] howto/studio-workspace
+reading sources... [ 38%] howto/timeline
+reading sources... [ 39%] index
+reading sources... [ 40%] project/changelog
+reading sources... [ 41%] project/contributing
+reading sources... [ 42%] project/status
+reading sources... [ 43%] project/upgrading
+reading sources... [ 44%] reference/api
+reading sources... [ 45%] reference/assertions
+reading sources... [ 47%] reference/cli
+reading sources... [ 48%] reference/manuals
+reading sources... [ 49%] reference/mechanics/belts
+reading sources... [ 50%] reference/mechanics/cams
+reading sources... [ 51%] reference/mechanics/conventions
+reading sources... [ 52%] reference/mechanics/cranks
+reading sources... [ 53%] reference/mechanics/deltas
+reading sources... [ 55%] reference/mechanics/gears
+reading sources... [ 56%] reference/mechanics/index
+reading sources... [ 57%] reference/mechanics/indexing
+reading sources... [ 58%] reference/mechanics/linkages
+reading sources... [ 59%] reference/mechanics/rolling
+reading sources... [ 60%] reference/mechanics/screws
+reading sources... [ 61%] reference/movie/command
+reading sources... [ 62%] reference/movie/document
+reading sources... [ 64%] reference/movie/episode
+reading sources... [ 65%] reference/movie/index
+reading sources... [ 66%] reference/sphinx
+reading sources... [ 67%] reference/studio/command
+reading sources... [ 68%] reference/studio/index
+reading sources... [ 69%] reference/studio/profiles
+reading sources... [ 70%] reference/studio/project-configuration
+reading sources... [ 72%] reference/studio/troubleshooting
+reading sources... [ 73%] reference/viewer/cli
+reading sources... [ 74%] reference/viewer/clocked
+reading sources... [ 75%] reference/viewer/compatibility
+reading sources... [ 76%] reference/viewer/index
+reading sources... [ 77%] reference/viewer/layouts
+reading sources... [ 78%] reference/viewer/mount
+reading sources... [ 80%] reference/viewer/running
+reading sources... [ 81%] reference/viewer/troubleshooting
+reading sources... [ 82%] reference/viewer/viewer-handle
+reading sources... [ 83%] releases/release-0.7
+reading sources... [ 84%] releases/release-0.8
+reading sources... [ 85%] releases/release-0.9
+reading sources... [ 86%] start/first-machine
+reading sources... [ 88%] start/install
+reading sources... [ 89%] tutorial/01-part
+reading sources... [ 90%] tutorial/02-input
+reading sources... [ 91%] tutorial/03-dimensions
+reading sources... [ 92%] tutorial/04-relations
+reading sources... [ 93%] tutorial/05-buttons
+reading sources... [ 94%] tutorial/06-fit
+reading sources... [ 95%] tutorial/07-scenario
+reading sources... [ 97%] tutorial/08-running
+reading sources... [ 98%] tutorial/09-clocked
+reading sources... [ 99%] tutorial/10-share
+reading sources... [100%] why
+
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... done
+preparing documents... done
+copying assets... 
+copying downloadable files... [ 33%] howto/mechanism-formulas/pyproject.toml
+copying downloadable files... [ 67%] howto/mechanism-formulas/slider_crank.py
+copying downloadable files... [100%] howto/mechanism-formulas/gear_phase.py
+
+copying static files... 
+Writing evaluated template result to /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/docs/_build/html/_static/documentation_options.js
+Writing evaluated template result to /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/docs/_build/html/_static/basic.css
+Writing evaluated template result to /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/docs/_build/html/_static/language_data.js
+Writing evaluated template result to /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/docs/_build/html/_static/js/versions.js
+copying static files: done
+copying extra files... 
+copying extra files: done
+copying assets: done
+writing output... [  1%] concepts/clocked
+writing output... [  2%] concepts/execution-models
+writing output... [  3%] concepts/joints
+writing output... [  5%] concepts/node-tree
+writing output... [  6%] concepts/publishing
+writing output... [  7%] concepts/relations
+writing output... [  8%] concepts/rest-and-motion
+writing output... [  9%] concepts/running
+writing output... [ 10%] concepts/values
+writing output... [ 11%] examples
+writing output... [ 12%] howto/assistant-skills
+writing output... [ 14%] howto/backends
+writing output... [ 15%] howto/browser-viewer
+writing output... [ 16%] howto/declare-a-movie
+writing output... [ 17%] howto/draw-a-movie-stage
+writing output... [ 18%] howto/embed-the-viewer
+writing output... [ 19%] howto/fast-tests
+writing output... [ 20%] howto/film-a-movie
+writing output... [ 22%] howto/flexible-parts
+writing output... [ 23%] howto/freecad-assemblies
+writing output... [ 24%] howto/fusion
+writing output... [ 25%] howto/imported-parts
+writing output... [ 26%] howto/markings
+writing output... [ 27%] howto/mechanism-formulas
+writing output... [ 28%] howto/open-a-studio-project
+writing output... [ 30%] howto/repeat-and-vary
+writing output... [ 31%] howto/several-models
+writing output... [ 32%] howto/share-an-export
+writing output... [ 33%] howto/sheet-parts
+writing output... [ 34%] howto/simulate-existing
+writing output... [ 35%] howto/studio-agents
+writing output... [ 36%] howto/studio-workspace
+writing output... [ 38%] howto/timeline
+writing output... [ 39%] index
+writing output... [ 40%] project/changelog
+writing output... [ 41%] project/contributing
+writing output... [ 42%] project/status
+writing output... [ 43%] project/upgrading
+writing output... [ 44%] reference/api
+writing output... [ 45%] reference/assertions
+writing output... [ 47%] reference/cli
+writing output... [ 48%] reference/manuals
+writing output... [ 49%] reference/mechanics/belts
+writing output... [ 50%] reference/mechanics/cams
+writing output... [ 51%] reference/mechanics/conventions
+writing output... [ 52%] reference/mechanics/cranks
+writing output... [ 53%] reference/mechanics/deltas
+writing output... [ 55%] reference/mechanics/gears
+writing output... [ 56%] reference/mechanics/index
+writing output... [ 57%] reference/mechanics/indexing
+writing output... [ 58%] reference/mechanics/linkages
+writing output... [ 59%] reference/mechanics/rolling
+writing output... [ 60%] reference/mechanics/screws
+writing output... [ 61%] reference/movie/command
+writing output... [ 62%] reference/movie/document
+writing output... [ 64%] reference/movie/episode
+writing output... [ 65%] reference/movie/index
+writing output... [ 66%] reference/sphinx
+writing output... [ 67%] reference/studio/command
+writing output... [ 68%] reference/studio/index
+writing output... [ 69%] reference/studio/profiles
+writing output... [ 70%] reference/studio/project-configuration
+writing output... [ 72%] reference/studio/troubleshooting
+writing output... [ 73%] reference/viewer/cli
+writing output... [ 74%] reference/viewer/clocked
+writing output... [ 75%] reference/viewer/compatibility
+writing output... [ 76%] reference/viewer/index
+writing output... [ 77%] reference/viewer/layouts
+writing output... [ 78%] reference/viewer/mount
+writing output... [ 80%] reference/viewer/running
+writing output... [ 81%] reference/viewer/troubleshooting
+writing output... [ 82%] reference/viewer/viewer-handle
+writing output... [ 83%] releases/release-0.7
+writing output... [ 84%] releases/release-0.8
+writing output... [ 85%] releases/release-0.9
+writing output... [ 86%] start/first-machine
+writing output... [ 88%] start/install
+writing output... [ 89%] tutorial/01-part
+writing output... [ 90%] tutorial/02-input
+writing output... [ 91%] tutorial/03-dimensions
+writing output... [ 92%] tutorial/04-relations
+writing output... [ 93%] tutorial/05-buttons
+writing output... [ 94%] tutorial/06-fit
+writing output... [ 95%] tutorial/07-scenario
+writing output... [ 97%] tutorial/08-running
+writing output... [ 98%] tutorial/09-clocked
+writing output... [ 99%] tutorial/10-share
+writing output... [100%] why
+
+generating indices... genindex py-modindex done
+writing additional pages... search done
+copying images... [ 50%] _static/slider-crank.svg
+copying images... [100%] _static/circle-intersection.svg
+
+dumping search index in English (code: en)... done
+dumping object inventory... done
+build succeeded.
+
+The HTML pages are in packages/machinome/docs/_build/html.

@@ -1,0 +1,4 @@
+wheel: machinome-0.9.0-py3-none-any.whl
+sha256: fcc9efa6ea326255b0095d0824c434650162939af1276000065368054a3c3535
+module: /tmp/machinome-color-core-wheel/machinome-0.9.0-py3-none-any.whl/machinome/color.py
+numeric off/on smoke: passed

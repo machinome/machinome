@@ -694,7 +694,8 @@ class ReleaseFactsTest(unittest.TestCase):
 
     def test_facts_are_substitutions(self):
         conf = (DOCS / 'conf.py').read_text()
-        for name in ('release_date', 'viewer_version', 'viewer_api',
+        for name in ('source_viewer_api', 'source_document_versions',
+                     'release_date', 'viewer_version', 'viewer_api',
                      'document_versions',
                      'framework_licence'):
             with self.subTest(name=name):
@@ -704,10 +705,10 @@ class ReleaseFactsTest(unittest.TestCase):
         # `join-viewer`: the viewer API and the document versions the manual
         # states are those the widget of the repository declares.
         widget = json.loads(WIDGET.read_text())
-        self.assertEqual(conf_value('viewer_api'),
+        self.assertEqual(conf_value('source_viewer_api'),
                          str(widget['machinomeViewerApi']))
         versions = widget['machinomeDocumentVersions']
-        self.assertEqual(conf_value('document_versions'),
+        self.assertEqual(conf_value('source_document_versions'),
                          f'{versions[0]} to {versions[-1]}')
         self.assertEqual(versions, list(range(versions[0], versions[-1] + 1)))
 
@@ -885,3 +886,20 @@ class UpgradingPageTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class StateColorReferenceTest(unittest.TestCase):
+    def test_helper_has_one_reference_and_source_compatibility(self):
+        api = (DOCS / 'reference/api.rst').read_text()
+        self.assertEqual(api.count('.. py:function:: machinome.color.color_when(condition, *, on, off)'), 1)
+        for phrase in ('finite', 'zero', 'same body', 'reset', 'restore', 'replay'):
+            self.assertIn(phrase, api.lower())
+        backends = (DOCS / 'howto/backends.rst').read_text()
+        self.assertIn('color_when', backends)
+        publishing = (DOCS / 'concepts/publishing.rst').read_text()
+        self.assertIn('``{when, on, off}``', publishing)
+        status = (DOCS / 'project/status.rst').read_text()
+        self.assertIn('color_when', status)
+        self.assertIn('unreleased', status)
+        for name in ('source_viewer_api', 'source_document_versions'):
+            self.assertIn(f'|{name}|', (DOCS / 'conf.py').read_text())

@@ -1,0 +1,60 @@
+...............F...F......................................       [100%]
+=================================== FAILURES ===================================
+___________________ test_the_release_facts_are_the_widget_s ____________________
+
+    def test_the_release_facts_are_the_widget_s():
+        versions = widget()['machinomeDocumentVersions']
+>       assert conf_value('viewer_api') == str(widget()['machinomeViewerApi'])
+E       AssertionError: assert '29' == '30'
+E         
+E         - 30
+E         + 29
+
+packages/machinome-viewer/tests/test_documentation.py:103: AssertionError
+________________ test_describe_example_matches_package_versions ________________
+
+    def test_describe_example_matches_package_versions():
+        reference = (MANUAL / 'reference/viewer/cli.rst').read_text()
+        block = re.search(r'\.\. code-block:: json\n\n((?:   .*\n|\n)+)', reference)
+        example = json.loads(block[1])
+        project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
+        assert example['version'] == project['version'] == widget()['version']
+>       assert example['apiVersion'] == widget()['machinomeViewerApi']
+E       assert 29 == 30
+
+packages/machinome-viewer/tests/test_documentation.py:136: AssertionError
+=============================== warnings summary ===============================
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:247: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    list(alpha.crop((0, 0, image.width, 1)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:248: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((0, image.height - 1, image.width, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:249: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((0, 0, 1, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:250: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((image.width - 1, 0, image.width, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:253: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertIn(255, alpha.getdata())
+
+tests/test_capture.py::MarkedStagedDocumentTest::test_a_marked_model_is_photographed_with_its_markings
+tests/test_capture.py::MarkedStagedDocumentTest::test_a_marked_model_is_photographed_with_its_markings
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:469: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for red, green, blue in image.getdata():
+
+tests/test_capture.py::FullscreenCaptureTest::test_the_photograph_has_a_transparent_bottom_right_corner
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:537: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertEqual(set(corner.getchannel('A').getdata()), {0})
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED packages/machinome-viewer/tests/test_documentation.py::test_the_release_facts_are_the_widget_s
+FAILED packages/machinome-viewer/tests/test_documentation.py::test_describe_example_matches_package_versions
+2 failed, 56 passed, 8 warnings, 8 subtests passed in 16.29s

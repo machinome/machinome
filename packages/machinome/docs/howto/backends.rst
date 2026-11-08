@@ -259,8 +259,12 @@ refused when the node is constructed.
 Colour
 ------
 
-Any node may set ``color``, a hex RGB string the viewer and the exports
-honour. Anything else is refused.
+Any node may set ``color``, a six-digit hex RGB string the viewer and the
+exports honour. ``machinome.color.color_when`` selects between two fixed
+colors from a numeric or symbolic observation on that same body; its
+:ref:`API reference <api-reference>` states the value and compatibility
+contract. A color selection changes presentation, without changing geometry
+or adding emitted light.
 
 .. code-block:: python
 

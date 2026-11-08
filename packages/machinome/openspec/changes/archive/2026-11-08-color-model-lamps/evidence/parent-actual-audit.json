@@ -1,0 +1,21 @@
+{
+  "verified_ordered_cases": 63,
+  "verified_actual_colors": 1638,
+  "verified_complete_driver_banks": 63,
+  "source_oracle_sha256": "157e4303f774867121414f0a9dbd9698edf3517e7118ea6a54f19e9561ddfd80",
+  "combined_receipt": "packages/machinome-viewer/openspec/changes/archive/2026-11-08-read-model-color-choice/acceptance/enigma-combined-acceptance.json",
+  "combined_receipt_sha256": "e803afb15ce142ff8a19f07b9de873b1d733deeabfdc2a43b8ab0e3c33317630",
+  "run_membership": {
+    "enigma-memory-candidate-readback": 44,
+    "enigma-memory-candidate-continuation": 19
+  },
+  "continuation_returncode": 0,
+  "all_remaining_owned_empty": true,
+  "same_public_body_inventory": true,
+  "model_requests_per_context": 572,
+  "zero_control_refetch": true,
+  "production_sources_match_frozen_runtime": true,
+  "project_commit": "0d2416a93e3b4ada6147e69561cbed5f0bf2885c",
+  "project_receipt_sha256": "a89edda2307660186ebca88b7234da6a746d7ea5c052483ca9de51dafd480d39",
+  "combined_receipt_at_measurement": "packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma-combined-acceptance.json"
+}

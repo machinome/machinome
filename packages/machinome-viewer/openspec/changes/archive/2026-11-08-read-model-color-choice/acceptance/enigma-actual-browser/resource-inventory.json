@@ -1,0 +1,68 @@
+{
+  "rigid_instances": 1806,
+  "unique_models": 543,
+  "unique_stl_bytes": 354262512,
+  "stl_bytes_weighted_by_instance": 717243604,
+  "largest_instance_resources": [
+    {
+      "path": "simulation/lamp_attachment-LampMetalCap-c85a54013e07.stl",
+      "instances": 26,
+      "bytes": 5942584,
+      "weighted_bytes": 154507184
+    },
+    {
+      "path": "simulation/lamp_bank_candidate-AllLampThreadedHolder,clock_deg=18.2568097114563-530bba6d5b78.stl",
+      "instances": 1,
+      "bytes": 62685184,
+      "weighted_bytes": 62685184
+    },
+    {
+      "path": "simulation/historical_contact_pin-HistoricalContactPin-3717038a1153.stl",
+      "instances": 104,
+      "bytes": 369284,
+      "weighted_bytes": 38405536
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__RatchetIII_,_simulation_ratchet.py__-13601eb2bdcf.stl",
+      "instances": 1,
+      "bytes": 29391284,
+      "weighted_bytes": 29391284
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__RatchetIV_,_simulation_ratchet.py__-bbb49b50af14.stl",
+      "instances": 1,
+      "bytes": 29391284,
+      "weighted_bytes": 29391284
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__RatchetV_,_simulation_ratchet.py__-5329aaf40832.stl",
+      "instances": 1,
+      "bytes": 29391284,
+      "weighted_bytes": 29391284
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__RearSleeveScrew_,_simulation_fasteners.py__-4d706eaa980c.stl",
+      "instances": 9,
+      "bytes": 2366384,
+      "weighted_bytes": 21297456
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__RearKeyScrew_,_simulation_fasteners.py__-08486160ead1.stl",
+      "instances": 9,
+      "bytes": 1900784,
+      "weighted_bytes": 17107056
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__KeyScrew_,_simulation_fasteners.py__-f691acbed941.stl",
+      "instances": 9,
+      "bytes": 1900784,
+      "weighted_bytes": 17107056
+    },
+    {
+      "path": "sources/cache/sameerverma-final-assembly-__BatteryFloorScrew_,_simulation_battery_attachment.py__-724d22ebb636.stl",
+      "instances": 8,
+      "bytes": 1976584,
+      "weighted_bytes": 15812672
+    }
+  ]
+}

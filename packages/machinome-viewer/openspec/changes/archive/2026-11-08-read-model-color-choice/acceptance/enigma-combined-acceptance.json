@@ -1,0 +1,758 @@
+{
+  "scope": "ordinary inspection supply boundary; no reconstructed physical selector or full-stroke/material admission",
+  "oracle_sha256": "157e4303f774867121414f0a9dbd9698edf3517e7118ea6a54f19e9561ddfd80",
+  "document_sha256": "e13e92fbd1c9b1ca7e0951e36d2e4db1340e6912532e0fabe3f4682591ef4710",
+  "bundle_sha256": "2b4836154d730a0bb4c48e0226f87e03acf5ebb8ebe1015fdda4a79ad3ada90d",
+  "oracle_rows": 63,
+  "glass_paths": [
+    {
+      "letter": "Q",
+      "path": "lamps.bulbs-0.glass"
+    },
+    {
+      "letter": "W",
+      "path": "lamps.bulbs-1.glass"
+    },
+    {
+      "letter": "E",
+      "path": "lamps.bulbs-2.glass"
+    },
+    {
+      "letter": "R",
+      "path": "lamps.bulbs-3.glass"
+    },
+    {
+      "letter": "T",
+      "path": "lamps.bulbs-4.glass"
+    },
+    {
+      "letter": "Z",
+      "path": "lamps.bulbs-5.glass"
+    },
+    {
+      "letter": "U",
+      "path": "lamps.bulbs-6.glass"
+    },
+    {
+      "letter": "I",
+      "path": "lamps.bulbs-7.glass"
+    },
+    {
+      "letter": "O",
+      "path": "lamps.bulbs-8.glass"
+    },
+    {
+      "letter": "A",
+      "path": "lamps.bulbs-9.glass"
+    },
+    {
+      "letter": "S",
+      "path": "lamps.bulbs-10.glass"
+    },
+    {
+      "letter": "D",
+      "path": "lamps.bulbs-11.glass"
+    },
+    {
+      "letter": "F",
+      "path": "lamps.bulbs-12.glass"
+    },
+    {
+      "letter": "G",
+      "path": "lamps.bulbs-13.glass"
+    },
+    {
+      "letter": "H",
+      "path": "lamps.bulbs-14.glass"
+    },
+    {
+      "letter": "J",
+      "path": "lamps.bulbs-15.glass"
+    },
+    {
+      "letter": "K",
+      "path": "lamps.bulbs-16.glass"
+    },
+    {
+      "letter": "P",
+      "path": "lamps.bulbs-17.glass"
+    },
+    {
+      "letter": "Y",
+      "path": "lamps.bulbs-18.glass"
+    },
+    {
+      "letter": "X",
+      "path": "lamps.bulbs-19.glass"
+    },
+    {
+      "letter": "C",
+      "path": "lamps.bulbs-20.glass"
+    },
+    {
+      "letter": "V",
+      "path": "lamps.bulbs-21.glass"
+    },
+    {
+      "letter": "B",
+      "path": "lamps.bulbs-22.glass"
+    },
+    {
+      "letter": "N",
+      "path": "lamps.bulbs-23.glass"
+    },
+    {
+      "letter": "M",
+      "path": "lamps.bulbs-24.glass"
+    },
+    {
+      "letter": "L",
+      "path": "lamps.bulbs-25.glass"
+    }
+  ],
+  "verified_color_comparisons": 1638,
+  "run_membership": [
+    {
+      "oracle_index": 0,
+      "case": "A-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 0,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 1,
+      "case": "A-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 1,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 2,
+      "case": "B-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 2,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 3,
+      "case": "B-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 3,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 4,
+      "case": "C-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 4,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 5,
+      "case": "C-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 5,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 6,
+      "case": "D-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 6,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 7,
+      "case": "D-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 7,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 8,
+      "case": "E-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 8,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 9,
+      "case": "E-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 9,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 10,
+      "case": "F-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 10,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 11,
+      "case": "F-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 11,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 12,
+      "case": "G-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 12,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 13,
+      "case": "G-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 13,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 14,
+      "case": "H-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 14,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 15,
+      "case": "H-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 15,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 16,
+      "case": "I-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 16,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 17,
+      "case": "I-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 17,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 18,
+      "case": "J-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 18,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 19,
+      "case": "J-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 19,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 20,
+      "case": "K-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 20,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 21,
+      "case": "K-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 21,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 22,
+      "case": "L-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 22,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 23,
+      "case": "L-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 23,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 24,
+      "case": "M-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 24,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 25,
+      "case": "M-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 25,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 26,
+      "case": "N-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 26,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 27,
+      "case": "N-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 27,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 28,
+      "case": "O-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 28,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 29,
+      "case": "O-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 29,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 30,
+      "case": "P-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 30,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 31,
+      "case": "P-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 31,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 32,
+      "case": "Q-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 32,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 33,
+      "case": "Q-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 33,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 34,
+      "case": "R-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 34,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 35,
+      "case": "R-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 35,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 36,
+      "case": "S-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 36,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 37,
+      "case": "S-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 37,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 38,
+      "case": "T-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 38,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 39,
+      "case": "T-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 39,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 40,
+      "case": "U-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 40,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 41,
+      "case": "U-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 41,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 42,
+      "case": "V-held",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 42,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 43,
+      "case": "V-released",
+      "run": "enigma-memory-candidate-readback",
+      "index_in_run": 43,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 44,
+      "case": "W-held",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 0,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 45,
+      "case": "W-released",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 1,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 46,
+      "case": "X-held",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 2,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 47,
+      "case": "X-released",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 3,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 48,
+      "case": "Y-held",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 4,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 49,
+      "case": "Y-released",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 5,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 50,
+      "case": "Z-held",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 6,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 51,
+      "case": "Z-released",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 7,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 52,
+      "case": "old-seat",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 8,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 53,
+      "case": "half-pitch",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 9,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 54,
+      "case": "next-seat",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 10,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 55,
+      "case": "partial-transfer",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 11,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 56,
+      "case": "default-supply-off",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 12,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 57,
+      "case": "held",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 13,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 58,
+      "case": "power-loss",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 14,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 59,
+      "case": "power-restored",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 15,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 60,
+      "case": "reset",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 16,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 61,
+      "case": "restored-driver-bank",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 17,
+      "driver_count": 11,
+      "verified_color_count": 26
+    },
+    {
+      "oracle_index": 62,
+      "case": "replayed-power-cycle",
+      "run": "enigma-memory-candidate-continuation",
+      "index_in_run": 18,
+      "driver_count": 11,
+      "verified_color_count": 26
+    }
+  ],
+  "same_candidate_inputs_across_runs": true,
+  "same_public_body_inventory": true,
+  "model_requests_per_context": 572,
+  "additional_model_requests_on_control_changes": 0,
+  "all_key_held_released_cases": [
+    "A-held",
+    "A-released",
+    "B-held",
+    "B-released",
+    "C-held",
+    "C-released",
+    "D-held",
+    "D-released",
+    "E-held",
+    "E-released",
+    "F-held",
+    "F-released",
+    "G-held",
+    "G-released",
+    "H-held",
+    "H-released",
+    "I-held",
+    "I-released",
+    "J-held",
+    "J-released",
+    "K-held",
+    "K-released",
+    "L-held",
+    "L-released",
+    "M-held",
+    "M-released",
+    "N-held",
+    "N-released",
+    "O-held",
+    "O-released",
+    "P-held",
+    "P-released",
+    "Q-held",
+    "Q-released",
+    "R-held",
+    "R-released",
+    "S-held",
+    "S-released",
+    "T-held",
+    "T-released",
+    "U-held",
+    "U-released",
+    "V-held",
+    "V-released",
+    "W-held",
+    "W-released",
+    "X-held",
+    "X-released",
+    "Y-held",
+    "Y-released",
+    "Z-held",
+    "Z-released"
+  ],
+  "phase_supply_lifecycle_cases": [
+    "old-seat",
+    "half-pitch",
+    "next-seat",
+    "partial-transfer",
+    "default-supply-off",
+    "held",
+    "power-loss",
+    "power-restored",
+    "reset",
+    "restored-driver-bank",
+    "replayed-power-cycle"
+  ],
+  "individual_control_ms": {
+    "count": 98,
+    "median": 2105.050000011921,
+    "max": 2828.800000011921
+  },
+  "row_total_ms": {
+    "median": 3511.599999964237,
+    "max": 6857.400000035763
+  },
+  "representative_pixel_evidence": {
+    "completed_rows": 44,
+    "expected_total_rows": 63,
+    "last_case": "V-released",
+    "all_completed_26_color_vectors_match": true,
+    "completed_color_comparisons": 1144,
+    "individual_control_ms": {
+      "count": 67,
+      "median": 2131.199999988079,
+      "max": 2828.800000011921
+    },
+    "row_total_ms": {
+      "median": 3077.0499999821186,
+      "max": 6076.400000035763
+    },
+    "representative": "A-held -> expected T at lamps.bulbs-4.glass",
+    "changed_bounds": [
+      726,
+      444,
+      771,
+      479
+    ],
+    "changed_rgb_pixels_above_4": 1203,
+    "alpha_bytes_unchanged": true,
+    "released_rgba_equals_dark": true,
+    "full_default_equals_baseline": true,
+    "screen_queries_executed": 0,
+    "reset_restore_replay_executed": false
+  },
+  "allocations": {
+    "enigma-memory-baseline-readback": {
+      "allocation": "root-declared-lamp-browser-memory-20261108-01-baseline-readback",
+      "returncode": 0,
+      "stop_reason": null,
+      "wall_seconds_including_cleanup": 97.34064362797653,
+      "peak_aggregate_rss": 4626784256,
+      "peak_sampled_aggregate_pss": 4330867712,
+      "remaining_owned": []
+    },
+    "enigma-memory-candidate-readback": {
+      "allocation": "root-declared-lamp-browser-memory-20261108-01-candidate-readback",
+      "returncode": -15,
+      "stop_reason": "290-second work budget; 10 seconds reserved for cleanup",
+      "wall_seconds_including_cleanup": 290.5470910589793,
+      "peak_aggregate_rss": 4836175872,
+      "peak_sampled_aggregate_pss": 4531123200,
+      "remaining_owned": []
+    },
+    "enigma-memory-candidate-continuation": {
+      "allocation": "root-declared-lamp-browser-memory-20261108-01-candidate-readback-continuation",
+      "returncode": 0,
+      "stop_reason": null,
+      "wall_seconds_including_cleanup": 106.42119691998232,
+      "peak_aggregate_rss": 3823628288,
+      "peak_sampled_aggregate_pss": 3516786688,
+      "remaining_owned": []
+    }
+  }
+}

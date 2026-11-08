@@ -1028,6 +1028,9 @@ class AbstractBaseNode(metaclass=NodeMeta):
         """`presented` in this node's colour, as a description."""
         if self.color is None:
             return described(presented)
+        from machinome.color import _ColorChoice
+        if isinstance(self.color, _ColorChoice):
+            return Color(self.color.rgb(), 1, described(presented))
         hex_code = self.color.lstrip('#')
         if len(hex_code) != 6:
             raise ValueError(f"Invalid self.color at {self}. "

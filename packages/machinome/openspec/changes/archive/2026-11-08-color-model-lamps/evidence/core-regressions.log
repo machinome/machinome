@@ -1,0 +1,39 @@
+....................................................................... [ 27%]
+............................................................................................. [ 63%]
+............................................................ [ 86%]
+..................................                                  [100%]
+=============================== warnings summary ===============================
+tests/test_expression_bindings.py::OneSharedSubexpressionTest::test_every_operation_references_it_by_name
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: CrossNodeSharedTree.render() read time 'time'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then CrossNodeSharedTree re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+tests/test_expression_bindings.py::BareLeavesNotBoundTest::test_neither_a_repeated_literal_nor_a_repeated_driver_id_is_bound
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: BareLeavesRepeatTree.render() read driver 'knob'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then BareLeavesRepeatTree re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+tests/test_expression_bindings.py::NamingUnderscoreBTest::test_a_driver_named_b0_gets_a_longer_prefix
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: UnderscoreBDriverTree.render() read time 'time'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then UnderscoreBDriverTree re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+tests/test_expression_bindings.py::VersionRuleTest::test_a_flexible_tree_with_sharing_declares_four
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: Valvetrain.render() read driver 'lift'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then Valvetrain re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+tests/test_expression_bindings.py::VersionRuleTest::test_bind_document_does_not_touch_a_tree_with_nothing_shared
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:108: FutureWarning: Inner.render() read time 'time'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then Inner re-renders per binding as before.
+    children = _rest(assembly, render)
+
+tests/test_expression_bindings.py::PassThroughTest::test_the_document_still_publishes
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: UnreadableBesideSharedTree.render() read time 'time'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then UnreadableBesideSharedTree re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+tests/test_running_document.py::ByteIdentityTest::test_every_document_with_no_control_is_unchanged_in_every_byte
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: Axis.render() read driver 'motor'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then Axis re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+tests/test_export.py::ExportAnimationTest::test_export_leaves_the_node_in_symbolic_time
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome/machinome/node/assembly.py:241: FutureWarning: Spinner.render() read time 'time'. Reading drivers, time or ports in render(), or binding a port there, is deprecated: render() builds the machine at rest and the framework runs it once per instance. Move the read or binding and the operations it feeds into simulate(), which runs on every instant. Until then Spinner re-renders per binding as before.
+    rendered = _rest(assembly, original)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+258 passed, 8 warnings, 141 subtests passed in 35.83s

@@ -6,6 +6,9 @@
 
 **Change:** `highlight-a-part`
 
+**Amended by:** [ADR-079](ADR-079-model-colors-follow-the-admitted-presentation-scope.md)
+(a state-selected declared base color joins the same owner)
+
 **Amends:** [ADR-053: A pick is bound to a declared control, and the part follows commits](ADR-053-a-pick-is-bound-to-a-declared-control.md) (how the hover lift is written and put back)
 
 **Builds on:** [ADR-035: Reusable viewer core and declared API version](ADR-035-reusable-viewer-core-and-declared-api.md) (three.js stays private to the viewer)

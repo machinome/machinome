@@ -1,0 +1,120 @@
+{
+  "format": "machinome-export",
+  "version": 14,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "independent": {
+      "default": 0.0,
+      "range": [
+        0.0,
+        5.0
+      ],
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    },
+    "powered": {
+      "default": 0.0,
+      "range": [
+        0.0,
+        1.0
+      ],
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "program": {
+    "identity": "59264fb322dbf987563fa46daaa8b01fd5435958195c680c8ee1e4ce3238f74d",
+    "clock": "time",
+    "coordinates": {
+      "independent": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "powered": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      }
+    },
+    "intermediates": [],
+    "edges": [],
+    "spans": {},
+    "sources": {
+      "independent": [
+        "independent"
+      ],
+      "powered": [
+        "powered"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Running",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1794169617.0781124,
+    "operations": [],
+    "children": [
+      {
+        "name": "glass",
+        "type": "LeafNode",
+        "color": {
+          "when": "(powered > 0.5)",
+          "on": "#ffd978",
+          "off": "#e5dfce"
+        },
+        "mtime": 1794169617.0781124,
+        "operations": [
+          [
+            "t",
+            [
+              "independent",
+              "0",
+              "0"
+            ]
+          ]
+        ],
+        "model": "models/color_project/model-Glass-82c268188cd6.stl",
+        "piece": "64d3c619575c"
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "64d3c619575c",
+      "name": "Glass",
+      "sources": [
+        "color_project/model.py"
+      ],
+      "models": [
+        "models/color_project/model-Glass-82c268188cd6.stl"
+      ],
+      "count": 1,
+      "size": [
+        12.0,
+        12.0,
+        6.0
+      ],
+      "volume": 864.0,
+      "watertight": true
+    }
+  ],
+  "source": {
+    "revision": "d7884a33b942dc9f57ba605eb5490b78ebbdb4d2",
+    "dirty": true
+  }
+}

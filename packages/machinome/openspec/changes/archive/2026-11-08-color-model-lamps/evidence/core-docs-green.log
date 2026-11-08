@@ -1,0 +1,23 @@
+...................................................................F.....                          [100%]
+=================================== FAILURES ===================================
+_ ReleaseRecordsTest.test_status_separates_unreleased_source_from_the_released_facts _
+
+self = <tests.test_release_records.ReleaseRecordsTest testMethod=test_status_separates_unreleased_source_from_the_released_facts>
+
+    def test_status_separates_unreleased_source_from_the_released_facts(self):
+        status = (ROOT / 'docs/project/status.rst').read_text().lower()
+        title = 'current source after this release\n---------------------------------\n'
+        before, current = status.split(title, 1)
+        current, after = current.split('what |version| is', 1)
+        self.assertNotIn('unreleased', before + after)
+        self.assertIn('unreleased', current)
+        self.assertIn('color_when', current)
+        self.assertIn('|source_viewer_api|', current)
+        self.assertIn('|source_document_versions|', current)
+>       self.assertIn('color_when', self.history.split(f'Machinome {self.version}')[0])
+E       AssertionError: 'color_when' not found in "=======\nHistory\n=======\n\nUnreleased\n----------\n\n* **``make upload`` uploads one archive per request.** PyPI refused the\n  0.9.0 upload part way, at its limit on creating new projects in one\n  window and then on the requests themselves, and twine stopped there, the\n  archives after it unsent and a rerun stopped at the same place. The\n  target now runs ``scripts/upload``: twine once per archive, five seconds\n  apart; the folder's ``.uploaded`` remembers what the index holds, never\n  requested again; a refused project's other archive is left for later;\n  the token is asked once; and the run ends naming the archives PyPI\n  refused, for ``make upload`` again later. A direct correction\n  (``upload-per-archive``).\n\n"
+
+packages/machinome/tests/test_release_records.py:340: AssertionError
+=========================== short test summary info ============================
+FAILED packages/machinome/tests/test_release_records.py::ReleaseRecordsTest::test_status_separates_unreleased_source_from_the_released_facts
+1 failed, 72 passed, 6742 subtests passed in 6.99s

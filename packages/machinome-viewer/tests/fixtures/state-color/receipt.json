@@ -1,0 +1,91 @@
+{
+  "producer": "machinome.core.export.export_node(widget=False)",
+  "source": "packages/machinome/tests/color_project/model.py",
+  "expected": {
+    "off": "#e5dfce",
+    "on": "#ffd978",
+    "sequence": [
+      "#e5dfce",
+      "#ffd978",
+      "#e5dfce"
+    ]
+  },
+  "documents": {
+    "posed": {
+      "clocked_identity": null,
+      "sha256": "92abbf50572d7dbf08c3690939120ba31147db9f9b889a5cd6f0342fa5d801f0",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "powered": {
+      "clocked_identity": null,
+      "sha256": "11bbafea83484c09ca45578e58389664318487c0c55ccc4848f92b8e8bfc6aca",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "clocked": {
+      "clocked_identity": "174ffa8301fc45a9d6285f7f68afbf14bfa297c6696347789a928939ac36b19a",
+      "sha256": "44cd7fc356689e71e0f06076fa90a31b22c6c9d3e3f22219fa3cbea757c4f6df",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "running": {
+      "clocked_identity": null,
+      "sha256": "2dc71725c451cec83c7b8890bf9dd8a2b8aad5a8fde348e1a6fbc68ec82188f5",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "invalid-clocked": {
+      "clocked_identity": "031a4155418daf0235e707b7ae68525437825019338f91c27c577b695065ceeb",
+      "sha256": "d4a11987cbfdd533fa41ba3ad0962d0b71edf28b42bee74f7b9d13dbdfb83007",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "relation-property": {
+      "clocked_identity": null,
+      "sha256": "4a931eca109730d4e77acd810c7c31d2265092149fb49e525845ae2d8e201f42",
+      "models": {
+        "models/color_project/model-ObservedGlass-cd6c95724b92.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "clocked-state": {
+      "clocked_identity": "c622e627ca74e3cc3cd65ef1ce401446b8501da553b2302c3c2c1da0fe31f23a",
+      "sha256": "d78789038d8a0db64c559a6d5658a211340e222ff27793ba12c7883b803efe55",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "publication-safe": {
+      "clocked_identity": "011704cc81bb2451f601f0d8b6b4fcc3eeb0a17983ad17ab46c399536ee69169",
+      "sha256": "0aac0d91c083f6e858665c58b511f8baee4d432176eaeab142e3c4e18b1ef332",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    },
+    "publication-unsafe": {
+      "clocked_identity": "011704cc81bb2451f601f0d8b6b4fcc3eeb0a17983ad17ab46c399536ee69169",
+      "sha256": "ad93c1d193e9ebc8eb75a263d2c0cc318c95913ea2dcee4fb7e31b6e0594ec08",
+      "models": {
+        "models/color_project/model-Glass-82c268188cd6.stl": "b866024d196d67d132d153b8b797eef3d9b2a36a35147af84c9de144b613c179"
+      }
+    }
+  },
+  "sources": {
+    "packages/machinome/tests/color_project/model.py": "fc79fa8d563bcf1d20bf6bccc943f169f46670b120703d5cd4b99e406eb0fc53",
+    "packages/machinome/tests/color_project/export_fixtures.py": "0d767760efd1f88fa9ae563c908caa90673818935eb1717926d8c36c5e783f2b",
+    "packages/machinome/machinome/color.py": "baff129357275308121cd426d0df95b8e4f79da7b58e2601d542e24d50f7ba50",
+    "packages/machinome/machinome/core/serializer.py": "b7fe3521ca11c76f852206fef900ef71ac284dfc5784fffccdde5ed2de43fdc6",
+    "packages/machinome/machinome/node/base.py": "d2c03621c3508497b1a6fc5cd1c71e07f8aac565c0cd42d8077d8af5219847ba",
+    "uv.lock": "8e6e9a0555a8cbd4866ff93480fb282e0966fee7e30f26e566ccd4f8633749c9"
+  },
+  "runtime": {
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "executable": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/bin/python",
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39"
+  }
+}

@@ -5,6 +5,15 @@ Changelog
 
 .. needs:: none
 
+Unreleased
+----------
+
+* ``machinome.color.color_when`` selects two fixed colors on an existing
+  body from model state, with ordinary publication, controls and
+  reset/restore/replay. Conditional live colors require document 14 and
+  viewer API 30. Born from a reconstructed cipher machine's actual lamp
+  glasses; this is visual color selection, without emission physics.
+
 Machinome 0.9.0
 ---------------
 

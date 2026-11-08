@@ -1,0 +1,12 @@
+{
+  "draw_ms": 17.600000023841858,
+  "read_ms": 42213.30000001192,
+  "path": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma-memory-candidate-readback/full-root-default.png",
+  "sha256": "df6e96eaf71620f8a50e90137eb4db060da961667f0574b0f94103721f4b3265",
+  "bytes": 276917,
+  "size": [
+    1367,
+    1000
+  ],
+  "non_dominant_pixels": 300473
+}

@@ -14,12 +14,14 @@
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ManifestMarking, ManifestNode, RawOperation } from './types';
+import { ManifestColor, ManifestMarking, ManifestNode, RawOperation } from './types';
 import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
 import { bindingRootsEqual, withExpressions } from './expressions';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
 import { admitGeometry, GeometryBatch, GeometryOwner } from './geometry-admission';
+import { initialColor, resolveColor } from './color';
+import { MaterialPresentation } from './presentation';
 
 /** What changed since the last update, when not everything did.
  *
@@ -185,6 +187,8 @@ export class WidgetTree {
   private model: string | undefined;
   private mtime: number | undefined;
   private color: string | null;
+  private colorSpec: ManifestColor;
+  private colorVars: ReadonlySet<string> | undefined;
   // Set when artifactChanged() has already fetched this node's current
   // geometry. The manifest publishes after the artifact (PRD D3), so the
   // reconcile that follows would otherwise see an unmoved mtime as stale and
@@ -233,9 +237,10 @@ export class WidgetTree {
   loaded: Promise<void>;
 
   constructor(data: ManifestNode, baseUrl: string,
-              inheritedColor: string | null = null,
+              inheritedColor: ManifestColor = null,
               bindings: BindingTable = EMPTY_BINDINGS,
-              batch = new GeometryBatch()) {
+              batch = new GeometryBatch(),
+              private readonly presentation = new MaterialPresentation()) {
     this.owner = batch.owner();
     this.group = new THREE.Group();
     this.group.matrixAutoUpdate = false;
@@ -244,7 +249,8 @@ export class WidgetTree {
     this.children = [];
     this.bindings = bindings;
 
-    const color = data.color ?? inheritedColor;
+    this.colorSpec = data.color ?? inheritedColor;
+    const color = initialColor(this.colorSpec);
     this.color = color;
     this.model = data.model;
     this.mtime = data.mtime;
@@ -268,7 +274,7 @@ export class WidgetTree {
     }
 
     for (const childData of data.children ?? []) {
-      const child = new WidgetTree(childData, baseUrl, color, bindings, batch);
+      const child = new WidgetTree(childData, baseUrl, this.colorSpec, bindings, batch, this.presentation);
       this.children.push(child);
       this.group.add(child.group);
       pending.push(child.loaded);
@@ -357,23 +363,34 @@ export class WidgetTree {
   /** Fetch every stale mesh before changing the live tree.  This makes a
    * rejected document update leave the previously rendered scene intact. */
   async reconcile(data: ManifestNode, baseUrl: string,
-                  inheritedColor: string | null = null,
-                  bindings: BindingTable = EMPTY_BINDINGS): Promise<void> {
+                  inheritedColor: ManifestColor = null,
+                  bindings: BindingTable = EMPTY_BINDINGS,
+                  candidateScope?: () => EvalScope,
+                  beforeCommit?: () => void): Promise<void> {
     const batch = new GeometryBatch();
     this.preparations.add(batch);
     try {
       const apply = await this.prepareReconcile(data, baseUrl, inheritedColor, bindings, batch);
       if (this.disposed) throw this.owner.cancellation;
-      apply();
+      withExpressions(() => {
+        // Acquire the latest bank after all geometry awaits. An invalid
+        // incoming presentation must leave the old tree AND its overlays.
+        const scope = candidateScope?.();
+        if (scope !== undefined) admitPresentation(data, scope, inheritedColor);
+        beforeCommit?.();
+        apply();
+        if (scope !== undefined) this.update(scope);
+      });
     } catch (error) { batch.cancel(); throw error; }
     finally { this.preparations.delete(batch); }
   }
 
   private async prepareReconcile(data: ManifestNode, baseUrl: string,
-                                 inheritedColor: string | null,
+                                 inheritedColor: ManifestColor,
                                  bindings: BindingTable, batch: GeometryBatch): Promise<() => void> {
     const owner = batch.owner();
-    const nextColor = data.color ?? inheritedColor;
+    const nextColorSpec = data.color ?? inheritedColor;
+    const nextColor = initialColor(nextColorSpec);
     const skipMtimeCheck = this.freshFromArtifact;
     const modelChanged = this.model !== data.model || (this.mtime !== data.mtime && !skipMtimeCheck);
     const replacement = data.model && modelChanged
@@ -418,14 +435,14 @@ export class WidgetTree {
     const nextChildren = await Promise.all((data.children ?? []).map(async (childData) => {
       const child = existing.get(childData.name);
       if (!child || !incoming.has(childData.name)) {
-        const created = new WidgetTree(childData, baseUrl, nextColor, bindings, batch);
+        const created = new WidgetTree(childData, baseUrl, nextColorSpec, bindings, batch, this.presentation);
         batch.own(() => created.dispose());
         await created.loaded;
         return { tree: created, apply: () => undefined };
       }
       return {
         tree: child,
-        apply: await child.prepareReconcile(childData, baseUrl, nextColor, bindings, batch),
+        apply: await child.prepareReconcile(childData, baseUrl, nextColorSpec, bindings, batch),
       };
     }));
 
@@ -458,6 +475,8 @@ export class WidgetTree {
       if (operationsChanged || bindingsChanged) {
         this.freeVars = undefined;
       }
+      this.colorSpec = nextColorSpec;
+      this.colorVars = undefined;
       this.setColor(nextColor);
 
       if (nextFlexible) {
@@ -567,7 +586,13 @@ export class WidgetTree {
 
   private setColor(color: string | null): void {
     if (this.color === color) return;
+    const colored = this.color !== null && color !== null;
     this.color = color;
+    if (colored) {
+      this.group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+        .forEach(mesh => this.presentation.setBaseColor(mesh, color!));
+      return;
+    }
     if (this.flexible) {
       // Its own material, because a swept indexed surface is shaded
       // flat to match the rigid parts an STL already renders that way.
@@ -588,6 +613,7 @@ export class WidgetTree {
   get animated(): boolean {
     return (
       this.free.has(TIME_ID) ||
+      this.colorFree.has(TIME_ID) ||
       (this.flexible?.free.has(TIME_ID) ?? false) ||
       this.children.some((child) => child.animated)
     );
@@ -616,6 +642,15 @@ export class WidgetTree {
 
   private needsUpdate(changed: Changed): boolean {
     return touchedBy(this.free, changed);
+  }
+
+  private get colorFree(): ReadonlySet<string> {
+    if (this.colorVars === undefined) {
+      const names = this.colorSpec !== null && typeof this.colorSpec === 'object'
+        ? freeVariables(this.colorSpec.when) : new Set<string>();
+      this.colorVars = this.bindings.closure(names);
+    }
+    return this.colorVars;
   }
 
   assembly(path: AssemblyPath = []): AssemblyNode {
@@ -682,9 +717,12 @@ export class WidgetTree {
       // A clocked request poses BEFORE assigning its bank. Prepare every
       // affected transform before touching the scene, so a later sibling's
       // domain error cannot leave an earlier sibling at the refused bank.
-      const prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4 }> = [];
+      const prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4; color?: string | null }> = [];
       this.prepareTransforms(scope, changed, [], undefined, false, prepared);
-      prepared.forEach(({ tree, matrix }) => tree.group.matrix.copy(matrix));
+      prepared.forEach(({ tree, matrix, color }) => {
+        tree.group.matrix.copy(matrix);
+        if (color !== undefined) tree.setColor(color);
+      });
       this.updateShapes(scope, changed);
     });
   }
@@ -692,7 +730,7 @@ export class WidgetTree {
   private prepareTransforms(
     scope: EvalScope, changed: Changed, path: string[],
     parent: (() => THREE.Matrix4) | undefined, ancestorChanged: boolean,
-    prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4 }>,
+    prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4; color?: string | null }>,
   ): void {
     const ownChanged = this.needsUpdate(changed);
     const matrix = ownChanged
@@ -714,7 +752,9 @@ export class WidgetTree {
     if ((ownChanged || ancestorChanged) && !composed().elements.every(Number.isFinite)) {
       throw new Error(`Cannot pose ${posePath(path)}: transform composition is not finite.`);
     }
-    if (ownChanged) prepared.push({ tree: this, matrix });
+    const colorChanged = touchedBy(this.colorFree, changed);
+    const color = colorChanged ? resolveColor(this.colorSpec, scope, posePath(path)) : undefined;
+    if (ownChanged || colorChanged) prepared.push({ tree: this, matrix, color });
     this.children.forEach((child) => child.prepareTransforms(
       scope, changed, [...path, child.name], composed,
       ownChanged || ancestorChanged, prepared));
@@ -745,6 +785,24 @@ export class WidgetTree {
       }
       disposeMesh(object);
     });
+  }
+}
+
+/** Admit an incoming document's placements and inherited colors before its
+ * prepared geometry or materials replace anything in the standing tree. */
+function admitPresentation(data: ManifestNode, scope: EvalScope,
+                           inherited: ManifestColor, path: string[] = [],
+                           parent?: THREE.Matrix4): void {
+  const matrix = operationsMatrixScoped(data.operations, scope, path);
+  const world = parent === undefined ? matrix
+    : new THREE.Matrix4().multiplyMatrices(parent, matrix);
+  if (!world.elements.every(Number.isFinite)) {
+    throw new Error(`Cannot pose ${posePath(path)}: transform composition is not finite.`);
+  }
+  const color = data.color ?? inherited;
+  resolveColor(color, scope, posePath(path));
+  for (const child of data.children ?? []) {
+    admitPresentation(child, scope, color, [...path, child.name], world);
   }
 }
 

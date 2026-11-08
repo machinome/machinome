@@ -796,8 +796,8 @@ function loadProgramScoped(
   const clock = raw.clock;
   let profiles: readonly ConvexProfile[] | undefined;
   if (raw.profiles !== undefined) {
-    if (document.version !== 13) {
-      return refuse('its finite profile table requires document version 13.');
+    if (document.version !== 13 && document.version !== 14) {
+      return refuse('its finite profile table requires document version 13 or 14.');
     }
     try {
       profiles = loadProfiles(raw.profiles);
@@ -931,8 +931,8 @@ function loadProgramScoped(
   }
   const timeByEdge = new Map<number, string>();
   if (document.version === 10 || raw.time_drives !== undefined) {
-    if (document.version < 10 || document.version > 13) {
-      return refuse('its time_drives require document version 10, 11, 12 or 13.');
+    if (document.version < 10 || document.version > 14) {
+      return refuse('its time_drives require document version 10, 11, 12, 13 or 14.');
     }
     if (clock !== 'time') return refuse('its time-drive clock must be named "time".');
     if (!Array.isArray(raw.time_drives) || raw.time_drives.length === 0) {
@@ -1020,7 +1020,7 @@ function loadProgramScoped(
     };
 
     if (kind === 'follow') {
-      if (document.version < 12 || document.version > 13) {
+      if (document.version < 12 || document.version > 14) {
         return refuse(`${where} (${description}) declares Follow before document version 12.`);
       }
       if (needs.length !== 3 || gives.length !== 1 || gives[0] !== needs[2]

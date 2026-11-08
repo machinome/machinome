@@ -91,13 +91,25 @@ emits the lowest its content needs:
      - A retained ``Follow`` between two moving clearance surfaces.
    * - 13
      - A running ``Bound`` whose limit uses finite convex profile contact.
+   * - 14
+     - A state-selected node color ``{when, on, off}``, with a scalar
+       condition and two fixed six-digit hex colors.
 
-A posed model is 2 to 4. A root declaring ``Time.running()`` now publishes 11,
+A document containing a symbolic color choice declares 14, ahead of all
+other version rules. It remains posed when neither execution payload is
+present, clocked when it carries ``clocked``, and running when it carries
+``program``; the two payloads together are invalid. The condition shares
+placement's expression scope and bindings. Numeric snapshots containing only
+resolved hex colors keep their earlier schema. Reading 14 requires viewer
+API |source_viewer_api|, whose source reader supports
+|source_document_versions| (:doc:`/project/status`).
+
+Without a symbolic color choice, a posed model is 2 to 4. A root declaring ``Time.running()`` now publishes 11,
 12 when its program carries a ``Follow`` relation, or 13 when a running
 ``Bound`` uses finite profile contact; older running exports
 used 5, 6, 7, 9 or 10 according to their laws.
 A tree declaring a ``State``
-publishes 8 whatever else it holds. Markings and controls are additive within their
+publishes 8 unless it carries that version-14 color choice. Markings and controls are additive within their
 version. The bumps from 5 upward are **not** additive: a consumer that
 cannot read the declared version refuses the document by name rather
 than rendering part of a machine it does not understand.

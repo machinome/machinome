@@ -158,8 +158,8 @@ describe('API_VERSION', () => {
   // one. A build at 28 refuses the same mount, so a film host asks
   // before it mounts. The document list does not move: no field is
   // read anew.
-  it('declares on-demand clocked capture as API 29', () => {
-    expect(API_VERSION).toBe(29);
+  it('declares model-selected colors as API 30', () => {
+    expect(API_VERSION).toBe(30);
   });
 });
 
@@ -167,7 +167,7 @@ describe('DOCUMENT_VERSIONS', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
     expect(Array.isArray(pkg.machinomeDocumentVersions)).toBe(true);
     expect(pkg.machinomeDocumentVersions)
-      .toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+      .toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
   });
 
   it('is the list the package declares, not a second copy', () => {

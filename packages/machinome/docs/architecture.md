@@ -3122,6 +3122,25 @@ The mapping and semantics version participate in identity. No time entry is
 added to coordinates, intermediates, drivers or controls. Without explicit
 time drives the field is absent; version and identity still receive the semantic upgrade.
 
+**State-selected color is a content gate above that ladder** (ADR-197).
+`machinome.color.color_when(condition, *, on, off)` selects a fixed hex for a
+finite numeric scalar, or retains one immutable scalar graph and two
+validated palettes. The common serializer publishes it on the same node as
+`color: {when, on, off}`, compiling `when` in the ordinary shared-expression
+pass. Any symbolic choice selects document 14 regardless of execution kind;
+`program` means running, `clocked` means clocked, and neither means posed.
+Legacy documents without a choice keep their earlier bytes and version.
+Color does not key geometry, create a second body or add retained state.
+Numeric reset/restore/replay and ordinary presentation recompute it from
+standing state. An authored color property may consume an explicitly
+referenced signal after the normal whole-tree fixpoint, without an early
+simulate read or a changed solver order. The paired viewer (API 30) prepares
+colors with placement admission and rebases the existing material
+presentation owner before composing overlays; no electrical or light-emission
+law is added. The publication context's restoration boundary includes its
+initial symbolic tree traversal, so a failure there restores numeric drivers,
+colors and pose through the existing replay rather than leaking tokens.
+
 **Version 8 is the CLOCKED rung** (ADR-128), read off the declaration by
 the same rule and DOMINATING every other: a tree in which anything
 declares a `State` publishes 8 whatever its content, because its pose

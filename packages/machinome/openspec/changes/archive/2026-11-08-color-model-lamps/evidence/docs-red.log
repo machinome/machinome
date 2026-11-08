@@ -1,0 +1,15 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ StateColorReferenceTest.test_helper_has_one_reference_and_source_compatibility _
+
+self = <tests.test_docs_structure.StateColorReferenceTest testMethod=test_helper_has_one_reference_and_source_compatibility>
+
+    def test_helper_has_one_reference_and_source_compatibility(self):
+        api = (DOCS / 'reference/api.rst').read_text()
+>       self.assertEqual(api.count('.. py:function:: machinome.color.color_when(condition, *, on, off)'), 1)
+E       AssertionError: 0 != 1
+
+packages/machinome/tests/test_docs_structure.py:893: AssertionError
+=========================== short test summary info ============================
+FAILED packages/machinome/tests/test_docs_structure.py::StateColorReferenceTest::test_helper_has_one_reference_and_source_compatibility
+1 failed, 38 deselected in 0.12s

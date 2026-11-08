@@ -1,0 +1,361 @@
+.F.............................................................. [ 23%]
+.......F.......................ss.................. [ 41%]
+...............................F............... [ 59%]
+.............................................................. [ 81%]
+.................F................................                       [100%]
+=================================== FAILURES ===================================
+_ AssetLoadOrderTest.test_coincident_parts_have_identical_pngs_when_response_order_reverses _
+
+self = <tests.test_asset_load_order.AssetLoadOrderTest testMethod=test_coincident_parts_have_identical_pngs_when_response_order_reverses>
+
+    def test_coincident_parts_have_identical_pngs_when_response_order_reverses(self):
+        with tempfile.TemporaryDirectory(prefix='viewer-load-order-') as temp:
+            stage = Path(temp)
+            shutil.copy2(bundle_path(), stage / 'viewer.js')
+            (stage / 'manifest.json').write_text(json.dumps(document()))
+            stl = plate_stl()
+            (stage / 'red.stl').write_bytes(stl)
+            (stage / 'blue.stl').write_bytes(stl)
+            (stage / 'index.html').write_text(
+                '<!doctype html><html><head><meta charset="utf-8">'
+                '<style>html,body,#host{margin:0;width:100%;height:100%;'
+                'overflow:hidden}canvas{display:block}</style></head><body>'
+                '<div id="host"></div><script src="/viewer.js"></script>'
+                '</body></html>')
+    
+            mode = {'delay': None}
+            completions = []
+            lock = threading.Lock()
+    
+            class DelayedHandler(QuietHandler):
+                def do_GET(self):
+                    path = urlsplit(self.path).path
+                    if path not in ('/red.stl', '/blue.stl'):
+                        return super().do_GET()
+                    name = path[1:-4]
+                    if name == mode['delay']:
+                        time.sleep(0.2)
+                    super().do_GET()
+                    with lock:
+                        completions.append(name)
+    
+            server = ThreadingHTTPServer(
+                ('127.0.0.1', 0), partial(DelayedHandler, directory=str(stage)))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                url = f'http://127.0.0.1:{server.server_address[1]}/'
+                first_frames = []
+                orders = []
+                centres = []
+                with sync_playwright() as playwright:
+                    browser = playwright.chromium.launch(args=[
+                        '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+                    try:
+                        for delayed in ('blue', 'red', 'red', 'blue'):
+                            mode['delay'] = delayed
+                            with lock:
+                                completions.clear()
+                            context = browser.new_context(
+                                viewport={'width': 640, 'height': 480},
+                                device_scale_factor=1)
+                            try:
+                                page = context.new_page()
+                                page.goto(url, wait_until='load')
+                                mounted = page.evaluate('''async () => {
+                                  if (MachinomeViewer.apiVersion !== 30)
+                                    throw Error('Expected Viewer API 29');
+                                  window.viewer = await MachinomeViewer.mount(
+                                    '#host', '/manifest.json', {
+                                      renderMode: 'on-demand', animation: 'external',
+                                      autoplay: false, driverControls: 'none',
+                                      partControls: 'none', time: 0.25,
+                                      up: [0, 1, 0], fov: 50,
+                                      view: {camera: [0, 0, 5], target: [0, 0, 0]}
+                                    });
+                                  window.viewer.setView({camera: [0, 0, 5],
+                                    target: [0, 0, 0]});
+                                  window.viewer.setTime(0.25);
+                                  return window.viewer.apiVersion;
+                                }''')
+>                               self.assertEqual(mounted, 29)
+E                               AssertionError: 30 != 29
+
+packages/machinome-viewer/tests/test_asset_load_order.py:294: AssertionError
+__ ModuleEntryTest.test_the_package_runs_as_a_module_through_the_interpreter ___
+
+self = <tests.test_cli.ModuleEntryTest testMethod=test_the_package_runs_as_a_module_through_the_interpreter>
+
+    def test_the_package_runs_as_a_module_through_the_interpreter(self):
+        result = subprocess.run(
+            [sys.executable, '-m', 'machinome.viewer.web', 'describe'],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        reported = json.loads(result.stdout)
+        self.assertIn('apiVersion', reported)
+>       self.assertEqual(reported['documentVersions'],
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+E       AssertionError: Lists differ: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] != [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+E       
+E       First list contains 1 additional elements.
+E       First extra element 13:
+E       14
+E       
+E       - [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+E       ?                                           ----
+E       
+E       + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+
+packages/machinome-viewer/tests/test_cli.py:90: AssertionError
+_ ProfileDocumentBrowserTest.test_producer_v13_bound_stops_and_replays_through_hosted_widget _
+
+self = <tests.test_profile_document.ProfileDocumentBrowserTest testMethod=test_producer_v13_bound_stops_and_replays_through_hosted_widget>
+
+    def test_producer_v13_bound_stops_and_replays_through_hosted_widget(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            served = Path(tempdir)
+            document = json.loads(FIXTURE.read_text())
+            document['root']['children'][0]['model'] = 'wheel.stl'
+            (served / 'viewer.json').write_text(json.dumps(document))
+            shutil.copy2(STAND_IN, served / 'wheel.stl')
+            shutil.copy2(bundle_path(), served / 'machinome-viewer.js')
+            (served / 'harness.html').write_text(PAGE)
+            errors = []
+            with serve_directory(served) as base, sync_playwright() as playwright:
+                browser = playwright.chromium.launch(args=[
+                    '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+                ])
+                try:
+                    page = browser.new_page(viewport={'width': 800, 'height': 600})
+                    page.on('pageerror', lambda error: errors.append(str(error)))
+                    page.on('console', lambda message: errors.append(message.text)
+                            if message.type == 'error' else None)
+                    page.goto(f'{base}/harness.html')
+                    result = page.evaluate("""async () => {
+                      const viewer = await MachinomeViewer.mount(
+                        document.getElementById('host'), 'viewer.json', {});
+                      const run = viewer.run();
+                      run.pause();
+                      const initial = await run.snapshot();
+                      const first = run.move('crank', { by: 5, duration: 0.1 });
+                      await run.step(24);
+                      const firstOutcome = await first;
+                      const stopped = run.state();
+                      await run.restore(initial);
+                      const second = run.move('crank', { by: 5, duration: 0.1 });
+                      await run.step(24);
+                      const secondOutcome = await second;
+                      const replay = run.state();
+                      return { api: viewer.apiVersion, dt: run.dt(),
+                        identity: run.identity(), initial, stopped, replay,
+                        firstOutcome, secondOutcome,
+                        canvas: document.querySelectorAll('#host canvas').length };
+                    }""")
+                    SHOT.parent.mkdir(exist_ok=True)
+                    page.screenshot(path=str(SHOT), timeout=30000)
+                finally:
+                    browser.close()
+    
+        self.assertEqual(errors, [], errors)
+>       self.assertEqual(result['api'], 30)
+E       AssertionError: 30 != 29
+
+packages/machinome-viewer/tests/test_profile_document.py:85: AssertionError
+__ ViewerMountApiTest.test_the_bundle_and_mount_handle_report_one_api_version __
+
+self = <tests.test_widget_e2e.ViewerMountApiTest testMethod=test_the_bundle_and_mount_handle_report_one_api_version>
+
+    def test_the_bundle_and_mount_handle_report_one_api_version(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
+          return { bundle: MachinomeViewer.apiVersion, handle: viewer.apiVersion,
+                   run: viewer.run(), machine: viewer.machine() };
+        }""")
+        self.assertEqual(result['bundle'], api_version())
+        self.assertEqual(result['bundle'], result['handle'])
+        # OpenSpec `draw-what-a-part-carries`: drawing the markings a
+        # document's parts carry is a capability a host may require, so
+        # the declared version moves to 14. 13 is skipped deliberately
+        # (design D9), the in-flight `slide-and-turn-parts` cycle
+        # claiming it. OpenSpec `execute-the-self-read`: executing a
+        # version 6 document -- a law that reads the coordinate it
+        # drives -- is the next such capability, and unlike `controls`
+        # and `markings` it is not additive, so this moves to 15 and the
+        # document list moves with it. OpenSpec `execute-the-selection`:
+        # executing a version 7 document -- a compiled program some of
+        # whose law edges form a BLOCK, ordered per PIECE of a tick from
+        # the published edges rather than run in the published listing --
+        # is the one after that, and it is not additive either, so this
+        # moves to 16 and the document list moves with it again. OpenSpec
+        # `execute-the-commit`: executing a version 8 document -- a root
+        # that declares a `State`, whose document carries a compiled
+        # CLOCKED machine instead of a program -- is the one after that,
+        # and it is not additive either, so this moves to 17 and the
+        # document list moves with it again. OpenSpec `run-the-clock`:
+        # ADVANCING a clocked machine's clock -- the elapsed seconds a
+        # build at 17 banks, poses from and refuses every request on --
+        # is the one after that, and this moves to 18; the document list
+        # does NOT move with it, because no new document shape is read.
+        # OpenSpec `play-the-instruction`: PLAYING a clocked machine's
+        # declared instruction -- one request solved before the first
+        # frame and its transition drawn over the declared duration,
+        # where a build at 18 lists the same button and refuses it -- is
+        # the one after that, and this moves to 19; the document list
+        # does NOT move with it either. OpenSpec `track-a-part-on-screen`
+        # declares 28 once for three film-annotation capabilities -- part
+        # and point tracking, highlighting, and a per-view up and field of
+        # view -- with the document list unchanged. OpenSpec
+        # `on-demand-clocked` declares 29: an on-demand mount of a clocked
+        # machine, with the document list unchanged again.
+>       self.assertEqual(result['bundle'], 30)
+E       AssertionError: 30 != 29
+
+packages/machinome-viewer/tests/test_widget_e2e.py:253: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/formparsers.py:12
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+.venv/lib/python3.12/site-packages/starlette/testclient.py:41
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/starlette/testclient.py:41: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    [], typing.ContextManager[anyio.abc.BlockingPortal]
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:247: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    list(alpha.crop((0, 0, image.width, 1)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:248: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((0, image.height - 1, image.width, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:249: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((0, 0, 1, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:250: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((image.width - 1, 0, image.width, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:253: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertIn(255, alpha.getdata())
+
+tests/test_capture.py::MarkedStagedDocumentTest::test_a_marked_model_is_photographed_with_its_markings
+tests/test_capture.py::MarkedStagedDocumentTest::test_a_marked_model_is_photographed_with_its_markings
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:469: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for red, green, blue in image.getdata():
+
+tests/test_capture.py::FullscreenCaptureTest::test_the_photograph_has_a_transparent_bottom_right_corner
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:537: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertEqual(set(corner.getchannel('A').getdata()), {0})
+
+tests/test_running_document.py::TouchedByHandTest::test_a_part_the_table_does_not_name_moves_the_camera
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_running_document.py:1186: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for index, pixel in enumerate(diff.getdata())
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+    warnings.warn(  # deprecated in 14.0 - 2024-11-09
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_impl.py:16: DeprecationWarning: websockets.server.WebSocketServerProtocol is deprecated
+    from websockets.server import WebSocketServerProtocol
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/legacy/server.py:1168: DeprecationWarning: remove second argument of ws_handler
+    warnings.warn("remove second argument of ws_handler", DeprecationWarning)
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/exceptions.py:137: DeprecationWarning: ConnectionClosed.code is deprecated; use Protocol.close_code or ConnectionClosed.rcvd.code
+    warnings.warn(  # deprecated in 13.1 - 2024-09-21
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/exceptions.py:148: DeprecationWarning: ConnectionClosed.reason is deprecated; use Protocol.close_reason or ConnectionClosed.rcvd.reason
+    warnings.warn(  # deprecated in 13.1 - 2024-09-21
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_server.py:238: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    red = sum(1 for r, g, b in image.getdata()
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_server.py:240: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    blue = sum(1 for r, g, b in image.getdata()
+
+tests/test_state_color.py::ModelColorBrowserTest::test_clocked_snapshot_reset_restore_replay_and_event_parity
+tests/test_state_color.py::ModelColorBrowserTest::test_ordinary_slider_default_overlay_and_reload_use_the_same_glass
+tests/test_state_color.py::ModelColorBrowserTest::test_running_committed_frames_restore_reset_and_replay
+tests/test_state_color.py::ModelColorBrowserTest::test_settled_relation_property_reaches_the_ordinary_viewer
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_state_color.py:89: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertGreater(sum(max(pixel) > 4 for pixel in diff.getdata()), 100)
+
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_state_color.py:223: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertIn(255, images[name].getchannel('A').getdata())
+
+tests/test_widget_e2e.py::WidgetE2ETest::test_full_cycle_returns_to_start
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_time_parameter_poses_the_animation
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:73: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for pixel in image.getdata() if predicate(*pixel))
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1240: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    green = lambda image: sum(1 for r, g, b in image.getdata() if g > 150 and g > r + 60 and g > b + 60)
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1317: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(difference.getdata()) / (a.width * a.height)
+
+tests/test_widget_e2e.py: 12 warnings
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1691: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for width, low in zip(spread.getdata(), darkest.getdata())))
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1702: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for value in mask.getdata() if value)
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1705: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    indices = [index for index, value in enumerate(mask.getdata()) if value]
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1747: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    in zip(changed.getdata(), decal.getdata())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED packages/machinome-viewer/tests/test_asset_load_order.py::AssetLoadOrderTest::test_coincident_parts_have_identical_pngs_when_response_order_reverses
+FAILED packages/machinome-viewer/tests/test_cli.py::ModuleEntryTest::test_the_package_runs_as_a_module_through_the_interpreter
+FAILED packages/machinome-viewer/tests/test_profile_document.py::ProfileDocumentBrowserTest::test_producer_v13_bound_stops_and_replays_through_hosted_widget
+FAILED packages/machinome-viewer/tests/test_widget_e2e.py::ViewerMountApiTest::test_the_bundle_and_mount_handle_report_one_api_version
+4 failed, 268 passed, 2 skipped, 71 warnings, 208 subtests passed in 278.00s (0:04:37)

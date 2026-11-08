@@ -227,6 +227,7 @@ that way.
 - [ADR-037](VIEWER-WEB/ADR-037-targeted-in-place-viewer-updates.md) — Targeted in-place viewer updates — **Accepted** — *Kept* in the viewer's log, `packages/machinome-viewer/workflow/adrs/` (ADR-068, ADR-188)
 
 ### EXPORT — static distribution
+- [ADR-197](EXPORT/ADR-197-a-state-color-is-presentation-on-the-existing-body.md) — A state color is presentation on the existing body: two fixed colors through the shared scalar graph and document 14, preserving physical identity — **Accepted**
 - [ADR-068](EXPORT/ADR-068-optional-viewer-package-behind-a-process-boundary.md) — Optional viewer package behind a process boundary — **Accepted**, amends 020, 035, 036, 041, repository and licence superseded by 188, entry point and process boundary superseded by 194
 - [ADR-020](EXPORT/ADR-020-static-export-and-embeddable-viewer-widget.md) — Static export and embeddable widget — **Accepted** — *Kept* in the viewer's log, `packages/machinome-viewer/workflow/adrs/` (ADR-068, ADR-188)
 - [ADR-034](EXPORT/ADR-034-shared-node-tree-document-schema.md) — Shared node-tree document schema across export and build snapshots — **Accepted**, amended by 051

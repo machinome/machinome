@@ -1,0 +1,181 @@
+{
+  "base": "6f07b083d3e9a4194d5f982ce200ae9dc6ffe4b9",
+  "planning_commit": "d7884a33b942dc9f57ba605eb5490b78ebbdb4d2",
+  "runtime_receipt": {
+    "path": "evidence/runtime-inputs-final.json",
+    "sha256": "8f485df29d82729c1b03ca88d29c866b74311d2c386ac001dcbc9762d9954080"
+  },
+  "files": {
+    "evidence/after-archive-core-tests.log": {
+      "bytes": 87,
+      "sha256": "9fb8d34f0dbe005c1f73a6254ad1e977a52041ed22093582cea31ee7b5798a67"
+    },
+    "evidence/after-archive-focused-tests.log": {
+      "bytes": 922,
+      "sha256": "7ccdacfc6f83229d77f9c021dfd45c58494b189960f57e335078ac305e42b4b7"
+    },
+    "evidence/after-archive-spec-validation.json": {
+      "bytes": 89250,
+      "sha256": "2192edb2681807a37a0a631bbcadc2407ad24d193bdca12f303b1638acb80db2"
+    },
+    "evidence/after-archive-studio-contract.log": {
+      "bytes": 98,
+      "sha256": "a71df3ef716cabe43ead70bd8311cda3aeadcb986bea501da0ea9262f31c3925"
+    },
+    "evidence/core-docs-final-green.log": {
+      "bytes": 154,
+      "sha256": "bd62287f94a7a7fff82042998d518ee09fd7027da1386f4e785955087181c37b"
+    },
+    "evidence/core-docs-green.log": {
+      "bytes": 2238,
+      "sha256": "7916bc7568aed7424f78778eb644992688bcbba533e2f3f6176c2bcbcb2e2a72"
+    },
+    "evidence/core-first-implementation.log": {
+      "bytes": 87,
+      "sha256": "9400251bda108195ec3206dfc1423dfb1bb9b945b066ed940d7d22637190246b"
+    },
+    "evidence/core-green.log": {
+      "bytes": 87,
+      "sha256": "aa342e0b410d02e8629560b27a9a95f7d1cf0a772966b1d1f426c16139975496"
+    },
+    "evidence/core-property-first.log": {
+      "bytes": 2162,
+      "sha256": "75838bb579ec28f91717a31031dc9d5c6147d53ce2b893edf12c38f66f7b4435"
+    },
+    "evidence/core-red.log": {
+      "bytes": 976,
+      "sha256": "173d1ca3e5a3c17166dff3ffba67f1317d639c4eb979522e594d505c4cb0dcac"
+    },
+    "evidence/core-regressions.log": {
+      "bytes": 5680,
+      "sha256": "33304903915e115f797c571492841da93b9e5f217bfb75c6750e2b11564f211e"
+    },
+    "evidence/core-wheel.log": {
+      "bytes": 25573,
+      "sha256": "38777822d222fb0e5626dc3fed6666cbc840eac8eed305ecaf66a8d28a7e66a3"
+    },
+    "evidence/docs-environment.log": {
+      "bytes": 442,
+      "sha256": "3d8272b64e6416225b7eeca9b95cc1836f5903638ebb01bea61d3231c82a11da"
+    },
+    "evidence/docs-first-green.log": {
+      "bytes": 6933,
+      "sha256": "1e60c9938e69664c60cf8a04a4af9b1cf9fb925978a1735f0b38ef5330173951"
+    },
+    "evidence/docs-red.log": {
+      "bytes": 955,
+      "sha256": "d921066bbaa8a8ceb483e86a6de83225dcc44833d76a019a3a0ee5d86a72625f"
+    },
+    "evidence/environment-not-ready.log": {
+      "bytes": 104,
+      "sha256": "4c32ca71b2469bdaeb3b908b402a7bc6d3c13c2199ade633cb0793e51d6eff46"
+    },
+    "evidence/export-fixtures-final.log": {
+      "bytes": 6864,
+      "sha256": "a5fcdb4029457d66dfa6556dfa0850a351c5014c773bd41770dd295dce2bb2d0"
+    },
+    "evidence/export-fixtures-publication-scope.log": {
+      "bytes": 9100,
+      "sha256": "2b3bdf2000a996a639db2b7062b64a7d3a370da0570a945de32f7110708a499f"
+    },
+    "evidence/export-fixtures-second.log": {
+      "bytes": 5965,
+      "sha256": "ca9f88801344a174b4d428f1ac22b70fed05826e22bbc1d73eb8fc92f3f6126e"
+    },
+    "evidence/export-fixtures.log": {
+      "bytes": 6597,
+      "sha256": "f35cd18d15564be52a45a606c7b467d08f17922bcffe44d23da125d2e80d0e88"
+    },
+    "evidence/final-core-state-and-legacy.log": {
+      "bytes": 1542,
+      "sha256": "7aa6445313703a8dfb9f2fa9788afa63ed97049b265ba1bf45f04510f59328b8"
+    },
+    "evidence/final-spec-validation.json": {
+      "bytes": 89254,
+      "sha256": "b32cb346146c298a18d1625b7b0e2480d5e2a81f4f16a2b324250e68ed7c6916"
+    },
+    "evidence/manual-build-second.log": {
+      "bytes": 10061,
+      "sha256": "04d4506e1f3d1a0ea0f861c098b2fd2a3ff854bd0373fc57cb66ce4254bdeba9"
+    },
+    "evidence/manual-build.log": {
+      "bytes": 1065,
+      "sha256": "7bc4c49be22a4407cc9f28cf09b4a3b69117f77a1a8b4a1ca90d372b18f72ef5"
+    },
+    "evidence/manual-reader-review.txt": {
+      "bytes": 1753,
+      "sha256": "782ddfbced30f9466bb98ddb642b631ef9ad9a721d72274d1e97a3f175f6b1df"
+    },
+    "evidence/manual-regressions.log": {
+      "bytes": 115,
+      "sha256": "8569f642f904e2c87103f31cec1d19418c75d90cfd0f8e5fa30c3f69c799ac8c"
+    },
+    "evidence/native-admission-second.log": {
+      "bytes": 87,
+      "sha256": "181efc5f747414f9b8faa4fb3abf0e4271269bbdff05cc03797afa4896bf5e21"
+    },
+    "evidence/native-admission.log": {
+      "bytes": 1118,
+      "sha256": "a33a7e3d95f91f648de0f80a7103f43b85d66bffb6b35461e1ee7f6ed113c19c"
+    },
+    "evidence/parent-actual-audit.json": {
+      "bytes": 1109,
+      "sha256": "15df2f463c9b8394686439925bb0fcb053c678abe094d2d74feb6e6c7c6df93e"
+    },
+    "evidence/runtime-inputs-final.json": {
+      "bytes": 3114,
+      "sha256": "8f485df29d82729c1b03ca88d29c866b74311d2c386ac001dcbc9762d9954080"
+    },
+    "evidence/runtime-inputs.json": {
+      "bytes": 2722,
+      "sha256": "d90811459b53b908e76a292293e32b28d8f16c5f7dab09267fd4a3c7c1211d99"
+    },
+    "evidence/state-color-identity.log": {
+      "bytes": 87,
+      "sha256": "de452d182e01c732d4a8bf9054acbd28d0342b718ed2a1ba361b9aa7e861a38a"
+    },
+    "evidence/studio-contract-green.log": {
+      "bytes": 115,
+      "sha256": "01becdb10fd5cce33b159b2d42794ba7781318d4cdf97398f0a0509b935c7da6"
+    },
+    "evidence/studio-contract-red.log": {
+      "bytes": 152323,
+      "sha256": "f9e599c383f6dd972ef934c28e18ef42e3381454b5fb7fce1ed78b76ac271e34"
+    },
+    "evidence/traversal-restoration-red.log": {
+      "bytes": 1720,
+      "sha256": "400807e09a4f94318f45add4ab88c0f006fa234d48b5bc615e7bce94ac6aa1f7"
+    },
+    "evidence/wheel-smoke.log": {
+      "bytes": 234,
+      "sha256": "211a0e772f9506db80708fc2061f89595b8038602931d765e3200e5b581395ae"
+    }
+  },
+  "actual_project_acceptance": {
+    "verified_ordered_cases": 63,
+    "verified_actual_colors": 1638,
+    "verified_complete_driver_banks": 63,
+    "source_oracle_sha256": "157e4303f774867121414f0a9dbd9698edf3517e7118ea6a54f19e9561ddfd80",
+    "combined_receipt": "packages/machinome-viewer/openspec/changes/archive/2026-11-08-read-model-color-choice/acceptance/enigma-combined-acceptance.json",
+    "combined_receipt_sha256": "e803afb15ce142ff8a19f07b9de873b1d733deeabfdc2a43b8ab0e3c33317630",
+    "run_membership": {
+      "enigma-memory-candidate-readback": 44,
+      "enigma-memory-candidate-continuation": 19
+    },
+    "continuation_returncode": 0,
+    "all_remaining_owned_empty": true,
+    "same_public_body_inventory": true,
+    "model_requests_per_context": 572,
+    "zero_control_refetch": true,
+    "production_sources_match_frozen_runtime": true,
+    "project_commit": "0d2416a93e3b4ada6147e69561cbed5f0bf2885c",
+    "project_receipt_sha256": "a89edda2307660186ebca88b7234da6a746d7ea5c052483ca9de51dafd480d39",
+    "combined_receipt_at_measurement": "packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma-combined-acceptance.json"
+  },
+  "all_tasks_complete": true,
+  "spec_validation": {
+    "core_passed": 52,
+    "viewer_passed": 16
+  },
+  "source_and_actual_viewer_review": "root approved; local integration/final ordinary Studio delivery are root-owned subsequent steps"
+}

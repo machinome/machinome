@@ -1,0 +1,6 @@
+{
+  "path": "packages/machinome-viewer/tests/test_state_color.py",
+  "before_sha256": "fe37abdeca445495102983c7d8a6191df130caf5a4183b627f3533c1f3b144ee",
+  "after_sha256": "9aaf8692b7b2147d0176af34b7d90cbe3cc9c44b24f632c92d0775b617c20d74",
+  "change": "remove only extra blank line at EOF after validation; executable test statements unchanged; original validation hash map preserved"
+}

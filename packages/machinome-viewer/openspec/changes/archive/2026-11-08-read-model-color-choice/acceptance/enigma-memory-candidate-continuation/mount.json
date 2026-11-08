@@ -1,0 +1,38 @@
+{
+  "api": 30,
+  "mount_ms": 10188.800000011921,
+  "next_frame_ms": 367.80000001192093,
+  "driver_ids": [
+    "battery_lid",
+    "carrier_angle",
+    "deflection",
+    "key_number",
+    "left_phase",
+    "left_pitch_offset",
+    "middle_phase",
+    "middle_pitch_offset",
+    "right_phase",
+    "right_pitch_offset",
+    "supply_connected"
+  ],
+  "view": {
+    "camera": {
+      "x": 172.19085714327616,
+      "y": -52.19085686015441,
+      "z": 244.75368583383013
+    },
+    "target": {
+      "x": -3.0000000000002416,
+      "y": 123.000000283122,
+      "z": 104.601000119209
+    },
+    "up": {
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    "fov": 50
+  },
+  "run": null,
+  "machine": null
+}

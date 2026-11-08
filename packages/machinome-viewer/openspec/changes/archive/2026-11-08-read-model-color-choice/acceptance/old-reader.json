@@ -1,0 +1,11 @@
+{
+  "bundle_sha256": "ac3621ef83eedc32cdd276f8cc5f537b26454de1dc744fcf937a66ff8ecaa609",
+  "document_sha256": "92abbf50572d7dbf08c3690939120ba31147db9f9b889a5cd6f0342fa5d801f0",
+  "result": {
+    "api": 29,
+    "error": "fixture/manifest.json declares document version 14, which this viewer does not render; it renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13. The document is written to a schema this build cannot read: refusing it rather than rendering part of a machine it does not understand.",
+    "canvases": 1,
+    "model_requests": [],
+    "chromium_version": "153.0.8010.12"
+  }
+}

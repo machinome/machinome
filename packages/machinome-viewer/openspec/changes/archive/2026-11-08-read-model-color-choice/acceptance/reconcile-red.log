@@ -1,0 +1,65 @@
+
+> @machinome/viewer@0.9.0 test
+> vitest run --maxWorkers=2 src/color.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+
+ ❯ src/color.test.ts (19 tests | 1 failed) 43ms
+   ✓ version-14 model colors > loads a posed choice without inventing a missing running program 3ms
+   ✓ version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#fff","off":"#e5dfce"} 1ms
+   ✓ version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978","off":"yellow"} 0ms
+   ✓ version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978"} 0ms
+   ✓ version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978","off":"#e5dfce","extra":1} 0ms
+   ✓ version-14 model colors > refuses malformed choices before rendering: {"when":1,"on":"#ffd978","off":"#e5dfce"} 0ms
+   ✓ version-14 model colors > refuses malformed choices before rendering: [] 0ms
+   ✓ version-14 model colors > selects the standard-produced posed runtime by payload 1ms
+   ✓ version-14 model colors > selects the standard-produced clocked runtime by payload 2ms
+   ✓ version-14 model colors > selects the standard-produced running runtime by payload 2ms
+   ✓ version-14 model colors > refuses both execution payloads together in version fourteen 0ms
+   ✓ version-14 model colors > admits existing profile, Follow and time-drive payloads in version fourteen 6ms
+   ✓ version-14 model colors > refuses old-version choices and undeclared binding inputs 1ms
+   ✓ version-14 model colors > resolves finite zero/nonzero, inheritance, overrides and fixed markings without replacing anything 6ms
+   ✓ version-14 model colors > prepares colors and transforms atomically and recovers scope after sqrt(2 - powered) 2ms
+   ✓ version-14 model colors > prepares colors and transforms atomically and recovers scope after ((powered > 2) ? powered.missing : 0) 2ms
+   ✓ version-14 model colors > rebases every overlay from the current declared color, preserving material identity 2ms
+   × version-14 model colors > refuses an invalid republished color before clearing overlays or changing the standing tree 8ms
+     → promise resolved "undefined" instead of rejecting
+   ✓ version-14 model colors > keeps an inherited flexible color through geometry evaluation and reconciliation 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > refuses an invalid republished color before clearing overlays or changing the standing tree
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ src/color.test.ts:159:86
+    157|     const incoming = document(choice('sqrt(-powered)'));
+    158|     const beforeCommit = vi.fn(() => owner.forget());
+    159|     await expect(tree.reconcile(incoming.root, '/', null, table, scope…
+       |                                                                                      ^
+    160|     expect(beforeCommit).not.toHaveBeenCalled();
+    161|     expect(tree.assembly().children[0].color).toBe(ON);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  20:20:01
+   Duration  1.06s (transform 548ms, setup 0ms, collect 744ms, tests 43ms, environment 0ms, prepare 107ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+npm error workspace @machinome/viewer@0.9.0
+npm error location /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+npm error command failed
+npm error command sh -c vitest run --maxWorkers=2 src/color.test.ts

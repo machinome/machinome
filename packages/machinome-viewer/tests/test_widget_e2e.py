@@ -250,7 +250,7 @@ class ViewerMountApiTest(TestCase):
         # view -- with the document list unchanged. OpenSpec
         # `on-demand-clocked` declares 29: an on-demand mount of a clocked
         # machine, with the document list unchanged again.
-        self.assertEqual(result['bundle'], 29)
+        self.assertEqual(result['bundle'], 30)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])

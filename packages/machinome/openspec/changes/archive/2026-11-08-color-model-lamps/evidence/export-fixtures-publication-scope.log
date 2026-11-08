@@ -1,0 +1,115 @@
+ INFO -       node.base - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.scad generated with 1794169617.0781124!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Job started with pid 2541257
+ INFO -       node.base - waiting for /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl ...
+Geometries in cache: 1
+Geometry cache size in bytes: 728
+CGAL Polyhedrons in cache: 0
+CGAL cache size in bytes: 0
+Total rendering time: 0:00:00.000
+   Top level object is a 3D object:
+   Facets:          6
+ INFO -       node.base - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl done!
+ INFO -       node.base - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl generated with 1794169617.0781124!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/posed/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/posed/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/powered/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/powered/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/clocked/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/clocked/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/running/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/running/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/invalid-clocked/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/invalid-clocked/manifest.json written
+ INFO -       node.base - /tmp/machinome-lamp-fixture-build/color_project/model-ObservedGlass-cd6c95724b92.scad generated with 1794169617.0781124!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Job started with pid 2541335
+ INFO -       node.base - waiting for /tmp/machinome-lamp-fixture-build/color_project/model-ObservedGlass-cd6c95724b92.stl ...
+Geometries in cache: 1
+Geometry cache size in bytes: 728
+CGAL Polyhedrons in cache: 0
+CGAL cache size in bytes: 0
+Total rendering time: 0:00:00.000
+   Top level object is a 3D object:
+   Facets:          6
+ INFO -       node.base - /tmp/machinome-lamp-fixture-build/color_project/model-ObservedGlass-cd6c95724b92.stl done!
+ INFO -       node.base - /tmp/machinome-lamp-fixture-build/color_project/model-ObservedGlass-cd6c95724b92.stl generated with 1794169617.0781124!
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-ObservedGlass-cd6c95724b92.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/relation-property/models/color_project/model-ObservedGlass-cd6c95724b92.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/relation-property/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/clocked-state/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/clocked-state/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/publication-safe/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/publication-safe/manifest.json written
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Triggering children
+ INFO -       node.base - Generating stl
+ INFO -       node.base - STL up to date
+ INFO -       node.base - Generating stl
+ INFO -       node.base - Non rigid node, no STL to generate
+ INFO -     core.export - /tmp/machinome-lamp-fixture-build/color_project/model-Glass-82c268188cd6.stl -> /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/publication-unsafe/models/color_project/model-Glass-82c268188cd6.stl
+ INFO -     core.export - /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/fixtures/state-color/publication-unsafe/manifest.json written

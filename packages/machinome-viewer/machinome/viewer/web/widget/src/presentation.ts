@@ -16,7 +16,8 @@
 // any overlay touches it, computes the presented values from the base
 // and the overlays standing -- never from the current values -- and
 // writes the base back and forgets the record when the last overlay
-// leaves.
+// leaves. Model-selected colors rebase that declared color through the
+// same owner, which recomposes any overlays still standing.
 
 import * as THREE from 'three';
 import type { AssemblyPath } from './tree';
@@ -123,6 +124,16 @@ export class MaterialPresentation {
     lit: Set<THREE.Mesh>; others: Set<THREE.Mesh>;
     color: THREE.Color; mode: OthersMode;
   } | null = null;
+
+  /** Change the declared model color, then compose the standing overlays
+   * from that base. Never read a dimmed/highlighted visible color as base. */
+  setBaseColor(mesh: THREE.Mesh, color: string): void {
+    for (const material of materialsOf(mesh)) {
+      const base = this.bases.get(material) ?? this.record(material);
+      base.color?.set(color);
+    }
+    this.present(new Set([mesh]));
+  }
 
   /** The meshes the hover lift stands on; `[]` lifts nothing. */
   setHover(meshes: readonly THREE.Mesh[]): void {

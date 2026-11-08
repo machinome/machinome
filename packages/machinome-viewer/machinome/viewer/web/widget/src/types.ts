@@ -54,10 +54,18 @@ export interface ManifestMarking {
   mtime?: number;
 }
 
+export interface ManifestColorChoice {
+  when: string;
+  on: string;
+  off: string;
+}
+
+export type ManifestColor = string | null | ManifestColorChoice;
+
 export interface ManifestNode {
   name: string;
   type: string;
-  color: string | null;
+  color: ManifestColor;
   operations: RawOperation[];
   // A rigid node has a model (path relative to the manifest) and no
   // children; a non-rigid node has children.
@@ -81,7 +89,7 @@ export interface ManifestNode {
 // LOWEST version its content needs -- a document holding no flexible
 // node is byte-identical to the version 2 it always was -- so accepting
 // the whole union is accepting exactly what the producer can emit.
-export type ManifestVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+export type ManifestVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 
 // One entry of a version-4 document's shared-subexpression table
 // (OpenSpec `read-expression-bindings`, ADR-044). `expression` names

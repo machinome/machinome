@@ -1,0 +1,396 @@
+* Getting build dependencies for wheel...
+running egg_info
+writing machinome.egg-info/PKG-INFO
+writing dependency_links to machinome.egg-info/dependency_links.txt
+writing entry points to machinome.egg-info/entry_points.txt
+writing requirements to machinome.egg-info/requires.txt
+writing top-level names to machinome.egg-info/top_level.txt
+reading manifest file 'machinome.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+warning: no previously-included files matching '__pycache__' found under directory '*'
+warning: no files found matching '*.jpg' under directory 'docs'
+warning: no files found matching '*.gif' under directory 'docs'
+adding license file 'LICENSE'
+adding license file 'LICENSES/CERN-OHL-S-2.0.txt'
+adding license file 'LICENSES/GPL-2.0-or-later.txt'
+writing manifest file 'machinome.egg-info/SOURCES.txt'
+* Building wheel...
+running bdist_wheel
+running build
+running build_py
+creating build/lib/machinome
+copying machinome/manifest.py -> build/lib/machinome
+copying machinome/_artifact.py -> build/lib/machinome
+copying machinome/sphinx.py -> build/lib/machinome
+copying machinome/_verdict_store.py -> build/lib/machinome
+copying machinome/test.py -> build/lib/machinome
+copying machinome/model.py -> build/lib/machinome
+copying machinome/expression_graph.py -> build/lib/machinome
+copying machinome/extras.py -> build/lib/machinome
+copying machinome/brep_artifacts.py -> build/lib/machinome
+copying machinome/components.py -> build/lib/machinome
+copying machinome/cli.py -> build/lib/machinome
+copying machinome/__init__.py -> build/lib/machinome
+copying machinome/color.py -> build/lib/machinome
+copying machinome/math.py -> build/lib/machinome
+copying machinome/currency.py -> build/lib/machinome
+copying machinome/source_generation.py -> build/lib/machinome
+copying machinome/parameters.py -> build/lib/machinome
+copying machinome/brep_cache.py -> build/lib/machinome
+creating build/lib/machinome/production
+copying machinome/production/stock.py -> build/lib/machinome/production
+copying machinome/production/sourcing.py -> build/lib/machinome/production
+copying machinome/production/errors.py -> build/lib/machinome/production
+copying machinome/production/profile.py -> build/lib/machinome/production
+copying machinome/production/process.py -> build/lib/machinome/production
+copying machinome/production/__init__.py -> build/lib/machinome/production
+copying machinome/production/item.py -> build/lib/machinome/production
+copying machinome/production/mass.py -> build/lib/machinome/production
+copying machinome/production/material.py -> build/lib/machinome/production
+copying machinome/production/results.py -> build/lib/machinome/production
+copying machinome/production/instruction.py -> build/lib/machinome/production
+creating build/lib/machinome/core
+copying machinome/core/expressions.py -> build/lib/machinome/core
+copying machinome/core/export.py -> build/lib/machinome/core
+copying machinome/core/processes.py -> build/lib/machinome/core
+copying machinome/core/camera.py -> build/lib/machinome/core
+copying machinome/core/expression_parser.py -> build/lib/machinome/core
+copying machinome/core/__init__.py -> build/lib/machinome/core
+copying machinome/core/builder.py -> build/lib/machinome/core
+copying machinome/core/loader.py -> build/lib/machinome/core
+copying machinome/core/pieces.py -> build/lib/machinome/core
+copying machinome/core/serializer.py -> build/lib/machinome/core
+copying machinome/core/logging.py -> build/lib/machinome/core
+creating build/lib/machinome/viewer
+copying machinome/viewer/__init__.py -> build/lib/machinome/viewer
+creating build/lib/machinome/simulation
+copying machinome/simulation/trajectory.py -> build/lib/machinome/simulation
+copying machinome/simulation/play.py -> build/lib/machinome/simulation
+copying machinome/simulation/profile.py -> build/lib/machinome/simulation
+copying machinome/simulation/run.py -> build/lib/machinome/simulation
+copying machinome/simulation/sim.py -> build/lib/machinome/simulation
+copying machinome/simulation/program.py -> build/lib/machinome/simulation
+copying machinome/simulation/clocked.py -> build/lib/machinome/simulation
+copying machinome/simulation/follow.py -> build/lib/machinome/simulation
+copying machinome/simulation/driver.py -> build/lib/machinome/simulation
+copying machinome/simulation/__init__.py -> build/lib/machinome/simulation
+copying machinome/simulation/state.py -> build/lib/machinome/simulation
+copying machinome/simulation/timebase.py -> build/lib/machinome/simulation
+copying machinome/simulation/enumeration.py -> build/lib/machinome/simulation
+copying machinome/simulation/scenario.py -> build/lib/machinome/simulation
+copying machinome/simulation/contact_proof.py -> build/lib/machinome/simulation
+copying machinome/simulation/control.py -> build/lib/machinome/simulation
+copying machinome/simulation/instruction.py -> build/lib/machinome/simulation
+creating build/lib/machinome/node
+copying machinome/node/sheet_leaf.py -> build/lib/machinome/node
+copying machinome/node/frames.py -> build/lib/machinome/node
+copying machinome/node/base.py -> build/lib/machinome/node
+copying machinome/node/flexible.py -> build/lib/machinome/node
+copying machinome/node/internal.py -> build/lib/machinome/node
+copying machinome/node/operations.py -> build/lib/machinome/node
+copying machinome/node/supported.py -> build/lib/machinome/node
+copying machinome/node/decorators.py -> build/lib/machinome/node
+copying machinome/node/presentation.py -> build/lib/machinome/node
+copying machinome/node/sources.py -> build/lib/machinome/node
+copying machinome/node/assembly.py -> build/lib/machinome/node
+copying machinome/node/phase.py -> build/lib/machinome/node
+copying machinome/node/fusion.py -> build/lib/machinome/node
+copying machinome/node/__init__.py -> build/lib/machinome/node
+copying machinome/node/markings.py -> build/lib/machinome/node
+copying machinome/node/brep_leaf.py -> build/lib/machinome/node
+copying machinome/node/qualified.py -> build/lib/machinome/node
+copying machinome/node/leaf.py -> build/lib/machinome/node
+copying machinome/node/declarative.py -> build/lib/machinome/node
+creating build/lib/machinome/motion
+copying machinome/motion/couplings.py -> build/lib/machinome/motion
+copying machinome/motion/mechanical.py -> build/lib/machinome/motion
+copying machinome/motion/constraints.py -> build/lib/machinome/motion
+copying machinome/motion/__init__.py -> build/lib/machinome/motion
+copying machinome/motion/ports.py -> build/lib/machinome/motion
+copying machinome/motion/mates.py -> build/lib/machinome/motion
+copying machinome/motion/joints.py -> build/lib/machinome/motion
+creating build/lib/machinome/engine
+copying machinome/engine/__init__.py -> build/lib/machinome/engine
+creating build/lib/machinome/manager
+copying machinome/manager/export.py -> build/lib/machinome/manager
+copying machinome/manager/test.py -> build/lib/machinome/manager
+copying machinome/manager/import_step.py -> build/lib/machinome/manager
+copying machinome/manager/viewer.py -> build/lib/machinome/manager
+copying machinome/manager/models.py -> build/lib/machinome/manager
+copying machinome/manager/snapshot.py -> build/lib/machinome/manager
+copying machinome/manager/build.py -> build/lib/machinome/manager
+copying machinome/manager/__init__.py -> build/lib/machinome/manager
+copying machinome/manager/develop.py -> build/lib/machinome/manager
+copying machinome/manager/new.py -> build/lib/machinome/manager
+copying machinome/manager/vet.py -> build/lib/machinome/manager
+creating build/lib/machinome/vet
+copying machinome/vet/__init__.py -> build/lib/machinome/vet
+copying machinome/vet/resolve.py -> build/lib/machinome/vet
+copying machinome/vet/assertions.py -> build/lib/machinome/vet
+creating build/lib/machinome/node/adapters
+copying machinome/node/adapters/__init__.py -> build/lib/machinome/node/adapters
+creating build/lib/machinome/manager/templates/project
+copying machinome/manager/templates/project/test.py -> build/lib/machinome/manager/templates/project
+creating build/lib/machinome/manager/templates/project/root
+copying machinome/manager/templates/project/root/solid2.py -> build/lib/machinome/manager/templates/project/root
+copying machinome/manager/templates/project/root/cadquery.py -> build/lib/machinome/manager/templates/project/root
+running egg_info
+writing machinome.egg-info/PKG-INFO
+writing dependency_links to machinome.egg-info/dependency_links.txt
+writing entry points to machinome.egg-info/entry_points.txt
+writing requirements to machinome.egg-info/requires.txt
+writing top-level names to machinome.egg-info/top_level.txt
+reading manifest file 'machinome.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+warning: no previously-included files matching '__pycache__' found under directory '*'
+warning: no files found matching '*.jpg' under directory 'docs'
+warning: no files found matching '*.gif' under directory 'docs'
+adding license file 'LICENSE'
+adding license file 'LICENSES/CERN-OHL-S-2.0.txt'
+adding license file 'LICENSES/GPL-2.0-or-later.txt'
+writing manifest file 'machinome.egg-info/SOURCES.txt'
+copying machinome/vet/universe.toml -> build/lib/machinome/vet
+copying machinome/manager/templates/project/gitignore -> build/lib/machinome/manager/templates/project
+installing to build/bdist.linux-x86_64/wheel
+running install
+running install_lib
+creating build/bdist.linux-x86_64/wheel
+creating build/bdist.linux-x86_64/wheel/machinome
+copying build/lib/machinome/manifest.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/production
+copying build/lib/machinome/production/stock.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/sourcing.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/errors.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/profile.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/process.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/item.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/mass.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/material.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/results.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/production/instruction.py -> build/bdist.linux-x86_64/wheel/./machinome/production
+copying build/lib/machinome/_artifact.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/sphinx.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/_verdict_store.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/test.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/model.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/expression_graph.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/extras.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/brep_artifacts.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/core
+copying build/lib/machinome/core/expressions.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/export.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/processes.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/camera.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/expression_parser.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/builder.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/loader.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/pieces.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/serializer.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/core/logging.py -> build/bdist.linux-x86_64/wheel/./machinome/core
+copying build/lib/machinome/components.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/viewer
+copying build/lib/machinome/viewer/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/viewer
+copying build/lib/machinome/cli.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/simulation
+copying build/lib/machinome/simulation/trajectory.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/play.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/profile.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/run.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/sim.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/program.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/clocked.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/follow.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/driver.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/state.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/timebase.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/enumeration.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/scenario.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/contact_proof.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/control.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/simulation/instruction.py -> build/bdist.linux-x86_64/wheel/./machinome/simulation
+copying build/lib/machinome/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/color.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/node
+copying build/lib/machinome/node/sheet_leaf.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/frames.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/base.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/flexible.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/internal.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/operations.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/supported.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/decorators.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/presentation.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/sources.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/assembly.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/phase.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/fusion.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+creating build/bdist.linux-x86_64/wheel/machinome/node/adapters
+copying build/lib/machinome/node/adapters/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/node/adapters
+copying build/lib/machinome/node/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/markings.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/brep_leaf.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/qualified.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/leaf.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+copying build/lib/machinome/node/declarative.py -> build/bdist.linux-x86_64/wheel/./machinome/node
+creating build/bdist.linux-x86_64/wheel/machinome/motion
+copying build/lib/machinome/motion/couplings.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/motion/mechanical.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/motion/constraints.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/motion/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/motion/ports.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/motion/mates.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/motion/joints.py -> build/bdist.linux-x86_64/wheel/./machinome/motion
+copying build/lib/machinome/math.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/currency.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/engine
+copying build/lib/machinome/engine/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/engine
+copying build/lib/machinome/source_generation.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/parameters.py -> build/bdist.linux-x86_64/wheel/./machinome
+copying build/lib/machinome/brep_cache.py -> build/bdist.linux-x86_64/wheel/./machinome
+creating build/bdist.linux-x86_64/wheel/machinome/manager
+copying build/lib/machinome/manager/export.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/test.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/import_step.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/viewer.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/models.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/snapshot.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/build.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/develop.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/new.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+copying build/lib/machinome/manager/vet.py -> build/bdist.linux-x86_64/wheel/./machinome/manager
+creating build/bdist.linux-x86_64/wheel/machinome/manager/templates
+creating build/bdist.linux-x86_64/wheel/machinome/manager/templates/project
+creating build/bdist.linux-x86_64/wheel/machinome/manager/templates/project/root
+copying build/lib/machinome/manager/templates/project/root/solid2.py -> build/bdist.linux-x86_64/wheel/./machinome/manager/templates/project/root
+copying build/lib/machinome/manager/templates/project/root/cadquery.py -> build/bdist.linux-x86_64/wheel/./machinome/manager/templates/project/root
+copying build/lib/machinome/manager/templates/project/test.py -> build/bdist.linux-x86_64/wheel/./machinome/manager/templates/project
+copying build/lib/machinome/manager/templates/project/gitignore -> build/bdist.linux-x86_64/wheel/./machinome/manager/templates/project
+creating build/bdist.linux-x86_64/wheel/machinome/vet
+copying build/lib/machinome/vet/universe.toml -> build/bdist.linux-x86_64/wheel/./machinome/vet
+copying build/lib/machinome/vet/__init__.py -> build/bdist.linux-x86_64/wheel/./machinome/vet
+copying build/lib/machinome/vet/resolve.py -> build/bdist.linux-x86_64/wheel/./machinome/vet
+copying build/lib/machinome/vet/assertions.py -> build/bdist.linux-x86_64/wheel/./machinome/vet
+running install_egg_info
+Copying machinome.egg-info to build/bdist.linux-x86_64/wheel/./machinome-0.9.0-py3.12.egg-info
+running install_scripts
+creating build/bdist.linux-x86_64/wheel/machinome-0.9.0.dist-info/WHEEL
+creating '/tmp/machinome-color-core-wheel/.tmp-sle01rpp/machinome-0.9.0-py3-none-any.whl' and adding 'build/bdist.linux-x86_64/wheel' to it
+adding 'machinome/__init__.py'
+adding 'machinome/_artifact.py'
+adding 'machinome/_verdict_store.py'
+adding 'machinome/brep_artifacts.py'
+adding 'machinome/brep_cache.py'
+adding 'machinome/cli.py'
+adding 'machinome/color.py'
+adding 'machinome/components.py'
+adding 'machinome/currency.py'
+adding 'machinome/expression_graph.py'
+adding 'machinome/extras.py'
+adding 'machinome/manifest.py'
+adding 'machinome/math.py'
+adding 'machinome/model.py'
+adding 'machinome/parameters.py'
+adding 'machinome/source_generation.py'
+adding 'machinome/sphinx.py'
+adding 'machinome/test.py'
+adding 'machinome/core/__init__.py'
+adding 'machinome/core/builder.py'
+adding 'machinome/core/camera.py'
+adding 'machinome/core/export.py'
+adding 'machinome/core/expression_parser.py'
+adding 'machinome/core/expressions.py'
+adding 'machinome/core/loader.py'
+adding 'machinome/core/logging.py'
+adding 'machinome/core/pieces.py'
+adding 'machinome/core/processes.py'
+adding 'machinome/core/serializer.py'
+adding 'machinome/engine/__init__.py'
+adding 'machinome/manager/__init__.py'
+adding 'machinome/manager/build.py'
+adding 'machinome/manager/develop.py'
+adding 'machinome/manager/export.py'
+adding 'machinome/manager/import_step.py'
+adding 'machinome/manager/models.py'
+adding 'machinome/manager/new.py'
+adding 'machinome/manager/snapshot.py'
+adding 'machinome/manager/test.py'
+adding 'machinome/manager/vet.py'
+adding 'machinome/manager/viewer.py'
+adding 'machinome/manager/templates/project/gitignore'
+adding 'machinome/manager/templates/project/test.py'
+adding 'machinome/manager/templates/project/root/cadquery.py'
+adding 'machinome/manager/templates/project/root/solid2.py'
+adding 'machinome/motion/__init__.py'
+adding 'machinome/motion/constraints.py'
+adding 'machinome/motion/couplings.py'
+adding 'machinome/motion/joints.py'
+adding 'machinome/motion/mates.py'
+adding 'machinome/motion/mechanical.py'
+adding 'machinome/motion/ports.py'
+adding 'machinome/node/__init__.py'
+adding 'machinome/node/assembly.py'
+adding 'machinome/node/base.py'
+adding 'machinome/node/brep_leaf.py'
+adding 'machinome/node/declarative.py'
+adding 'machinome/node/decorators.py'
+adding 'machinome/node/flexible.py'
+adding 'machinome/node/frames.py'
+adding 'machinome/node/fusion.py'
+adding 'machinome/node/internal.py'
+adding 'machinome/node/leaf.py'
+adding 'machinome/node/markings.py'
+adding 'machinome/node/operations.py'
+adding 'machinome/node/phase.py'
+adding 'machinome/node/presentation.py'
+adding 'machinome/node/qualified.py'
+adding 'machinome/node/sheet_leaf.py'
+adding 'machinome/node/sources.py'
+adding 'machinome/node/supported.py'
+adding 'machinome/node/adapters/__init__.py'
+adding 'machinome/production/__init__.py'
+adding 'machinome/production/errors.py'
+adding 'machinome/production/instruction.py'
+adding 'machinome/production/item.py'
+adding 'machinome/production/mass.py'
+adding 'machinome/production/material.py'
+adding 'machinome/production/process.py'
+adding 'machinome/production/profile.py'
+adding 'machinome/production/results.py'
+adding 'machinome/production/sourcing.py'
+adding 'machinome/production/stock.py'
+adding 'machinome/simulation/__init__.py'
+adding 'machinome/simulation/clocked.py'
+adding 'machinome/simulation/contact_proof.py'
+adding 'machinome/simulation/control.py'
+adding 'machinome/simulation/driver.py'
+adding 'machinome/simulation/enumeration.py'
+adding 'machinome/simulation/follow.py'
+adding 'machinome/simulation/instruction.py'
+adding 'machinome/simulation/play.py'
+adding 'machinome/simulation/profile.py'
+adding 'machinome/simulation/program.py'
+adding 'machinome/simulation/run.py'
+adding 'machinome/simulation/scenario.py'
+adding 'machinome/simulation/sim.py'
+adding 'machinome/simulation/state.py'
+adding 'machinome/simulation/timebase.py'
+adding 'machinome/simulation/trajectory.py'
+adding 'machinome/vet/__init__.py'
+adding 'machinome/vet/assertions.py'
+adding 'machinome/vet/resolve.py'
+adding 'machinome/vet/universe.toml'
+adding 'machinome/viewer/__init__.py'
+adding 'machinome-0.9.0.dist-info/licenses/LICENSE'
+adding 'machinome-0.9.0.dist-info/licenses/LICENSES/CERN-OHL-S-2.0.txt'
+adding 'machinome-0.9.0.dist-info/licenses/LICENSES/GPL-2.0-or-later.txt'
+adding 'machinome-0.9.0.dist-info/METADATA'
+adding 'machinome-0.9.0.dist-info/WHEEL'
+adding 'machinome-0.9.0.dist-info/entry_points.txt'
+adding 'machinome-0.9.0.dist-info/top_level.txt'
+adding 'machinome-0.9.0.dist-info/RECORD'
+removing build/bdist.linux-x86_64/wheel
+Successfully built machinome-0.9.0-py3-none-any.whl

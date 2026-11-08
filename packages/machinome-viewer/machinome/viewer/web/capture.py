@@ -66,10 +66,15 @@ def carries_clocked(document):
     DECLARATION: a clocked document is a clocked document whatever else
     it holds, and it carries a ``clocked`` object where a running one
     carries a ``program``.
+
+    Version 14 adds color choices to every execution kind, so its
+    existing payload, rather than the version number, selects the kind.
     """
     if not isinstance(document, dict):
         return False
     version = document.get("version")
+    if version == 14:
+        return document.get("clocked") is not None
     return (document.get("clocked") is not None
             or (isinstance(version, int) and version >= 8))
 
@@ -88,12 +93,17 @@ def carries_program(document):
     case of the floor but the other side of an either/or: a root
     publishes a ``program`` or a ``clocked`` machine and never both
     (OpenSpec ``execute-the-commit``, design section 10).
+
+    Version 14 is shared by posed, clocked and running color-choice
+    documents; only its existing ``program`` payload identifies a run.
     """
     if not isinstance(document, dict):
         return False
     if carries_clocked(document):
         return False
     version = document.get("version")
+    if version == 14:
+        return document.get("program") is not None
     return (document.get("program") is not None
             or (isinstance(version, int) and version >= 5))
 

@@ -1,0 +1,29 @@
+{
+  "completed_rows": 44,
+  "expected_total_rows": 63,
+  "last_case": "V-released",
+  "all_completed_26_color_vectors_match": true,
+  "completed_color_comparisons": 1144,
+  "individual_control_ms": {
+    "count": 67,
+    "median": 2131.199999988079,
+    "max": 2828.800000011921
+  },
+  "row_total_ms": {
+    "median": 3077.0499999821186,
+    "max": 6076.400000035763
+  },
+  "representative": "A-held -> expected T at lamps.bulbs-4.glass",
+  "changed_bounds": [
+    726,
+    444,
+    771,
+    479
+  ],
+  "changed_rgb_pixels_above_4": 1203,
+  "alpha_bytes_unchanged": true,
+  "released_rgba_equals_dark": true,
+  "full_default_equals_baseline": true,
+  "screen_queries_executed": 0,
+  "reset_restore_replay_executed": false
+}

@@ -41,6 +41,14 @@ The JSON's ``version``, ``apiVersion`` and ``documentVersions`` are distinct.
 bundle exposes ``MachinomeViewer.apiVersion`` and ``MachinomeViewer.API_VERSION``;
 each mounted viewer also exposes ``apiVersion``.
 
+The source reader also supports API |source_viewer_api| and document versions
+|source_document_versions|. Format 14 carries ``color: {when, on, off}``:
+a finite zero condition selects off, any other finite value selects on,
+from the same scope as pose. It changes the existing body's visual color,
+without emitted light. The ``program`` and ``clocked`` payloads retain their
+running and clocked meanings; a document with neither is posed. Older readers
+refuse format 14. :doc:`/project/status` records publication state.
+
 Document capabilities
 =====================
 
@@ -77,6 +85,8 @@ Document capabilities
    * - 13
      - A finite, producer-declared convex-profile table and a pointwise
        inclusive-contact flag inside an ordinary numeric running Bound.
+   * - 14
+     - State-selected node colors, with execution kind selected by payload.
 
 A profile-contact call requires its producer-supplied version-13 table
 and returns a numeric contact flag. It does not add a browser-host operation

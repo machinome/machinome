@@ -641,7 +641,9 @@ in every phase.
 ### Requirement: Color declaration
 
 The system SHALL accept a class-level `color` in `#RRGGBB` form and reject
-any other non-None value with `ValueError` during colorization.
+any other non-None value with `ValueError` during colorization, except the
+validated symbolic two-color value returned by `machinome.color.color_when`
+under the `state-color` capability.
 
 A node's `color` remains one colour for the whole node and remains optional. A
 **marking** declared on a rigid node under the `markings` capability carries
@@ -660,6 +662,11 @@ declare nothing. A marking's colour SHALL NOT change the node's own.
   `color = '#FFFFFF'`
 - **THEN** the node's published colour is `#222831` and the marking's is
   `#FFFFFF`
+
+#### Scenario: A conditional color preserves the same whole-node semantics
+
+- **WHEN** a node's color is the supported two-color choice rather than a fixed hex
+- **THEN** it colors that same node as a whole, inherits through uncolored descendants as before, and does not change fixed marking colors
 
 ### Requirement: Leaf adapters are distinct types
 
@@ -1095,4 +1102,3 @@ unmodified. Any other name SHALL raise `AttributeError`.
   class names, and one of them is imported from `machinome.node`
 - **THEN** the refusal names `machinome.node.<key>` of the new row, and no
   module of the core but the table spells the class name
-

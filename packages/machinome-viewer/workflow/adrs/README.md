@@ -98,3 +98,4 @@ ADR-194 is the current account.
 - [ADR-076](EXPORT/ADR-076-a-parts-presented-look-has-one-owner.md) — A part's presented look has one owner — **Accepted**, amends 053, builds on 035
 - [ADR-077](EXPORT/ADR-077-an-on-demand-viewer-poses-a-clocked-machine-by-request.md) — An on-demand viewer poses a clocked machine by request — **Accepted**, extends 062 and 064, builds on 035
 - [ADR-078](EXPORT/ADR-078-geometry-admission-is-shared-and-resources-keep-their-owner.md) — Geometry admission is shared, and resources keep their owner — **Accepted**, builds on 035, 056 and 037
+- [ADR-079](EXPORT/ADR-079-model-colors-follow-the-admitted-presentation-scope.md) — Model colors follow the admitted presentation scope — **Accepted**, amends 076, builds on 044, 046 and 078

@@ -316,8 +316,8 @@ def symbolic_document(node):
                 # its own -- and a joint may be declared on one.
                 _publish_coordinates(delivery, child, path + (child.name,))
 
-    declarations = drive_tree(node, symbolic, collect)
     try:
+        declarations = drive_tree(node, symbolic, collect)
         yield declarations, instructions
     finally:
         for target, states, _bound in previous.values():
@@ -527,6 +527,9 @@ def animation_block(root, fps=30, frames=360):
     return block
 
 
+STATE_COLOR_DOCUMENT_VERSION = 14
+
+
 def document_version(root, bindings=(), program=None, clocked=None):
     """The LOWEST schema version the serialized tree ``root`` needs.
 
@@ -564,6 +567,8 @@ def document_version(root, bindings=(), program=None, clocked=None):
     ``State`` under a root declaring ``Time.running()`` is refused where
     declared defaults are bound, so the two ladders never meet.
     """
+    if _has_color_choice(root):
+        return STATE_COLOR_DOCUMENT_VERSION
     if clocked is not None:
         return CLOCKED_DOCUMENT_VERSION
     if program is not None:
@@ -633,6 +638,12 @@ def _carries_a_block(program):
     return False
 
 
+def _has_color_choice(root):
+    return (isinstance(root.get('color'), dict)
+            or any(_has_color_choice(child)
+                   for child in root.get('children', ())))
+
+
 def _tree_version(root):
     if 'flexible' in root:
         return FLEXIBLE_DOCUMENT_VERSION
@@ -661,6 +672,8 @@ class _Slot:
 
 
 def _collect_slots(root, slots):
+    if isinstance(root.get('color'), dict):
+        slots.append(_Slot(root['color'], 'when'))
     for operation in root['operations']:
         if operation[0] == 'r':
             slots.append(_Slot(operation, 1))
@@ -973,6 +986,16 @@ def marking_entries(node, marking_path):
     return entries
 
 
+def _serialize_color(value, graph_values):
+    from machinome.color import _ColorChoice
+    from machinome.expression_graph import GraphValue
+
+    if isinstance(value, _ColorChoice):
+        condition = value.condition if graph_values else str(GraphValue(value.condition))
+        return {'when': condition, 'on': value.on, 'off': value.off}
+    return value
+
+
 def serialize_node(node, model_path, piece_id=None, *, graph_values=False,
                    marking_path=None):
     """Serialize one node using ``model_path`` for rigid artifacts.
@@ -1001,7 +1024,7 @@ def serialize_node(node, model_path, piece_id=None, *, graph_values=False,
     data = {
         'name': node.name,
         'type': node._type,
-        'color': node.color,
+        'color': _serialize_color(node.color, graph_values),
         'mtime': node.mtime,
         'operations': [operation._graph_serialized()
                        if graph_values and hasattr(operation, '_graph_serialized')

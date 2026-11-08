@@ -1,0 +1,41 @@
+.......F                                  [100%]
+=================================== FAILURES ===================================
+_ RelationObservationTest.test_list_held_real_glass_reads_settled_signal_at_presentation _
+
+self = <tests.test_state_color.RelationObservationTest testMethod=test_list_held_real_glass_reads_settled_signal_at_presentation>
+
+    def test_list_held_real_glass_reads_settled_signal_at_presentation(self):
+        from .color_project.model import PropertyPosed
+        node = PropertyPosed(); bind_declared_defaults(node)
+        glass = node.lamps.bulbs[0]
+        for value, expected in ((0, OFF), (1, ON), (0, OFF)):
+            node.set_state(powered=value)
+            self.assertEqual(glass.color, expected)
+>           node.assemble()
+
+packages/machinome/tests/test_state_color.py:118: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/machinome/machinome/node/base.py:871: in assemble
+    self._prepare(root)
+packages/machinome/machinome/node/base.py:923: in _prepare
+    self.materialize(rendered)
+packages/machinome/machinome/node/internal.py:218: in materialize
+    child._prepare(self.root)
+packages/machinome/machinome/node/base.py:921: in _prepare
+    self.validate(rendered)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.color_project.model.ObservationSource object at 0x70f3ed70bb60>
+rendered = None
+
+    def validate(self, rendered):
+        """Check that rendered result is a list"""
+        if type(rendered) not in (list, tuple):
+>           raise Exception(f"{self.__class__}.render() should return a list, "
+                            f"not {type(rendered)}")
+E           Exception: <class 'tests.color_project.model.ObservationSource'>.render() should return a list, not <class 'NoneType'>
+
+packages/machinome/machinome/node/internal.py:228: Exception
+=========================== short test summary info ============================
+FAILED packages/machinome/tests/test_state_color.py::RelationObservationTest::test_list_held_real_glass_reads_settled_signal_at_presentation
+1 failed, 7 passed, 31 subtests passed in 1.08s

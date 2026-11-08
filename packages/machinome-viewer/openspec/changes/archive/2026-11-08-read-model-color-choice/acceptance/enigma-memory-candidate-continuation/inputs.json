@@ -1,0 +1,2720 @@
+{
+  "mode": "candidate",
+  "oracle_path": "/mnt/data/machinome-projects/enigma-i-worktrees/electrical/sources/derived/declared-lamp-binding-v1/browser-oracle-v1.json",
+  "oracle_sha256": "157e4303f774867121414f0a9dbd9698edf3517e7118ea6a54f19e9561ddfd80",
+  "document": "/mnt/data/machinome-projects/enigma-i-worktrees/electrical/_build_declared_lamps_v1/viewer.json",
+  "document_sha256": "e13e92fbd1c9b1ca7e0951e36d2e4db1340e6912532e0fabe3f4682591ef4710",
+  "document_bytes": 23019598,
+  "bundle": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js",
+  "bundle_sha256": "2b4836154d730a0bb4c48e0226f87e03acf5ebb8ebe1015fdda4a79ad3ada90d",
+  "geometry_review_sha256": "d5a2b32ec52cc402f96a68f30196691eb7979c1dbed140bdefd77abb82da856e",
+  "geometry_review": {
+    "version": 14,
+    "document_bytes": 23019598,
+    "document_sha256": "e13e92fbd1c9b1ca7e0951e36d2e4db1340e6912532e0fabe3f4682591ef4710",
+    "same_complete_tree_paths": true,
+    "tree_nodes": 2466,
+    "rigid_leaves": 1806,
+    "flexible_leaves": 217,
+    "color_choice_count": 26,
+    "color_choice_paths": [
+      "lamps.bulbs-0.glass",
+      "lamps.bulbs-1.glass",
+      "lamps.bulbs-2.glass",
+      "lamps.bulbs-3.glass",
+      "lamps.bulbs-4.glass",
+      "lamps.bulbs-5.glass",
+      "lamps.bulbs-6.glass",
+      "lamps.bulbs-7.glass",
+      "lamps.bulbs-8.glass",
+      "lamps.bulbs-9.glass",
+      "lamps.bulbs-10.glass",
+      "lamps.bulbs-11.glass",
+      "lamps.bulbs-12.glass",
+      "lamps.bulbs-13.glass",
+      "lamps.bulbs-14.glass",
+      "lamps.bulbs-15.glass",
+      "lamps.bulbs-16.glass",
+      "lamps.bulbs-17.glass",
+      "lamps.bulbs-18.glass",
+      "lamps.bulbs-19.glass",
+      "lamps.bulbs-20.glass",
+      "lamps.bulbs-21.glass",
+      "lamps.bulbs-22.glass",
+      "lamps.bulbs-23.glass",
+      "lamps.bulbs-24.glass",
+      "lamps.bulbs-25.glass"
+    ],
+    "new_drivers": [
+      "supply_connected"
+    ],
+    "supply_connected": {
+      "default": 0,
+      "range": [
+        0,
+        1
+      ],
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    },
+    "changed_model_paths": [
+      "lamps.bulbs-0.glass",
+      "lamps.bulbs-1.glass",
+      "lamps.bulbs-2.glass",
+      "lamps.bulbs-3.glass",
+      "lamps.bulbs-4.glass",
+      "lamps.bulbs-5.glass",
+      "lamps.bulbs-6.glass",
+      "lamps.bulbs-7.glass",
+      "lamps.bulbs-8.glass",
+      "lamps.bulbs-9.glass",
+      "lamps.bulbs-10.glass",
+      "lamps.bulbs-11.glass",
+      "lamps.bulbs-12.glass",
+      "lamps.bulbs-13.glass",
+      "lamps.bulbs-14.glass",
+      "lamps.bulbs-15.glass",
+      "lamps.bulbs-16.glass",
+      "lamps.bulbs-17.glass",
+      "lamps.bulbs-18.glass",
+      "lamps.bulbs-19.glass",
+      "lamps.bulbs-20.glass",
+      "lamps.bulbs-21.glass",
+      "lamps.bulbs-22.glass",
+      "lamps.bulbs-23.glass",
+      "lamps.bulbs-24.glass",
+      "lamps.bulbs-25.glass"
+    ],
+    "changed_mesh_bytes": [],
+    "changed_piece_ids": [],
+    "has_program": false,
+    "has_clocked": false,
+    "binding_count": 205505
+  },
+  "assets": {
+    "simulation/battery_enclosure-BatteryHingePin-917291859fa8.stl": {
+      "sha256": "a466478d284b2d27fe3aae15d30937e47883c06ab85fe0a3990b568c62b3f268",
+      "bytes": 75484
+    },
+    "simulation/battery_enclosure-BatteryLid-b5ce8009fc12.stl": {
+      "sha256": "20f9dd07724335833df96f2187b5b52cf4d4965aaed9405c264d48db6901e680",
+      "bytes": 48484
+    },
+    "simulation/common_work_feed-CommonWorkFeedMetal-e7cec657507c.stl": {
+      "sha256": "114f127de49f557f08551f4a79bf8e8bd3555bd917d9cd4db94d0d6ca435cb63",
+      "bytes": 2709884
+    },
+    "simulation/compensator-Shaft-60315ad5ec0e.stl": {
+      "sha256": "c4adbd87477a0137460292b882be2aea3f22a89462f1c1151475882f6fd78293",
+      "bytes": 345784
+    },
+    "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl": {
+      "sha256": "c3c269276ae5eaa0804e8dcb5bf5b4a7db288a9e6820ff3d5c765f6d4cbf547d",
+      "bytes": 237784
+    },
+    "simulation/drawing_battery_enclosure-DrawingBatteryTray-5cbe2fcf301f.stl": {
+      "sha256": "139dc0976e0ab85c5272b528db78baf654f0f9c3d91cd253557acb335c33d623",
+      "bytes": 193484
+    },
+    "simulation/hardware-DowelPin,diameter=1.0,length=10.0-d76273696198.stl": {
+      "sha256": "adccf04970b337cbbe411e9f66ce29f02df135c19ced32f4d987fc7fcf8ece16",
+      "bytes": 75484
+    },
+    "simulation/hardware-DowelPin,diameter=1.0,length=8.0-d237816a3a9d.stl": {
+      "sha256": "fe1bbca7b255443fd13d18a9b2910d62990daa884bdcc652ecd8838575bc7316",
+      "bytes": 75484
+    },
+    "simulation/hardware-DowelPin,diameter=1.5,length=12.0-b75d197d3358.stl": {
+      "sha256": "aa0297c182af1d4309009d26849512bc92ebb76b08e6a70eafe4edf0da5c23dc",
+      "bytes": 75484
+    },
+    "simulation/historical_contact_pin-HistoricalContactPin-3717038a1153.stl": {
+      "sha256": "2e9acc4d1b8942db10ebdee4a3ffeb9b13d47c1553571be219afbb9af8e6fa27",
+      "bytes": 369284
+    },
+    "simulation/keyboard_contact_bank-BankAnchor,width=5.8-7c047910cd6b.stl": {
+      "sha256": "d263897b59b7c7e5bfa0611b0476a78b4407cb15ece2015e985cc02e7957c06c",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankAnchor,width=6.0-896d99a1d598.stl": {
+      "sha256": "edd3271cc672115b9827cb1fbb3d742d10214b5976bb75cc926aaaf24d11d692",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankBolt,length=11.0,shoulder_depth=7.850999999999999-780930d8da68.stl": {
+      "sha256": "19894ebdb91b24e64c9fccb21e3f914613bfdfee8b73ba36cc668d192787021e",
+      "bytes": 76184
+    },
+    "simulation/keyboard_contact_bank-BankBolt,length=14.0,shoulder_depth=10.850999999999999-a9b3277b42b6.stl": {
+      "sha256": "b488b81fd294a92db310eeace1f27d1a30ce8ef373e946abca1e1d4cddb12114",
+      "bytes": 76184
+    },
+    "simulation/keyboard_contact_bank-BankBolt,length=16.0,shoulder_depth=12.850999999999999-200a57115846.stl": {
+      "sha256": "d1f2691630d1c5f26b21fa99681ed44ac81e591188d381c59bc08f03d6dd5cc4",
+      "bytes": 76184
+    },
+    "simulation/keyboard_contact_bank-BankClamp,width=5.8-a40ceb4cb966.stl": {
+      "sha256": "35509956abbd1284cab8bfcbbe728ca6c0adfa5db33ac40dbb065e22b1e27b01",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankClamp,width=6.0-4e3a247cade7.stl": {
+      "sha256": "4cf2a792467fd649227a32690ab2357745f5a828bf790d1c0dc941696a4ed42c",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankPost,height=0.4-c7d8bdb98866.stl": {
+      "sha256": "bfae1f25d0e284c0f85a69246db6e3a958a87af59d463832f72bde805c7e8e95",
+      "bytes": 25084
+    },
+    "simulation/keyboard_contact_bank-BankPost,height=11.9-9fe71a075a30.stl": {
+      "sha256": "d619c1433edb5880d0c7c1061e688cbefcd453a823b8ffb0cdf5d70c464a6641",
+      "bytes": 25084
+    },
+    "simulation/keyboard_contact_bank-BankPost,height=3.4-d87ba6a43e33.stl": {
+      "sha256": "1ad2a15890752ce5d1b6c21f9032a2007751676028307e5a5cf0e085d3f18f7c",
+      "bytes": 25084
+    },
+    "simulation/keyboard_contact_bank-BankPost,height=5.6-cf8f3c029aee.stl": {
+      "sha256": "d053c89ed5d62f14ba18162106f9c43c92c741cf82d59f9714aec9fd557ca0a8",
+      "bytes": 25084
+    },
+    "simulation/keyboard_contact_bank-BankSleeve,height=10.750999999999998-2b1b56034436.stl": {
+      "sha256": "aac3e9bd2f539e7636a39acd1990f4e1dc25dd110048189af84a910ddd91a05a",
+      "bytes": 50484
+    },
+    "simulation/keyboard_contact_bank-BankSleeve,height=5.750999999999998-35006fc0d391.stl": {
+      "sha256": "8a1bcc45423c761ecad351cf6518056b8c988bf540d5bdc76e235275e02ca960",
+      "bytes": 50484
+    },
+    "simulation/keyboard_contact_bank-BankSleeve,height=8.750999999999998-286d822ef0d4.stl": {
+      "sha256": "4a846d0ab423621bea81f2097dffa3e48e4c4d947755b2530b904080bc8eaf84",
+      "bytes": 50484
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=0.401,width=5.8-2e00c96059b8.stl": {
+      "sha256": "c61c11acfec6d891bac05d7369b9e56857ed8bb285e3ab0fe5efec57e60a1baa",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=0.401,width=6.0-e3f728e979f3.stl": {
+      "sha256": "710db9a97fc804656f2165a721650de4e7edfd2ee81a476d5fcd343383aa16d3",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=0.8,width=5.8-acf5b4a6b68c.stl": {
+      "sha256": "66f890502fd0bd3d90c954e0cdbb6db8e9bd4f2674f0c86d07b3069f63ede617",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=0.8,width=6.0-228ef34171e7.stl": {
+      "sha256": "a4d59d084088013e80b0ae56a541b07ac32054c5ddbd97bede16278cd3dbb458",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=1.401,width=5.8-1ae959f2224c.stl": {
+      "sha256": "84abfa90f2f4e1a400e1e667e53b854365bf56539cc37800e0dbd3b401571c4e",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=1.401,width=6.0-89aba3219570.stl": {
+      "sha256": "635a54cdedda1e964dff23cd59561e7a7f6de2e147dccdc236214b745bf7b52b",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=1.948999999999998,width=5.8-6f54e98ed672.stl": {
+      "sha256": "f3f2c55a2ef255b59a53128db7ff9b0c8a3e641d0625f7256d43215f671659b7",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=4.948999999999998,width=6.0-a1c6b1a6073d.stl": {
+      "sha256": "5f9bdfce4754322aef7f12796b61f45130c3b86a3d2dd28a4c5a798e11614caa",
+      "bytes": 76884
+    },
+    "simulation/keyboard_contact_bank-BankSpacer,height=6.948999999999998,width=6.0-77943aaeccf3.stl": {
+      "sha256": "483fcf15137d6477ff1c7dc2d0e38164de98dbcf3c7d382811f58c56668b2ed9",
+      "bytes": 76884
+    },
+    "simulation/keyboard_switch-ContactCap-27cb5a21b097.stl": {
+      "sha256": "2d16d26986a5818f4c99ba24af6ef3a64e7bffa314c1481852fb81e4ba3984a2",
+      "bytes": 75884
+    },
+    "simulation/lamp_attachment-LampBaseInsulator-5327dec5b08e.stl": {
+      "sha256": "125ed17b07e68369eac5225b84394dece5e0a958671876872319e28318802464",
+      "bytes": 50284
+    },
+    "simulation/lamp_attachment-LampButton-d95d3bf82daa.stl": {
+      "sha256": "3d6a463b6771f9d36f84fff5fb5c2bed3b41a68b10d33c920e6c4313d2557c90",
+      "bytes": 25084
+    },
+    "simulation/lamp_attachment-LampMetalCap-c85a54013e07.stl": {
+      "sha256": "d3936c7a8d506c317090baf5985b8a770b8d8f81159157a050e28fabacd74ba9",
+      "bytes": 5942584
+    },
+    "simulation/lamp_bank_candidate-AllLampThreadedHolder,clock_deg=18.2568097114563-530bba6d5b78.stl": {
+      "sha256": "1ca38aa2fc7aafbd3a9feab0c50a8c4496bb5d34bc8bee43e5bd5a432a82738b",
+      "bytes": 62685184
+    },
+    "simulation/main_hood_hinge-RearHingeCarrier-f298a7bbadf1.stl": {
+      "sha256": "c327ff47dbf81651ec6f5aa0e1cc3c834c189b431ca1126b99bf52441bdf31ad",
+      "bytes": 443284
+    },
+    "simulation/rest_lamp_lead_bank-BJacket-3b090aff24c6.stl": {
+      "sha256": "0cd3cff39f8924762077e6db481e3f2b8d59bc493a63a0f6ab0381816fe8a26c",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-BJoint-3807fa8fe935.stl": {
+      "sha256": "69695c9b50ff4a9d252ba9f2da51dedb9165a098e16f8a604c1e4a2a3848edcc",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-BMetal-8a227a2772e8.stl": {
+      "sha256": "77d49d6e2cfbd44a211a4ee7625e3469541bf4e5acce0e32fd6cd1fbac536d05",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-CJacket-44f73e1b8935.stl": {
+      "sha256": "bd7df65f86e6e8f29d8e32e5b4e3e0a628cfdfc7a8b6904384f9235219efd53f",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-CJoint-68dd575e2e89.stl": {
+      "sha256": "3407f7c0e5b4b33f5fad501fcd836898826a11cc8486b9548b2754e4e8bc88c9",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-CMetal-752b873380d8.stl": {
+      "sha256": "fc8c83125d062ec94eeee9c0d89434d06ed195108930c1f80716160736a71c17",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-DJacket-675a847374e4.stl": {
+      "sha256": "1191063bfdb4e7a760183bbb9b07357c5037b0b18e5658f770b2a8bb4cbcf4bc",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-DJoint-f1f4b868b813.stl": {
+      "sha256": "4a9bd12cef8b35c910f51724be1ed2a20ce3919750985c389fb0df26885174ce",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-DMetal-9d109c682b71.stl": {
+      "sha256": "a812a0c5f7411fb85cff3f02c43fbebe933d247914eed60aaeb14a3edda8c680",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-EJacket-6fe39908024e.stl": {
+      "sha256": "c5e54de4ba91bbaec420cc9587ad39881e1275fca2f72e22c9524d4551beae50",
+      "bytes": 3099684
+    },
+    "simulation/rest_lamp_lead_bank-EJoint-68d5b1c70753.stl": {
+      "sha256": "2dc01e97e8665f33f10a05dd4edf825ee40ecbb8c2a4fab0730990e79ba03163",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-EMetal-8b5797e2ba68.stl": {
+      "sha256": "31f1ae724a735031827ec0d8d8d3e4e16fd2d2ed7a1d9ee5ed1bbee947e77e5c",
+      "bytes": 1551084
+    },
+    "simulation/rest_lamp_lead_bank-FJacket-f289ce6417a1.stl": {
+      "sha256": "79b0a58ca6f5fc0664e3a47b04e61ed9a6178d4e2f30823b653016810b4c75e3",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-FJoint-ecaae9181e28.stl": {
+      "sha256": "f89e4da040808e941c0b6470d6e7a4c0937cfc7cb97ff866fe906d16c77ca023",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-FMetal-18e37ea90e9a.stl": {
+      "sha256": "dd95383ef8be51990a571d1a2a534b9bd07f3c6d8ee91e78df4a5fadb23ef8ef",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-GJacket-2ab01e922a6f.stl": {
+      "sha256": "e935238dd015fae501fd7677fe8ba94c07aaeba2f4b5bb11428c124bac1be86e",
+      "bytes": 2343684
+    },
+    "simulation/rest_lamp_lead_bank-GJoint-60b0e54f5aaa.stl": {
+      "sha256": "b09189e91dbb9c389c020be4c65b4bac9c6cf8acc45027695ed6331e1167e9e2",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-GMetal-7dc4befe7da8.stl": {
+      "sha256": "009e8af23d0a63e7a8bf42ba7f5bda4f126a03b81b3bc367d0ceb61ec3e2e609",
+      "bytes": 1173084
+    },
+    "simulation/rest_lamp_lead_bank-HJacket-b3a263c94feb.stl": {
+      "sha256": "b7311849a5ea051c050aa4892314935dc87d5ed865129d9d3e89c966220c586a",
+      "bytes": 2394084
+    },
+    "simulation/rest_lamp_lead_bank-HJoint-a1d79c63144f.stl": {
+      "sha256": "a006af18cc2fd4bc35d32b07806d5b1812026788ca6aca3f254ecc63d57f99ee",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-HMetal-f5bd3f004ba8.stl": {
+      "sha256": "841fdd4cade7efdfb4aac3314b2a1042219452b5fba905b92a58141c44458419",
+      "bytes": 1198284
+    },
+    "simulation/rest_lamp_lead_bank-IJacket-13a408f06747.stl": {
+      "sha256": "204efed605bfce8d93aa7ba862deb45aab87f7a6d7c114c968262d02a719381d",
+      "bytes": 3351684
+    },
+    "simulation/rest_lamp_lead_bank-IJoint-9fb92468fba2.stl": {
+      "sha256": "7ee90ea9aaec57871d0221960d8450a73ad84869b8fecd1a0419938cc6e45d87",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-IMetal-8881cea17b28.stl": {
+      "sha256": "a41226ce2d03a1732c7ac4aa4d96f7784f1695af74dae8d2162502be14779bb1",
+      "bytes": 1677084
+    },
+    "simulation/rest_lamp_lead_bank-JJacket-85d66dc60e0d.stl": {
+      "sha256": "eaa95d1e73adb147ae4c348c38873fa932907f0c3531511473662ab12558e3ec",
+      "bytes": 2494884
+    },
+    "simulation/rest_lamp_lead_bank-JJoint-c445ba5b72f9.stl": {
+      "sha256": "ceba9273c94c2b3b742fbf681e53585cfc30af0aae0a2a1a0f0d7ed815d60f7d",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-JMetal-1331713ccb72.stl": {
+      "sha256": "6f2f27ae5080fdafe07961a697ecbd10b825276a5dc25f5b192cd2af8ef45814",
+      "bytes": 1248684
+    },
+    "simulation/rest_lamp_lead_bank-KJacket-13c53e7f8549.stl": {
+      "sha256": "0f4adf0effec7a6303bb52a7e3383c8f14bfd850c0957c5a07ccc5b311015274",
+      "bytes": 2545284
+    },
+    "simulation/rest_lamp_lead_bank-KJoint-2ca57e844834.stl": {
+      "sha256": "aace5e432f174fa7ad61c8d08004218b78ac7bb02856ab291c48f960e36896a7",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-KMetal-083e34ff1654.stl": {
+      "sha256": "b8e18c74594e032f4221e32e56d2998a9994681500a9892afe125d6956cd13e4",
+      "bytes": 1273884
+    },
+    "simulation/rest_lamp_lead_bank-LJacket-f83d2deff912.stl": {
+      "sha256": "d64e71ffa898c290ddf6b92a88e535f5473c3894d8b290bb5d2cfda6e0446010",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-LJoint-a39111f11b98.stl": {
+      "sha256": "48f8d231abe285ea40e149bf66eeddff8d13e3c347c73bbc03311c68f05cd646",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-LMetal-30f5cd7fa35e.stl": {
+      "sha256": "48ae09e985dac6259f4f0ccbedb364dc77738cd3de88e14ca2fb79db7e6537b1",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-MJacket-713686a8cffa.stl": {
+      "sha256": "ae5fad3333c1387fabba85555a97b1b3d8bb35a9d3a25a6bd4cb890644ac6b78",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-MJoint-b8504d900331.stl": {
+      "sha256": "bbd5bdf90b7abdf36594888f1129c7a8818c326f7b2efacda3df8f5c389090b7",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-MMetal-d30962ccf2cc.stl": {
+      "sha256": "3dd6ee59373bbadc0b885c212c42cda71bb212c3bb8f6f7f8f1a978096b405bb",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-NJacket-b0db631c6426.stl": {
+      "sha256": "266df1930da643604a936dcc1ee0029ca756d7e654acba8ea234816f5b9d3a8b",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-NJoint-b60d67b056b4.stl": {
+      "sha256": "0aaae4344f3aa5c6e64cecc77cc57b9b3efe26342f80ed253ec9565e783196e6",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-NMetal-42003480b64a.stl": {
+      "sha256": "a0e2cee57919f99c5d39853c0749acedc940d11c1da8f40cc8bd4b7e514520b8",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-OJacket-5f035cb87b52.stl": {
+      "sha256": "2677ebb6f8556cf0a5b6c289c042d2e5b80abf9fc1e9482002407597ad2bb731",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-OJoint-27fb2fd97c76.stl": {
+      "sha256": "edb58de9885dfbd40d07f48e7dd6c4e154624af09a676c06dee8bdba16386d1d",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-OMetal-55a551f83f28.stl": {
+      "sha256": "913915ea6f79129af2f9516a2fc2a65407849a2f68ddacffc1814a19348dccb4",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-PJacket-367ef2cc148a.stl": {
+      "sha256": "d5c64d2f97383d61fa279ef88125f3ae5937e6735e3727a720e5d82aa4f1702a",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-PJoint-8489b6ddf7b4.stl": {
+      "sha256": "70fe490c2bdeb7784bbcec60041154eec875f62d511c420307dcbffb35acc246",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-PMetal-ea73d46ae465.stl": {
+      "sha256": "b92eb66e3d81ecaa7795b9c5ea86b06d01b04604f1f2930881571c1af753b9bd",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-RJacket-5ef8bc2616f1.stl": {
+      "sha256": "b7cefc95c06081320aec604da9a15c9410d26ca3e5bd0d292ba49342f7e3b42e",
+      "bytes": 3150084
+    },
+    "simulation/rest_lamp_lead_bank-RJoint-c7e3ada0d88e.stl": {
+      "sha256": "fe4997d35727d38e1c4278ac6520b925942909c34a4f3321b4d8697ce53c211c",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-RMetal-b477a6b286c5.stl": {
+      "sha256": "c5e82779523a24e8bc4f7fb7b0d6ade04f6274bc3d7f12607a8726d8214db75b",
+      "bytes": 1576284
+    },
+    "simulation/rest_lamp_lead_bank-SJacket-ac688710a9d9.stl": {
+      "sha256": "392d10879f6f4ec7cd2950b47cf1d8d2d2f95e1f943fad16930c127924eb19ec",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-SJoint-d4ca76ddba8e.stl": {
+      "sha256": "385ab2be273df1d5f94778cf2c2ae89fc5fda8d30d52546c3563f40dc49f6886",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-SMetal-af2b6ae82810.stl": {
+      "sha256": "685888144a3f07181473cbbf4de47ce04c0063a3cfe3ad6a701e20684a5d58d4",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-TJacket-753ae94f434e.stl": {
+      "sha256": "3fccf0e23f6c6b39fa2c065bad3196101966f503a1a4bf545b4656b6d24dede9",
+      "bytes": 3200484
+    },
+    "simulation/rest_lamp_lead_bank-TJoint-9544c6147c29.stl": {
+      "sha256": "2c72035d291ea044aa1fe1fcf291e94558a62fe1413afb6d7986a668f9cb6306",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-TMetal-d0dd5b19fab4.stl": {
+      "sha256": "b7588a0778fa937b2e8c2a33ad04a683c1b941d93f101996b57069f230ec9551",
+      "bytes": 1601484
+    },
+    "simulation/rest_lamp_lead_bank-UJacket-41148bdf697b.stl": {
+      "sha256": "dd340d9abbe277584bc4672c705791d773a37a3c0498a54354ea3acfe09daa6d",
+      "bytes": 3301284
+    },
+    "simulation/rest_lamp_lead_bank-UJoint-fd384a19c471.stl": {
+      "sha256": "041c2cef5519caf4037406842d18e74159f1535b8e43b82c94749c211dc85dc5",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-UMetal-cb8fc495672a.stl": {
+      "sha256": "a108a2959802829a7c84b3cdc7da8c186d8f16b3fcfffebf17620ce9e0d2426e",
+      "bytes": 1651884
+    },
+    "simulation/rest_lamp_lead_bank-WJacket-511d2f35f391.stl": {
+      "sha256": "22d6dc77324cd243480a1b88cc823fa8437a751e4133f0a822f3750a92a37e88",
+      "bytes": 3049284
+    },
+    "simulation/rest_lamp_lead_bank-WJoint-2ab9bc4c6845.stl": {
+      "sha256": "98a026780deba6c8fa76d548b988ed7e7490732659b2af3a7c7edadcd8871619",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-WMetal-6c1aad6149a4.stl": {
+      "sha256": "2648c1f740eabd3c48f81c47b7cd242bfe28772af610c3bd369ade682f8831d7",
+      "bytes": 1525884
+    },
+    "simulation/rest_lamp_lead_bank-XJacket-8c17e276fae5.stl": {
+      "sha256": "d05bdcc779ae07e559a59d4c9ffad185b11eafb2ddf6c3a1e9e7c546f820157b",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-XJoint-84cfd4cb3d51.stl": {
+      "sha256": "0d9b05aaa86ce81b3e8762bb445047662670e981053e071765b086457b017397",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-XMetal-69747f2808d2.stl": {
+      "sha256": "573bc5dbf1cf5645f34151e3e79db33c1646e0e7175ef8f2b0af24ca6923daf2",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-YJacket-18bfb6ec5bf1.stl": {
+      "sha256": "788c89555b717bca134c4001b2c8cd5713b5d766a9f72d8a15b7eb16b2266206",
+      "bytes": 1713684
+    },
+    "simulation/rest_lamp_lead_bank-YJoint-fe5452895006.stl": {
+      "sha256": "b416ac35aa3fc38cdcb94784917feaec9d286b7e7b3e297e65c4e437352383a7",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-YMetal-b8f6236bb64a.stl": {
+      "sha256": "ad0f245cf2e0c3441e71949bb47762fb4aa98f7a0b8d7b0acfdb7786110bfb20",
+      "bytes": 858084
+    },
+    "simulation/rest_lamp_lead_bank-ZJacket-bb900fbc2399.stl": {
+      "sha256": "ffdc19a02600e03afc80e8ce8e4ca95541c5d03998867e7bd91f81f100758005",
+      "bytes": 3250884
+    },
+    "simulation/rest_lamp_lead_bank-ZJoint-ffe867d32ad3.stl": {
+      "sha256": "981265a12146887b6a9dfc33d7f40c9500d83d9fc6bf068bf2671fb1ba1630e8",
+      "bytes": 242284
+    },
+    "simulation/rest_lamp_lead_bank-ZMetal-0014162868cf.stl": {
+      "sha256": "3b8fbd010ade3399435cec368858b3ae770f07d8ef4f0993c6080a7cfa822267",
+      "bytes": 1626684
+    },
+    "simulation/row_rest_lamp_leads-AJacket-8983f073a516.stl": {
+      "sha256": "42c6632eb64448f70ea7418d09d24837474644ae074004aba079f4b872122ea7",
+      "bytes": 1713684
+    },
+    "simulation/row_rest_lamp_leads-AJoint-0ea08300b49e.stl": {
+      "sha256": "5b2b86d42ec8e86a69001763a1408adfec57b0f84900c49651f427d272ba5f8d",
+      "bytes": 242284
+    },
+    "simulation/row_rest_lamp_leads-AMetal-08497e0d6fe7.stl": {
+      "sha256": "4764d082c1c74235155f5f663bf60dfdb025496761e26bf118dcec933c8baeb2",
+      "bytes": 858084
+    },
+    "simulation/row_rest_lamp_leads-QJacket-10f2fd22d304.stl": {
+      "sha256": "36a06160dcbffe278a9ed41e27e3d0ce5fbaf73887883db5a2b206e0e3635920",
+      "bytes": 1713684
+    },
+    "simulation/row_rest_lamp_leads-QJoint-542c0a38c222.stl": {
+      "sha256": "c82550f949c4081e845c80fb480609524403e8fb4c389c284f3f28426cd8645e",
+      "bytes": 244484
+    },
+    "simulation/row_rest_lamp_leads-QMetal-a08c01ae1cd7.stl": {
+      "sha256": "9ca709d988d1d38e56f220dcb21e03aaa451020b30b97e0daa1d4e0a70ab6c3e",
+      "bytes": 858084
+    },
+    "simulation/upper_profile_mechanism-CandidatePawl,station=0,upper_height=6.0-84c5c8d5e3f2.stl": {
+      "sha256": "ea46ba703764415181e41e5f48cf138843586abeeeb6614e6bbb2e15d4999065",
+      "bytes": 476084
+    },
+    "simulation/upper_profile_mechanism-CandidatePawl,station=1,upper_height=6.0-edf3b0adb689.stl": {
+      "sha256": "8b16133ea5fce9b662fa9f03c504bebd03d6410d3c4905ac8dd1e18c75bab21e",
+      "bytes": 476084
+    },
+    "simulation/upper_profile_mechanism-CandidatePawl,station=2,upper_height=6.0-b62dd97ccf8a.stl": {
+      "sha256": "224bd4d3bf7a3dc9e7f360cb02046d6c5645fcaac82ddc6c81b8a2dc9c3d1515",
+      "bytes": 479684
+    },
+    "simulation/v_rest_lamp_lead-VRestLampLeadJacket-069582009db8.stl": {
+      "sha256": "1454c5d672513528ab08e03c862632b2e669464e1c2d46be7a66362d69bf5e3b",
+      "bytes": 1713684
+    },
+    "simulation/v_rest_lamp_lead-VRestLampLeadJoint-48887d90a473.stl": {
+      "sha256": "4f44ff4708288a6772016f70ebbcb76926bb5e1a9fa34d83a5008a40912b3d38",
+      "bytes": 244484
+    },
+    "simulation/v_rest_lamp_lead-VRestLampLeadMetal-988b9b8ea1a7.stl": {
+      "sha256": "0c4c6ed262da478c224d2370500d8020d40e58430483c3f332b372eb706aa69e",
+      "bytes": 858084
+    },
+    "sources/cache/sameerverma-final-assembly-__BatteryFloorScrew_,_simulation_battery_attachment.py__-724d22ebb636.stl": {
+      "sha256": "119669541d8ebf03bdebdc7ba948ded4ab68b55b8bd220b013e4eaf8793d8efc",
+      "bytes": 1976584
+    },
+    "sources/cache/sameerverma-final-assembly-__CabinetScrew_,_simulation_fasteners.py__-e169c573cf4b.stl": {
+      "sha256": "672069b22999f9c75b1a35f142e3952b7bb9b6f372eea85f14b8b7b5b9108529",
+      "bytes": 1031484
+    },
+    "sources/cache/sameerverma-final-assembly-__CapIII_,_simulation_clamps.py__-ec73bdaf8506.stl": {
+      "sha256": "7ceb941ebfa0f424cdd185a8c57e289df51422991bbac07a6f9dd890d960216b",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__CapIV_,_simulation_clamps.py__-329419e1f573.stl": {
+      "sha256": "7ceb941ebfa0f424cdd185a8c57e289df51422991bbac07a6f9dd890d960216b",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__CapV_,_simulation_clamps.py__-9bc352d5fdd4.stl": {
+      "sha256": "7ceb941ebfa0f424cdd185a8c57e289df51422991bbac07a6f9dd890d960216b",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__Carrier_,_simulation_compensator.py__-a92a32eadcc3.stl": {
+      "sha256": "5bdd82222ef5c379016bd4b3bd8813d7a11f30592080df8d72c2fc46c9c9f7cc",
+      "bytes": 3533284
+    },
+    "sources/cache/sameerverma-final-assembly-__DetentLever_,_simulation_retainer.py__-32329e9e92ee.stl": {
+      "sha256": "4a1e6794f7eb73c925dddb1fd0773904ef615ccc4611379b1693464a6356a4ae",
+      "bytes": 2459284
+    },
+    "sources/cache/sameerverma-final-assembly-__DigitRingIII_,_simulation_digit_rings.py__-b9d6a0193ce2.stl": {
+      "sha256": "7c14c751da7f499191dccf8463dcecb9188e88c1a8b86ce9da3d7b7582a26c13",
+      "bytes": 2457084
+    },
+    "sources/cache/sameerverma-final-assembly-__DigitRingIV_,_simulation_digit_rings.py__-0b0c2ca995c6.stl": {
+      "sha256": "273918f56812fc5b08fce4541e35c9dcd0b1fd620ba0c99255572dae11cf9f17",
+      "bytes": 2457084
+    },
+    "sources/cache/sameerverma-final-assembly-__DigitRingV_,_simulation_digit_rings.py__-854ca665bbb6.stl": {
+      "sha256": "0ad22490fab4dde08751be2d71067eaa0a9d2e21bd9fba73c50ba13b14963144",
+      "bytes": 2457084
+    },
+    "sources/cache/sameerverma-final-assembly-__EndRetainer_,_simulation_retainer.py__-7bc1aa1f7d14.stl": {
+      "sha256": "6f4e08817c5297adc20413901d2cdab735b160bda5704a53f16155088a4666d2",
+      "bytes": 768284
+    },
+    "sources/cache/sameerverma-final-assembly-__EndSleeve_,_simulation_compensator.py__-2332fdd51efc.stl": {
+      "sha256": "2790d65e98eddf74e1cbd7d98f668d90db3e204167ffe3d03fecabcf39d5febb",
+      "bytes": 419584
+    },
+    "sources/cache/sameerverma-final-assembly-__HistoricalReflectorCore_,_simulation_historical_reflector_-00ff795993ab.stl": {
+      "sha256": "4cf477c772210ad6f764b0624c530b9b8a24ceaca449292ab0062735f5eddc4a",
+      "bytes": 5013684
+    },
+    "sources/cache/sameerverma-final-assembly-__HistoricalRotorCoreIII_,_simulation_historical_other_rotor-3cde0b8292b1.stl": {
+      "sha256": "decc9d261170e412e7a1d16e5368e242862b88f8d2d49faaf072c42eb93478ec",
+      "bytes": 3101484
+    },
+    "sources/cache/sameerverma-final-assembly-__HistoricalRotorCoreIV_,_simulation_historical_other_rotors-ca2f590a3215.stl": {
+      "sha256": "decc9d261170e412e7a1d16e5368e242862b88f8d2d49faaf072c42eb93478ec",
+      "bytes": 3101484
+    },
+    "sources/cache/sameerverma-final-assembly-__HistoricalRotorCoreV_,_simulation_historical_rotor_contact-f01bef63122d.stl": {
+      "sha256": "decc9d261170e412e7a1d16e5368e242862b88f8d2d49faaf072c42eb93478ec",
+      "bytes": 3101484
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyA_,_simulation_key_legends.py__-82a0299bc6d3.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyB_,_simulation_key_legends.py__-3649559a89db.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyC_,_simulation_key_legends.py__-fb4a5304cb8c.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyD_,_simulation_key_legends.py__-dfb6f2bb0265.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyE_,_simulation_key_legends.py__-f45cff081c4c.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyF_,_simulation_key_legends.py__-d6683b0be17f.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyG_,_simulation_key_legends.py__-1565eb20c8e8.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyH_,_simulation_key_legends.py__-cd326c684d7c.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyI_,_simulation_key_legends.py__-241e25206108.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyJ_,_simulation_key_legends.py__-b2d9f425168d.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyK_,_simulation_key_legends.py__-c4f39acebfb2.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyL_,_simulation_key_legends.py__-c00f7285ebda.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyM_,_simulation_key_legends.py__-f5b700add944.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyN_,_simulation_key_legends.py__-bfffcf70fd71.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyO_,_simulation_key_legends.py__-6a66926d0c30.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyP_,_simulation_key_legends.py__-88b2d569374a.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyQ_,_simulation_key_legends.py__-b444b4720d48.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyR_,_simulation_key_legends.py__-9a9e1ebf6808.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyS_,_simulation_key_legends.py__-965f1770330e.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyScrew_,_simulation_fasteners.py__-f691acbed941.stl": {
+      "sha256": "af993bd0fa63cf908d43d12434cc42fbe7e8b0bf1c32a4f3d60a3f119f524886",
+      "bytes": 1900784
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyT_,_simulation_key_legends.py__-a7e41018cf42.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyU_,_simulation_key_legends.py__-28905aef92ce.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyV_,_simulation_key_legends.py__-f5d046bd9144.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyW_,_simulation_key_legends.py__-9c36647bf587.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyX_,_simulation_key_legends.py__-75e736da4a66.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyY_,_simulation_key_legends.py__-0c29f9859bf1.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__KeyZ_,_simulation_key_legends.py__-5d742c1fa6c1.stl": {
+      "sha256": "9f48ce10e398ad4ab4a0a7e5de49340c42338b51880af4dd8d79dfea188f1694",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__MiddleKeyScrew_,_simulation_fasteners.py__-47991c2073e4.stl": {
+      "sha256": "af993bd0fa63cf908d43d12434cc42fbe7e8b0bf1c32a4f3d60a3f119f524886",
+      "bytes": 1900784
+    },
+    "sources/cache/sameerverma-final-assembly-__P103_100022_Segment_Plate_v7_,_simulation_upstream_parts.p-980c2200bc31.stl": {
+      "sha256": "5df2cabe92b01d92df913a53cd02417fbe0a3b1ad69cd5f034f79b9c4eeb1682",
+      "bytes": 976684
+    },
+    "sources/cache/sameerverma-final-assembly-__P105_100061_Socket_Bar_v8_,_simulation_upstream_parts.py__-2479d944be22.stl": {
+      "sha256": "f467fca1c1f7f7903adb4705ac9315f3eab704a7c405bc60594af64ea84e51a7",
+      "bytes": 353384
+    },
+    "sources/cache/sameerverma-final-assembly-__P106_100062_Isolator_v4_,_simulation_upstream_parts.py__-9c35f70965b2.stl": {
+      "sha256": "b53f234431f8302801a6e63214bcb720851eb1cef1b52fc63f09816bec6195c5",
+      "bytes": 146484
+    },
+    "sources/cache/sameerverma-final-assembly-__P109_100066_Plastic_Core_,_simulation_upstream_parts.py__-5429025a1826.stl": {
+      "sha256": "f2f44be2552a5e15a3cc78a37fdcde06c85ab4907f31275665033f6ea3ce8e51",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P10_91290A140_,_simulation_upstream_parts.py__-e85454a44cc6.stl": {
+      "sha256": "4a3691badd265ea6e1f7d19e73e92ef7683d02c8500f9ffe7ca37bca284f0980",
+      "bytes": 144484
+    },
+    "sources/cache/sameerverma-final-assembly-__P110_100065_Core_,_simulation_upstream_parts.py__-04114b60e7ef.stl": {
+      "sha256": "60314f91ccb7066b13516f82b5eac9fa35ce35d839082635fde03c23597a6403",
+      "bytes": 31284
+    },
+    "sources/cache/sameerverma-final-assembly-__P114_100064_Spring_,_simulation_upstream_parts.py__-fc049b9a5c06.stl": {
+      "sha256": "eff77c4ba2ca65e154063cadbe7d364e40d7ccde2e5a2516ef65000517c39ff8",
+      "bytes": 336784
+    },
+    "sources/cache/sameerverma-final-assembly-__P115_100063_Spring_Pin_,_simulation_upstream_parts.py__-2802a6894a24.stl": {
+      "sha256": "36a7ffac9c41b4ec16f408c13b1ae7e844740dc79a3b29dcb5d892f9055457ff",
+      "bytes": 33784
+    },
+    "sources/cache/sameerverma-final-assembly-__P116_98543A101_,_simulation_upstream_parts.py__-3c7065718f05.stl": {
+      "sha256": "750be0ee7604d6c73e41cc96149076a3e58b64e2dca727577fb4a3a833c68670",
+      "bytes": 18284
+    },
+    "sources/cache/sameerverma-final-assembly-__P11_90695A038_,_simulation_upstream_parts.py__-7978bdedc647.stl": {
+      "sha256": "6fe6dbbc57c05ea363bbfb64bb4a8e1cac057d7aa516894c55fdf66f252b8944",
+      "bytes": 55784
+    },
+    "sources/cache/sameerverma-final-assembly-__P12_91290A117_1_,_simulation_upstream_parts.py__-88252dcd1512.stl": {
+      "sha256": "fde68e809e66ba3c2e56595d76b242faf7ad8a3b14f99e66df8fc0a56a1405f2",
+      "bytes": 288684
+    },
+    "sources/cache/sameerverma-final-assembly-__P13_100069_Screw_v1_Mirror_,_simulation_upstream_parts.py_-93892161ebff.stl": {
+      "sha256": "07c71ab7a294eb5c884a5d4c3943745e976d9a3c5601624efaa82932955a1248",
+      "bytes": 25684
+    },
+    "sources/cache/sameerverma-final-assembly-__P14_90695A038_Mirror_,_simulation_upstream_parts.py__-e5b9fd175d9a.stl": {
+      "sha256": "d7df944c69eb23c7a1a7043263c91224c6d327e8c975788d7570f72072d440dd",
+      "bytes": 55784
+    },
+    "sources/cache/sameerverma-final-assembly-__P15_100071_Sleeve_v1_Mirror_,_simulation_upstream_parts.py-910417e859cd.stl": {
+      "sha256": "24fb8b3a2899c6c2e4a2cc96625f27b70c8491f7644c5447e8075b030a425b5b",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P168_100049_Flange_v2_,_simulation_upstream_parts.py__-197d395d8318.stl": {
+      "sha256": "b962d0d47b3339845da4484d60ca29e435fda1b37f9830b48355792dd512624f",
+      "bytes": 44684
+    },
+    "sources/cache/sameerverma-final-assembly-__P16_91290A117_1_Mirror_,_simulation_upstream_parts.py__-ae525cc076f8.stl": {
+      "sha256": "792c7c8938934cb31bd3a7638156b9b9f9c87f126b705359dc9b966bbbc96233",
+      "bytes": 288684
+    },
+    "sources/cache/sameerverma-final-assembly-__P170_100060_L_Section_v2_,_simulation_upstream_parts.py__-17eed7ce4759.stl": {
+      "sha256": "4b37a29f12eef2976b93c9f8f28770f748036a2d7ce72f6dcc5908c2794a840f",
+      "bytes": 72584
+    },
+    "sources/cache/sameerverma-final-assembly-__P173_90592A085_Mirror_,_simulation_upstream_parts.py__-d13b918f6001.stl": {
+      "sha256": "8c4fe6efbe950d9551ae7ada3997ee07efae096c07cb21b7eb1557f8349b537a",
+      "bytes": 70184
+    },
+    "sources/cache/sameerverma-final-assembly-__P174_93413A110_Mirror_,_simulation_upstream_parts.py__-2369cd9deb50.stl": {
+      "sha256": "f46c6d935200bf1a38dd3b44062c5be3903b8177856421e29ac315d69bc5334c",
+      "bytes": 10484
+    },
+    "sources/cache/sameerverma-final-assembly-__P175_91290A113_Mirror_,_simulation_upstream_parts.py__-87279f790866.stl": {
+      "sha256": "eee2bcec62ba3d4834f6792bf6b8e0357f8d282b805a1f1f77894b249aef7a96",
+      "bytes": 193384
+    },
+    "sources/cache/sameerverma-final-assembly-__P178_90592A085_,_simulation_upstream_parts.py__-034de1478435.stl": {
+      "sha256": "0af32f8b058c202a4719ca8525ba6a3875622fa76017c460c652d00fc89406b1",
+      "bytes": 70184
+    },
+    "sources/cache/sameerverma-final-assembly-__P179_93413A110_,_simulation_upstream_parts.py__-08f2205bae29.stl": {
+      "sha256": "f7077099232d868dcbadafb6238603a222b2516d460e258caf7632df8dbf26ca",
+      "bytes": 10484
+    },
+    "sources/cache/sameerverma-final-assembly-__P17_91290A113_,_simulation_upstream_parts.py__-c1493d474ccf.stl": {
+      "sha256": "4d4a853b8a7d641226b624fe6f69d414624c541fede08c740f37e1d365de28e0",
+      "bytes": 193384
+    },
+    "sources/cache/sameerverma-final-assembly-__P180_91290A113_,_simulation_upstream_parts.py__-cbda91bbbb1b.stl": {
+      "sha256": "4d4a853b8a7d641226b624fe6f69d414624c541fede08c740f37e1d365de28e0",
+      "bytes": 193384
+    },
+    "sources/cache/sameerverma-final-assembly-__P183_91290A109_,_simulation_upstream_parts.py__-483282e98754.stl": {
+      "sha256": "5afde61e8c418e64fcaba829b13fc854889c7b9b4891e118ac270978e34175eb",
+      "bytes": 104584
+    },
+    "sources/cache/sameerverma-final-assembly-__P184_91290A109_Mirror_,_simulation_upstream_parts.py__-fb22ff04e24b.stl": {
+      "sha256": "3b9cf09bc6a4d3bd440b7437861bd9e1f8beb560489fedb4d78f0cde6f99db86",
+      "bytes": 104584
+    },
+    "sources/cache/sameerverma-final-assembly-__P186_91290A111_,_simulation_upstream_parts.py__-b8c244778b44.stl": {
+      "sha256": "328265a0d425a8c0f06db2cc0c570345fcf5985dcd02c4fd9eb73fc2aadaefec",
+      "bytes": 149984
+    },
+    "sources/cache/sameerverma-final-assembly-__P187_91290A111_Mirror_,_simulation_upstream_parts.py__-adc91a7e592b.stl": {
+      "sha256": "36c43a4e837783cff753d8e3b5b5574b5182f0da43bed637d71b798cf64b0c4d",
+      "bytes": 149984
+    },
+    "sources/cache/sameerverma-final-assembly-__P188_91294A130_,_simulation_upstream_parts.py__-08484f2fa5f3.stl": {
+      "sha256": "bade11cdd284e2ca1c4d034e64bfd3669286d9dd0be3d7703579511567c45185",
+      "bytes": 199884
+    },
+    "sources/cache/sameerverma-final-assembly-__P189_91294A126_,_simulation_upstream_parts.py__-9c226871f474.stl": {
+      "sha256": "c77f33496a6254bd906e838d74cf839c3f767f51be55509c1e6430e57f2cf4df",
+      "bytes": 113384
+    },
+    "sources/cache/sameerverma-final-assembly-__P18_91290A111_,_simulation_upstream_parts.py__-c2d6108a35f7.stl": {
+      "sha256": "328265a0d425a8c0f06db2cc0c570345fcf5985dcd02c4fd9eb73fc2aadaefec",
+      "bytes": 149984
+    },
+    "sources/cache/sameerverma-final-assembly-__P190_91290A111_1_,_simulation_upstream_parts.py__-c230cc3fe6ca.stl": {
+      "sha256": "328265a0d425a8c0f06db2cc0c570345fcf5985dcd02c4fd9eb73fc2aadaefec",
+      "bytes": 149984
+    },
+    "sources/cache/sameerverma-final-assembly-__P191_91290A111_1_Mirror_,_simulation_upstream_parts.py__-7cb06ddd14cd.stl": {
+      "sha256": "36c43a4e837783cff753d8e3b5b5574b5182f0da43bed637d71b798cf64b0c4d",
+      "bytes": 149984
+    },
+    "sources/cache/sameerverma-final-assembly-__P193_100067_Stop_Plate_v2_,_simulation_upstream_parts.py__-6ec7bb5c162a.stl": {
+      "sha256": "d6a5378f6c1b54c32894050234622cbbc27404f78201e494a397d1db3c90e7be",
+      "bytes": 64584
+    },
+    "sources/cache/sameerverma-final-assembly-__P194_100020_Contactor_Plate_v4_,_simulation_upstream_parts-63341ad66dc3.stl": {
+      "sha256": "382265a18dfd89717c6b65ff4edd47b968458de86ab0e7d9c23dce1ced31d02c",
+      "bytes": 653484
+    },
+    "sources/cache/sameerverma-final-assembly-__P195_100068_Stop_Pin_v2_,_simulation_upstream_parts.py__-f31bd6a1a25e.stl": {
+      "sha256": "175482ebc631de40b6572c814ca07d3ff6543d1de23f2a69524b36ef8ce27063",
+      "bytes": 31784
+    },
+    "sources/cache/sameerverma-final-assembly-__P196_100045_Bent_Cap_v1_,_simulation_upstream_parts.py__-b7988b7a179e.stl": {
+      "sha256": "1ba576a873890ffcfa2c5737ed18a89beca76712b3f3319c2bb3ee4075f4386e",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P197_100067_Stop_Plate_v2_Mirror_,_simulation_upstream_par-619a5c3dc5f3.stl": {
+      "sha256": "96173e30c26f4c7b3da6471642b848e4c9fd86ff4c41723f4eee86bcc00cfadc",
+      "bytes": 64584
+    },
+    "sources/cache/sameerverma-final-assembly-__P198_100068_Stop_Pin_v2_Mirror_,_simulation_upstream_parts-e671464ac736.stl": {
+      "sha256": "914da46c0ad5f552529ac4703a10032f5c36281b423bf33fe661be4e721b454a",
+      "bytes": 31784
+    },
+    "sources/cache/sameerverma-final-assembly-__P199_100045_Bent_Cap_v1_Mirror_,_simulation_upstream_parts-12829fcc7003.stl": {
+      "sha256": "50593a5d25a8e6475aa703c3fab69e3b85c271d77a93e3143223646578260bb9",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P201_100059_Anti_Twist_Device_v1_,_simulation_upstream_par-54d4daaed5e4.stl": {
+      "sha256": "ea65913dfb02f156a68a2aece745351ae2dcc7d683d83bc5d86dde7f02e58eb0",
+      "bytes": 23484
+    },
+    "sources/cache/sameerverma-final-assembly-__P202_Component4_,_simulation_upstream_parts.py__-5dee42e2a99d.stl": {
+      "sha256": "3577d2a1cb493354eebbb7f76f1064a6d0ae7f8d824f6dae982b60f312be0878",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P205_Component11_,_simulation_upstream_parts.py__-35c167ea9dd4.stl": {
+      "sha256": "2a703009d689069106dc39e98ca1076a5a847d9f61f6588239bb41d659e61682",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P206_Component16_,_simulation_upstream_parts.py__-11082f11bbe8.stl": {
+      "sha256": "2a703009d689069106dc39e98ca1076a5a847d9f61f6588239bb41d659e61682",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P208_Component13_,_simulation_upstream_parts.py__-f3c72c736072.stl": {
+      "sha256": "2a703009d689069106dc39e98ca1076a5a847d9f61f6588239bb41d659e61682",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P209_Component15_,_simulation_upstream_parts.py__-407492fcdd62.stl": {
+      "sha256": "2a703009d689069106dc39e98ca1076a5a847d9f61f6588239bb41d659e61682",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P20_100015_Patch_Panel_v5_,_simulation_upstream_parts.py__-170c953b7c53.stl": {
+      "sha256": "80ac69e5249843e00379df1bb3ed86c0b9277bf0b0ab477ac22a887634fc74a6",
+      "bytes": 704284
+    },
+    "sources/cache/sameerverma-final-assembly-__P217_Component12_,_simulation_upstream_parts.py__-e63481bcac88.stl": {
+      "sha256": "8de082658bffb366f86331130354bfcba9d179d90a6d71ded7deda256291e2fc",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P219_Component14_,_simulation_upstream_parts.py__-c08c94adc571.stl": {
+      "sha256": "8049b672401a76e6592e5304a0e24fe782eb4e5e6d17a93128e73151dbb5105f",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P220_Component17_,_simulation_upstream_parts.py__-6f30aaa9d37b.stl": {
+      "sha256": "7fdcf0c87b7d03f170d2d94773609eaa8c1696ff2319c8504fce83ae674fd7a3",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P221_Component18_,_simulation_upstream_parts.py__-02828021e148.stl": {
+      "sha256": "c8c8a27a92b44ba9809a61e95f1a63c78e57e394900ab3d2ffedb27fa8239f14",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P222_Component19_,_simulation_upstream_parts.py__-a8ce5fa913c7.stl": {
+      "sha256": "3e22018d0a9170938a9397c137430322ff50958cf8403963ed539764bea6f4e1",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P223_Component20_,_simulation_upstream_parts.py__-2306db881a1a.stl": {
+      "sha256": "4c163f46b12bab097f004f9a8fc2f0a447d90dad5c77fcfb7b34045091cfe776",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P224_Component21_,_simulation_upstream_parts.py__-2deda5eaeb76.stl": {
+      "sha256": "68bce3a0f25f7504b3acc36ee9b20d9c22446d72d5a00d0bc8541cfdb25fde37",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P225_Component22_,_simulation_upstream_parts.py__-94560b969a9b.stl": {
+      "sha256": "01de0494ceb081868e9c13912f483aa2a3b48d3af0fcd26b50812d99f0a621ff",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P226_Component23_,_simulation_upstream_parts.py__-f4bd9c58625e.stl": {
+      "sha256": "b7fd485f9e5ce8942b8ae35256a4c7d55a3416ac7a476bb0580271b6377cf10a",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P227_Component24_,_simulation_upstream_parts.py__-e17ca37962ef.stl": {
+      "sha256": "712f4e883ee82de4a3ebc78170c83b94a2580353269fdb8fb06eb54aa24271e7",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P228_Component25_,_simulation_upstream_parts.py__-c07a8eb4df01.stl": {
+      "sha256": "dcaad0dd3524ac24dad34b618672b633f9b6a45335b28811ab8e4a2aa91a966f",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P230_Component27_,_simulation_upstream_parts.py__-6773b538a3ee.stl": {
+      "sha256": "dd0b0b76e45900bfd7552e9eb5698744cabe2ea524a0499c57903d47f6b2be9c",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P231_Component28_,_simulation_upstream_parts.py__-ee36228728fe.stl": {
+      "sha256": "87c48185b7ea9f5e19ccd1f28ac55aa1d5ebc7210d7554c9734563f525fe1f7e",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P232_Component29_,_simulation_upstream_parts.py__-39b4cdbae8ae.stl": {
+      "sha256": "265d7777d71b1950fce29a45ca426574274785a98fc6545be8ba3e557c477103",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P233_Component30_,_simulation_upstream_parts.py__-a3b031c00751.stl": {
+      "sha256": "719c0bef714f48ce2498ee4c9279bb9be179fa963a995bdec0a523dd0e2ea3b2",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P236_Component33_,_simulation_upstream_parts.py__-284785923201.stl": {
+      "sha256": "0605f07a672ba091726f6b8408f78e07ec2545eed68f79565ca5d992f1c5901e",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P238_Component35_,_simulation_upstream_parts.py__-8f14aabda5ae.stl": {
+      "sha256": "1e2342cf75d0e7028178bd8d41321fdd6eb2aa1bbe5c7593ef54209dbeebdaf6",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P239_Component36_,_simulation_upstream_parts.py__-8e07b27b58a6.stl": {
+      "sha256": "82b9b0adf14e711c4ea9aa1c126ee83d0dff5707b12b23600a01f5d87ed67cd8",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P23_90695A038_1_,_simulation_upstream_parts.py__-c9dd3358b1aa.stl": {
+      "sha256": "6fe6dbbc57c05ea363bbfb64bb4a8e1cac057d7aa516894c55fdf66f252b8944",
+      "bytes": 55784
+    },
+    "sources/cache/sameerverma-final-assembly-__P241_91294A190_,_simulation_upstream_parts.py__-8f766b39b581.stl": {
+      "sha256": "442befe6dce71f119f8aa10e1c5f97781b8a6b4009cd305d6834f0d3a62480b0",
+      "bytes": 138984
+    },
+    "sources/cache/sameerverma-final-assembly-__P242_Component2_,_simulation_upstream_parts.py__-52ef0763eb88.stl": {
+      "sha256": "3f4ce985b48d295c518c9ef194f16b3500047ba0fdcd5df17706a9a6712bd84c",
+      "bytes": 138984
+    },
+    "sources/cache/sameerverma-final-assembly-__P243_Component3_,_simulation_upstream_parts.py__-83a8c7b64c3b.stl": {
+      "sha256": "3cc9f72cdd8bd0eadd7fb586a0a70596a3afa3ecce8f63088035566018215f39",
+      "bytes": 138984
+    },
+    "sources/cache/sameerverma-final-assembly-__P244_Component4_,_simulation_upstream_parts.py__-92debb6deec0.stl": {
+      "sha256": "7d9758156e59fb46eaa94036bafb822a540dab47066dbf1088617595b5f2225a",
+      "bytes": 138184
+    },
+    "sources/cache/sameerverma-final-assembly-__P245_Component5_,_simulation_upstream_parts.py__-64f6da786609.stl": {
+      "sha256": "3ffd933a2a5ae4b59121cdf9a228324c3236f448bcdbf4ec4fff3d164b958a0b",
+      "bytes": 138184
+    },
+    "sources/cache/sameerverma-final-assembly-__P246_Component9_,_simulation_upstream_parts.py__-fda37eb59d52.stl": {
+      "sha256": "be8f6f650d9b92e655dcbf87104452bf3fcda0e68ae45f8bd4a301991b86bc8a",
+      "bytes": 553784
+    },
+    "sources/cache/sameerverma-final-assembly-__P247_100069_Screw_v1_,_simulation_upstream_parts.py__-99ebab318310.stl": {
+      "sha256": "c7eb3b4fede1df9bcdfa2fd684141b5870f39e56603c3111fbff4db729a8b19d",
+      "bytes": 25684
+    },
+    "sources/cache/sameerverma-final-assembly-__P248_100071_Sleeve_v1_,_simulation_upstream_parts.py__-f3fb406dd6c6.stl": {
+      "sha256": "fede97a55a1a248de1f5e01a9fc52d114d9accdaf5ade65f637eec09fe12fb06",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P249_100024_Column_Centre_High_v1_,_simulation_upstream_pa-59e5e7c1375b.stl": {
+      "sha256": "7dee98e253035e9cd8eed6ab544a928eed0e10aa540ef1a71669bcd2bb86bcc4",
+      "bytes": 31284
+    },
+    "sources/cache/sameerverma-final-assembly-__P24_100032_Input_Jack_Small_v4_,_simulation_upstream_parts-b8a496adfabf.stl": {
+      "sha256": "9fe1d992d04ca07cd8abaf26e76776f0f60e35ef5359b95d2125445224e8d8cc",
+      "bytes": 261284
+    },
+    "sources/cache/sameerverma-final-assembly-__P251_100011_Access_Roll_v3_,_simulation_upstream_parts.py_-dca09cbecc20.stl": {
+      "sha256": "d4864946a1082ea0ab04f35ab40447db56c417360c1d1eec4753bb5df8a099b2",
+      "bytes": 228384
+    },
+    "sources/cache/sameerverma-final-assembly-__P252_100013_Access_Plate_v2_,_simulation_upstream_parts.py-741a6ae38ad1.stl": {
+      "sha256": "26cbaae5fe62899cfff8351ff6f969fe9a95e364ee58f120337c001c0254217f",
+      "bytes": 531084
+    },
+    "sources/cache/sameerverma-final-assembly-__P253_100014_Access_Ring_v2_,_simulation_upstream_parts.py_-8f2f176bd9ef.stl": {
+      "sha256": "7891c306f8976c44a8ffe208d1ed7a0ec801f93d55345c10826b221bcbec6f4b",
+      "bytes": 85084
+    },
+    "sources/cache/sameerverma-final-assembly-__P254_100047_Contact_Pin_v2_,_simulation_upstream_parts.py_-4fce6a297753.stl": {
+      "sha256": "9c0573dccbfd2574668326a76d4df46fb1442bd26534db128de5fcd1e2286028",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P255_91294A128_,_simulation_upstream_parts.py__-9d971714b7f9.stl": {
+      "sha256": "63e0ea9ad0c227f5286c518b2f474ab1272edc19e0373e5a98e6836f1464876d",
+      "bytes": 153284
+    },
+    "sources/cache/sameerverma-final-assembly-__P256_91290A011_,_simulation_upstream_parts.py__-941e3d88579b.stl": {
+      "sha256": "e21926e4c0152c0e3fe259a6c787b8ac67930813f850c93457dab14ae623c148",
+      "bytes": 128384
+    },
+    "sources/cache/sameerverma-final-assembly-__P257_100001_Bearing_Block_Left_v3_,_simulation_upstream_pa-385ea39ce70c.stl": {
+      "sha256": "dea73f9fc4edd8bb1d06340ab21772252e81a95238ff0842d3b98921cc192c01",
+      "bytes": 192684
+    },
+    "sources/cache/sameerverma-final-assembly-__P258_100004_Trident_v5_,_simulation_upstream_parts.py__-1d4687f46e08.stl": {
+      "sha256": "13a27d3ef717f7aab105627da336f788d63d3fb64e0206e1f45910c0e306a6a8",
+      "bytes": 387584
+    },
+    "sources/cache/sameerverma-final-assembly-__P25_100033_Input_Jack_Big_v4_,_simulation_upstream_parts.p-1f2a360e55ba.stl": {
+      "sha256": "e5c5057799c5b6da96f7d4a29a3dd9b083c385672ba7854d8db567b1fad76240",
+      "bytes": 261284
+    },
+    "sources/cache/sameerverma-final-assembly-__P262_100044_Roll_Lever_v1_,_simulation_upstream_parts.py__-1e7bbc753258.stl": {
+      "sha256": "60dc0f8b7337ef1d28f7583445b7d85435879aff3507eea45ae17d481a6cc274",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P263_Component1_,_simulation_upstream_parts.py__-7d70fa3ffc56.stl": {
+      "sha256": "4fff0b3a45b47fc1924f996960709c80a65ccfb8906656c85e55d6c94f3997c9",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P267_100056_Sleeve_v2_,_simulation_upstream_parts.py__-c91976b91750.stl": {
+      "sha256": "f97e6406a53677d42b31fe5f0b49c8c511aa4d8e117b6379c30adefbdfca4b09",
+      "bytes": 46484
+    },
+    "sources/cache/sameerverma-final-assembly-__P26_91290A109_,_simulation_upstream_parts.py__-373fd029d270.stl": {
+      "sha256": "5afde61e8c418e64fcaba829b13fc854889c7b9b4891e118ac270978e34175eb",
+      "bytes": 104584
+    },
+    "sources/cache/sameerverma-final-assembly-__P270_100046_Roll_Centering_Device_v1_,_simulation_upstream-df4585c446a5.stl": {
+      "sha256": "030d25621251cc2bb29531c787c266f7ba642dee098201d3785e00b2ec83fcf0",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P271_100055_Spike_v2_,_simulation_upstream_parts.py__-684c5b8ca5ca.stl": {
+      "sha256": "09795c37872cf497c20f0fabdeb7ea98a3fdb6aa9e7ca2ef9151d503aa936a70",
+      "bytes": 25884
+    },
+    "sources/cache/sameerverma-final-assembly-__P274_100041_Sleeve_5_v1_,_simulation_upstream_parts.py__-899ca113f3c8.stl": {
+      "sha256": "cc62df0facf10985d98c14e05c56609a2b4cbc4cc5ba2285939b973c5c8c98d9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P275_100009_Axle_Bottom_v3_,_simulation_upstream_parts.py_-0c684c0bdd7d.stl": {
+      "sha256": "af468321f2563c344daa6881128b320b9dce2d3ff83f7d750a4988163c7b09d7",
+      "bytes": 111884
+    },
+    "sources/cache/sameerverma-final-assembly-__P276_Component1_,_simulation_upstream_parts.py__-2438fd7e2aa5.stl": {
+      "sha256": "be562cff7f9db961d7d53decfb1f1e27462f75fd6b97f4904c66e45259b34305",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P277_Spike_,_simulation_upstream_parts.py__-a3aa6874eace.stl": {
+      "sha256": "812854b82f3cb45254531d8aa132e9d140dd82e5a41ef076a251d320922f49b5",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P278_100005_Shaft_Holder_v7_,_simulation_upstream_parts.py-2461c48c8743.stl": {
+      "sha256": "88c201fcc53c8fc4086fd8ddd51225e74d191e15b7f0ded7ae2f7a8c4d85bcdf",
+      "bytes": 119284
+    },
+    "sources/cache/sameerverma-final-assembly-__P27_91290A148_,_simulation_upstream_parts.py__-907273d55eaa.stl": {
+      "sha256": "36ac12487d789b23c893bed227bc8d861d99f17994f412ed7d89a1dd6136afb3",
+      "bytes": 212784
+    },
+    "sources/cache/sameerverma-final-assembly-__P281_100043_v1_,_simulation_upstream_parts.py__-145d1454736c.stl": {
+      "sha256": "c80b14a56d9334643ac58dd03c5666bd679f55d2b374b9e459ef037cedc296e0",
+      "bytes": 45384
+    },
+    "sources/cache/sameerverma-final-assembly-__P282_91290A138_,_simulation_upstream_parts.py__-08fe7369d4fb.stl": {
+      "sha256": "5e7d7206cbd6e2b701d1739c1619f2421bb26c1b52127a28e4835d48fc4b9e2b",
+      "bytes": 97184
+    },
+    "sources/cache/sameerverma-final-assembly-__P283_100006_Lever_v10_,_simulation_upstream_parts.py__-3aa55f832392.stl": {
+      "sha256": "d7e53d483969af94bba9228bd05a1a9786c788aa7bc2d2b1ed7ea5b1e124a1ed",
+      "bytes": 189684
+    },
+    "sources/cache/sameerverma-final-assembly-__P284_91290A111_,_simulation_upstream_parts.py__-e67ac909ea88.stl": {
+      "sha256": "328265a0d425a8c0f06db2cc0c570345fcf5985dcd02c4fd9eb73fc2aadaefec",
+      "bytes": 149984
+    },
+    "sources/cache/sameerverma-final-assembly-__P285_91290A138_Mirror_,_simulation_upstream_parts.py__-1312e18e0463.stl": {
+      "sha256": "ae46f38b3219a25c195ce6d4ae50ae9becf6629585443feb2490d5b78f1437b1",
+      "bytes": 97184
+    },
+    "sources/cache/sameerverma-final-assembly-__P287_100028_Button_Head_Bottom_v1_9_,_simulation_upstream_-9d65b632dbc3.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P289_100027_Button_Head_Top_v1_9_,_simulation_upstream_par-18c05e044148.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P28_90592A085_,_simulation_upstream_parts.py__-8563abc7e955.stl": {
+      "sha256": "0af32f8b058c202a4719ca8525ba6a3875622fa76017c460c652d00fc89406b1",
+      "bytes": 70184
+    },
+    "sources/cache/sameerverma-final-assembly-__P290_100026_Plastic_Plug_v1_9_,_simulation_upstream_parts.-cb6a05a040c2.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P292_90592A085_2_,_simulation_upstream_parts.py__-acf2a9128312.stl": {
+      "sha256": "0af32f8b058c202a4719ca8525ba6a3875622fa76017c460c652d00fc89406b1",
+      "bytes": 70184
+    },
+    "sources/cache/sameerverma-final-assembly-__P293_100030_Button_Medium_v3_,_simulation_upstream_parts.p-6109c3b1a9b2.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P294_100028_Button_Head_Bottom_v1_10_,_simulation_upstream-9b86998ec9a6.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P296_100027_Button_Head_Top_v1_10_,_simulation_upstream_pa-7f4ecf6b89ee.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P297_100026_Plastic_Plug_v1_10_,_simulation_upstream_parts-136209e63a04.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P298_100030_Button_Medium_v3_1_,_simulation_upstream_parts-69273dedb21e.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P299_100028_Button_Head_Bottom_v1_11_,_simulation_upstream-f095168362d8.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P29_90274A216_Mirror_1_,_simulation_upstream_parts.py__-228457682d8e.stl": {
+      "sha256": "ad8c2c2ec73f9d2d6b2bdb300bef7f283a85e07b78062e0c593163401c3af2d4",
+      "bytes": 76784
+    },
+    "sources/cache/sameerverma-final-assembly-__P301_100027_Button_Head_Top_v1_11_,_simulation_upstream_pa-0c9a5cce9101.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P302_100026_Plastic_Plug_v1_11_,_simulation_upstream_parts-cf7367fef5b1.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P303_100030_Button_Medium_v3_2_,_simulation_upstream_parts-689aaf614c87.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P304_100028_Button_Head_Bottom_v1_12_,_simulation_upstream-4a2d5f95cbb0.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P306_100027_Button_Head_Top_v1_12_,_simulation_upstream_pa-2885fbd0c83e.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P307_100026_Plastic_Plug_v1_12_,_simulation_upstream_parts-5021e94f1a8f.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P308_100030_Button_Medium_v3_3_,_simulation_upstream_parts-1a8311f813ef.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P309_100028_Button_Head_Bottom_v1_13_,_simulation_upstream-6d6f9d3b522b.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P30_2_5x6_Pin_Mirror_1_,_simulation_upstream_parts.py__-4065ceaff266.stl": {
+      "sha256": "209a9b57b56c10f90196c731560b1276c0772246c5b8e2a57abe7b5db9f04538",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P311_100027_Button_Head_Top_v1_13_,_simulation_upstream_pa-6dc9ee2b5263.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P312_100026_Plastic_Plug_v1_13_,_simulation_upstream_parts-f4d282c58144.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P313_100030_Button_Medium_v3_4_,_simulation_upstream_parts-1ebb87f43a2d.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P314_100028_Button_Head_Bottom_v1_14_,_simulation_upstream-2962d3a5b340.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P316_100027_Button_Head_Top_v1_14_,_simulation_upstream_pa-7f8ef3e537cf.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P317_100026_Plastic_Plug_v1_14_,_simulation_upstream_parts-416a9c2506f8.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P318_100030_Button_Medium_v3_5_,_simulation_upstream_parts-22b31e7a75d5.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P319_100028_Button_Head_Bottom_v1_15_,_simulation_upstream-f6deb0d80d3f.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P31_91290A011_Mirror_,_simulation_upstream_parts.py__-06f7e55d217e.stl": {
+      "sha256": "cd2e3874159ad7c562d015984bfc819b0ad4bd7a16060d9bc8107575e935d3ee",
+      "bytes": 128384
+    },
+    "sources/cache/sameerverma-final-assembly-__P321_100027_Button_Head_Top_v1_15_,_simulation_upstream_pa-0e770b23dabe.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P322_100026_Plastic_Plug_v1_15_,_simulation_upstream_parts-1fab96b32901.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P323_100030_Button_Medium_v3_6_,_simulation_upstream_parts-24654de14619.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P324_100028_Button_Head_Bottom_v1_16_,_simulation_upstream-fe05abe9a12e.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P326_100027_Button_Head_Top_v1_16_,_simulation_upstream_pa-bd1decf2670c.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P327_100026_Plastic_Plug_v1_16_,_simulation_upstream_parts-6c6f4d7ba133.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P328_100030_Button_Medium_v3_7_,_simulation_upstream_parts-db8a202dce93.stl": {
+      "sha256": "4e4143879dc3df7aae97629f4e17673703e84140bfc0484900c578f03076c97d",
+      "bytes": 102084
+    },
+    "sources/cache/sameerverma-final-assembly-__P329_Component91_,_simulation_upstream_parts.py__-3fc9f83e85ee.stl": {
+      "sha256": "600e02f751ed3f931cc52727d6fc8518db2019ca956cc5098371997bdff91795",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P331_100028_Button_Head_Bottom_v1_,_simulation_upstream_pa-748dc97f289b.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P333_100027_Button_Head_Top_v1_,_simulation_upstream_parts-811c22361368.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P334_100026_Plastic_Plug_v1_,_simulation_upstream_parts.py-379c45a87189.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P336_90592A085_1_,_simulation_upstream_parts.py__-3a791b3c40ca.stl": {
+      "sha256": "0af32f8b058c202a4719ca8525ba6a3875622fa76017c460c652d00fc89406b1",
+      "bytes": 70184
+    },
+    "sources/cache/sameerverma-final-assembly-__P337_100031_Button_Long_v4_,_simulation_upstream_parts.py_-80def9056ead.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P339_100054_Sleeve_v1_,_simulation_upstream_parts.py__-44177db7f635.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P33_100025_Button_Short_v5_,_simulation_upstream_parts.py_-cec7068855b6.stl": {
+      "sha256": "11d07e4e44ad10a7a919f9fe8d49bda30ec5bc878016cf27599e95f6dd1d61d4",
+      "bytes": 103684
+    },
+    "sources/cache/sameerverma-final-assembly-__P340_100028_Button_Head_Bottom_v1_1_,_simulation_upstream_-43367fa2f32f.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P342_100027_Button_Head_Top_v1_1_,_simulation_upstream_par-6eb9088bb15a.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P343_100026_Plastic_Plug_v1_1_,_simulation_upstream_parts.-f98d0c20e2ae.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P344_100031_Button_Long_v4_1_,_simulation_upstream_parts.p-6d8ebffa5f4e.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P345_100054_Sleeve_v1_1_,_simulation_upstream_parts.py__-1a04812c08f5.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P346_100028_Button_Head_Bottom_v1_2_,_simulation_upstream_-93ca96162973.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P348_100027_Button_Head_Top_v1_2_,_simulation_upstream_par-5d1b9e823c9e.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P349_100026_Plastic_Plug_v1_2_,_simulation_upstream_parts.-42b53a84f927.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P34_100028_Button_Head_Bottom_v1_17_,_simulation_upstream_-7a2c4511e18e.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P350_100031_Button_Long_v4_2_,_simulation_upstream_parts.p-d988d779222e.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P351_100054_Sleeve_v1_2_,_simulation_upstream_parts.py__-304fdeb9d253.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P352_100028_Button_Head_Bottom_v1_3_,_simulation_upstream_-b4f2f5ae6c72.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P354_100027_Button_Head_Top_v1_3_,_simulation_upstream_par-0c63c97313a6.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P355_100026_Plastic_Plug_v1_3_,_simulation_upstream_parts.-b141542ac160.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P356_100031_Button_Long_v4_3_,_simulation_upstream_parts.p-bda484f7aded.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P357_100054_Sleeve_v1_3_,_simulation_upstream_parts.py__-3f6ee39b5ee7.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P358_100028_Button_Head_Bottom_v1_4_,_simulation_upstream_-f6a583c16fc2.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P360_100027_Button_Head_Top_v1_4_,_simulation_upstream_par-29b4071a4e39.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P361_100026_Plastic_Plug_v1_4_,_simulation_upstream_parts.-3df0eb3ed4c6.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P362_100031_Button_Long_v4_4_,_simulation_upstream_parts.p-060090b5ee5e.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P363_100054_Sleeve_v1_4_,_simulation_upstream_parts.py__-ab6355bc80d4.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P364_100028_Button_Head_Bottom_v1_5_,_simulation_upstream_-420c937f0f6a.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P366_100027_Button_Head_Top_v1_5_,_simulation_upstream_par-be3ef6e87a41.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P367_100026_Plastic_Plug_v1_5_,_simulation_upstream_parts.-716f0016a3b1.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P368_100031_Button_Long_v4_5_,_simulation_upstream_parts.p-db247926812c.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P369_100054_Sleeve_v1_5_,_simulation_upstream_parts.py__-62df6ef7fd8c.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P36_100027_Button_Head_Top_v1_17_,_simulation_upstream_par-25eb9528a6da.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P370_100028_Button_Head_Bottom_v1_6_,_simulation_upstream_-40f1fd301131.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P372_100027_Button_Head_Top_v1_6_,_simulation_upstream_par-e6f9b61c5a20.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P373_100026_Plastic_Plug_v1_6_,_simulation_upstream_parts.-d9fce1f6f0ab.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P374_100031_Button_Long_v4_6_,_simulation_upstream_parts.p-f38cd4ce8cdc.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P375_100054_Sleeve_v1_6_,_simulation_upstream_parts.py__-24f244c2f54b.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P376_100028_Button_Head_Bottom_v1_7_,_simulation_upstream_-e98f94450e3c.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P378_100027_Button_Head_Top_v1_7_,_simulation_upstream_par-adf24165f9a6.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P379_100026_Plastic_Plug_v1_7_,_simulation_upstream_parts.-e79eaeae9e49.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P37_100026_Plastic_Plug_v1_17_,_simulation_upstream_parts.-b90981edf978.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P380_100031_Button_Long_v4_7_,_simulation_upstream_parts.p-65be29b2181f.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P381_100054_Sleeve_v1_7_,_simulation_upstream_parts.py__-b7cd9fe86734.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P382_100028_Button_Head_Bottom_v1_8_,_simulation_upstream_-56f759d4dd84.stl": {
+      "sha256": "701a18101245a58e9608408783cf645a3a3d46259ac2b4146aaa58c2dba1692b",
+      "bytes": 34684
+    },
+    "sources/cache/sameerverma-final-assembly-__P384_100027_Button_Head_Top_v1_8_,_simulation_upstream_par-3f9ad0551cfd.stl": {
+      "sha256": "7b9002b34e6960be2788adf4cc4789d75a07e2546a3e0c5c31cec1853e346436",
+      "bytes": 62484
+    },
+    "sources/cache/sameerverma-final-assembly-__P385_100026_Plastic_Plug_v1_8_,_simulation_upstream_parts.-4fc35f1aaeef.stl": {
+      "sha256": "6fd3aa38a48479359edac0255070c726982c9e9b24cd51f6f38b277168057414",
+      "bytes": 47984
+    },
+    "sources/cache/sameerverma-final-assembly-__P386_100031_Button_Long_v4_8_,_simulation_upstream_parts.p-2d2cdcd1fe21.stl": {
+      "sha256": "1117255eda1426bbece8a4795a905e13579fd1b15f4be184a2b407c0f55e6728",
+      "bytes": 112684
+    },
+    "sources/cache/sameerverma-final-assembly-__P387_100054_Sleeve_v1_8_,_simulation_upstream_parts.py__-095a902ba1f9.stl": {
+      "sha256": "92b5fd3a8a0211ba2610b28832a63ee940f7cb18333ab52fb6b2e1dbe6b648a4",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P388_Component33_,_simulation_upstream_parts.py__-871eadb40107.stl": {
+      "sha256": "afe0e6b1a3ca75f21c24bd92c3d2557ede06eb20f80f3d6666ced6022f33983e",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P392_400003_Bushing_v3_,_simulation_upstream_parts.py__-901373c4623a.stl": {
+      "sha256": "497425c4ef89598c7f10cbc9b8f64f8f306fe4fdc114f1a820269fa3f69d31d7",
+      "bytes": 118484
+    },
+    "sources/cache/sameerverma-final-assembly-__P393_400001_Kerfring_v2_,_simulation_upstream_parts.py__-05eaa56589be.stl": {
+      "sha256": "20e94ceb91a1625a08f927abcd98abb2641a3cac2d59d32907d2a9a0997272b2",
+      "bytes": 66684
+    },
+    "sources/cache/sameerverma-final-assembly-__P39_90592A085_3_,_simulation_upstream_parts.py__-cc21359e7199.stl": {
+      "sha256": "0af32f8b058c202a4719ca8525ba6a3875622fa76017c460c652d00fc89406b1",
+      "bytes": 70184
+    },
+    "sources/cache/sameerverma-final-assembly-__P3_100045_Bent_Cap_v1_,_simulation_upstream_parts.py__-3075bbc93040.stl": {
+      "sha256": "1ba576a873890ffcfa2c5737ed18a89beca76712b3f3319c2bb3ee4075f4386e",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P425_400011_Roll_Plate_v2_,_simulation_upstream_parts.py__-dd726dddf8b0.stl": {
+      "sha256": "6aff30e84f3df6a410bdee5dc6f9cb64d2f95f477daeb270b5ae56a217ebfe95",
+      "bytes": 494084
+    },
+    "sources/cache/sameerverma-final-assembly-__P426_400012_Steel_Bushing_v1_,_simulation_upstream_parts.p-c12629189926.stl": {
+      "sha256": "8c7f7228ee91af3034ee9de949588574337b639e58d11b10d9cf2a7dad29fe1d",
+      "bytes": 36484
+    },
+    "sources/cache/sameerverma-final-assembly-__P428_400016_Contact_Pin_v2_,_simulation_upstream_parts.py_-4ec815cabc4a.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P429_400016_Contact_Pin_v2_1_,_simulation_upstream_parts.p-d8a0198f9c2b.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P430_400016_Contact_Pin_v2_2_,_simulation_upstream_parts.p-f1f7412c3923.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P431_400016_Contact_Pin_v2_3_,_simulation_upstream_parts.p-dc502c6fec87.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P432_400016_Contact_Pin_v2_4_,_simulation_upstream_parts.p-3c7615168f52.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P433_400016_Contact_Pin_v2_5_,_simulation_upstream_parts.p-5a297ab45fb4.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P434_400016_Contact_Pin_v2_6_,_simulation_upstream_parts.p-f58e52704a39.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P435_400016_Contact_Pin_v2_7_,_simulation_upstream_parts.p-89c6bff1e188.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P436_400016_Contact_Pin_v2_8_,_simulation_upstream_parts.p-c85fae677a5e.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P437_400016_Contact_Pin_v2_9_,_simulation_upstream_parts.p-00dd9c517f9f.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P438_400016_Contact_Pin_v2_10_,_simulation_upstream_parts.-03b0f4c1eb9f.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P439_400016_Contact_Pin_v2_11_,_simulation_upstream_parts.-803919ae6434.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P440_400016_Contact_Pin_v2_12_,_simulation_upstream_parts.-dd783483aee9.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P441_400016_Contact_Pin_v2_13_,_simulation_upstream_parts.-8dcaad15162c.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P442_400016_Contact_Pin_v2_14_,_simulation_upstream_parts.-344f3edb2947.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P443_400016_Contact_Pin_v2_15_,_simulation_upstream_parts.-a0406f97b761.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P444_400016_Contact_Pin_v2_16_,_simulation_upstream_parts.-ac84f3318639.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P445_400016_Contact_Pin_v2_17_,_simulation_upstream_parts.-b1ee3d7ee032.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P446_400016_Contact_Pin_v2_18_,_simulation_upstream_parts.-08f2b669d40b.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P447_400016_Contact_Pin_v2_19_,_simulation_upstream_parts.-7f7d92d58033.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P448_400016_Contact_Pin_v2_20_,_simulation_upstream_parts.-38c033d60c5b.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P449_400016_Contact_Pin_v2_21_,_simulation_upstream_parts.-b69cfe0b9df4.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P450_400016_Contact_Pin_v2_22_,_simulation_upstream_parts.-95523d4a3638.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P451_400016_Contact_Pin_v2_23_,_simulation_upstream_parts.-b443759fc088.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P452_400016_Contact_Pin_v2_24_,_simulation_upstream_parts.-b0f672d55319.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P453_400016_Contact_Pin_v2_25_,_simulation_upstream_parts.-8dac79a36b18.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P455_400013_Thread_Bushing_v2_,_simulation_upstream_parts.-9ea160d5db7e.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P456_400013_Thread_Bushing_v2_1_,_simulation_upstream_part-fb4d7f9968dd.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P457_400013_Thread_Bushing_v2_2_,_simulation_upstream_part-efe2cd464f1f.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P4_100037_Bent_High_v1_,_simulation_upstream_parts.py__-78db983d1114.stl": {
+      "sha256": "219b995249aab0da6d1963372e3e8f8dfb05e52bbdd5270f642c2fad5bd4ddce",
+      "bytes": 28484
+    },
+    "sources/cache/sameerverma-final-assembly-__P512_400019_Thread_Bushing_Small_v4_,_simulation_upstream_-2a9a2844918e.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P513_91294A128_,_simulation_upstream_parts.py__-5175e8cb5cdc.stl": {
+      "sha256": "63e0ea9ad0c227f5286c518b2f474ab1272edc19e0373e5a98e6836f1464876d",
+      "bytes": 153284
+    },
+    "sources/cache/sameerverma-final-assembly-__P514_400019_Thread_Bushing_Small_v4_1_,_simulation_upstrea-a67bda73e33c.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P515_400019_Thread_Bushing_Small_v4_2_,_simulation_upstrea-a24ec2090fc4.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P516_400019_Thread_Bushing_Small_v4_3_,_simulation_upstrea-527cd2ae7070.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P517_400005_Bracket_v2_,_simulation_upstream_parts.py__-e03fab07b7e4.stl": {
+      "sha256": "e8a890b0e2e574dbe948484b218cdbdd3e03fb18ceeecdc768fd04101221f888",
+      "bytes": 73384
+    },
+    "sources/cache/sameerverma-final-assembly-__P518_400005_Bracket_v2_1_,_simulation_upstream_parts.py__-5a71aada25d4.stl": {
+      "sha256": "e8a890b0e2e574dbe948484b218cdbdd3e03fb18ceeecdc768fd04101221f888",
+      "bytes": 73384
+    },
+    "sources/cache/sameerverma-final-assembly-__P521_96144A292_,_simulation_upstream_parts.py__-05f9bb13066f.stl": {
+      "sha256": "b383ec8c6095dfd03095b1680a5de22a82ef938b243ac1b3c9b79cca7cb90fd0",
+      "bytes": 198484
+    },
+    "sources/cache/sameerverma-final-assembly-__P522_93475A165_,_simulation_upstream_parts.py__-c3b1eee03bec.stl": {
+      "sha256": "a2a25efbb5bd1fac1fc08cdaf15cf850a48b706564d76aef64112a664d9c30f7",
+      "bytes": 10484
+    },
+    "sources/cache/sameerverma-final-assembly-__P523_91430A003_,_simulation_upstream_parts.py__-d40716d6186f.stl": {
+      "sha256": "ac150c614875cbd7a5e8a83d7454ba5163165c8ddf5ddc10e1b91f7ec35a02af",
+      "bytes": 64784
+    },
+    "sources/cache/sameerverma-final-assembly-__P524_91430A003_1_,_simulation_upstream_parts.py__-ba2e8a1f2ee9.stl": {
+      "sha256": "9ab939071085d80bfa8562ef1f50401d94918023ffbab5fb0f9413f75177a6d5",
+      "bytes": 108284
+    },
+    "sources/cache/sameerverma-final-assembly-__P526_400003_Bushing_v3_1_,_simulation_upstream_parts.py__-4e6b5034a318.stl": {
+      "sha256": "497425c4ef89598c7f10cbc9b8f64f8f306fe4fdc114f1a820269fa3f69d31d7",
+      "bytes": 118484
+    },
+    "sources/cache/sameerverma-final-assembly-__P527_400001_Kerfring_v2_1_,_simulation_upstream_parts.py__-bf374a9004b2.stl": {
+      "sha256": "20e94ceb91a1625a08f927abcd98abb2641a3cac2d59d32907d2a9a0997272b2",
+      "bytes": 66684
+    },
+    "sources/cache/sameerverma-final-assembly-__P559_400011_Roll_Plate_v2_1_,_simulation_upstream_parts.py-81543ea13b20.stl": {
+      "sha256": "6aff30e84f3df6a410bdee5dc6f9cb64d2f95f477daeb270b5ae56a217ebfe95",
+      "bytes": 494084
+    },
+    "sources/cache/sameerverma-final-assembly-__P560_400012_Steel_Bushing_v1_1_,_simulation_upstream_parts-25c12d0c4b97.stl": {
+      "sha256": "8c7f7228ee91af3034ee9de949588574337b639e58d11b10d9cf2a7dad29fe1d",
+      "bytes": 36484
+    },
+    "sources/cache/sameerverma-final-assembly-__P562_400016_Contact_Pin_v2_26_,_simulation_upstream_parts.-833346a69266.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P563_400016_Contact_Pin_v2_27_,_simulation_upstream_parts.-9fa4a1233161.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P564_400016_Contact_Pin_v2_28_,_simulation_upstream_parts.-7e3967324cbf.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P565_400016_Contact_Pin_v2_29_,_simulation_upstream_parts.-12b0a9bb5a07.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P566_400016_Contact_Pin_v2_30_,_simulation_upstream_parts.-5434adbd3715.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P567_400016_Contact_Pin_v2_31_,_simulation_upstream_parts.-23cc0c488405.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P568_400016_Contact_Pin_v2_32_,_simulation_upstream_parts.-0e1b65965121.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P569_400016_Contact_Pin_v2_33_,_simulation_upstream_parts.-ac4963edfb56.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P570_400016_Contact_Pin_v2_34_,_simulation_upstream_parts.-317286264ac4.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P571_400016_Contact_Pin_v2_35_,_simulation_upstream_parts.-9b68ea899da6.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P572_400016_Contact_Pin_v2_36_,_simulation_upstream_parts.-f8ce79368654.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P573_400016_Contact_Pin_v2_37_,_simulation_upstream_parts.-ff98fefe26da.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P574_400016_Contact_Pin_v2_38_,_simulation_upstream_parts.-77ecdf44b2d1.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P575_400016_Contact_Pin_v2_39_,_simulation_upstream_parts.-9bbbe0f23f62.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P576_400016_Contact_Pin_v2_40_,_simulation_upstream_parts.-130c961334e8.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P577_400016_Contact_Pin_v2_41_,_simulation_upstream_parts.-362f3beeb6df.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P578_400016_Contact_Pin_v2_42_,_simulation_upstream_parts.-e4a682127c5a.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P579_400016_Contact_Pin_v2_43_,_simulation_upstream_parts.-5173f05beac7.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P580_400016_Contact_Pin_v2_44_,_simulation_upstream_parts.-68ddf0182621.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P581_400016_Contact_Pin_v2_45_,_simulation_upstream_parts.-40e5e8cb9ac9.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P582_400016_Contact_Pin_v2_46_,_simulation_upstream_parts.-8fd5f0c201b0.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P583_400016_Contact_Pin_v2_47_,_simulation_upstream_parts.-aa403201c36d.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P584_400016_Contact_Pin_v2_48_,_simulation_upstream_parts.-e09d4134e10a.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P585_400016_Contact_Pin_v2_49_,_simulation_upstream_parts.-d49801f86ee7.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P586_400016_Contact_Pin_v2_50_,_simulation_upstream_parts.-d060b43dd780.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P587_400016_Contact_Pin_v2_51_,_simulation_upstream_parts.-ed1caa13fd0b.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P589_400013_Thread_Bushing_v2_3_,_simulation_upstream_part-a8289d2df63b.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P590_400013_Thread_Bushing_v2_4_,_simulation_upstream_part-6502f86e28bb.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P591_400013_Thread_Bushing_v2_5_,_simulation_upstream_part-9d8611efa4b0.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P5_90274A216_,_simulation_upstream_parts.py__-9c921df510c8.stl": {
+      "sha256": "d23292721be8ca24ba7ccad0f2ce4d31ce827ccde3d38d7d845eac285c4a85d7",
+      "bytes": 76784
+    },
+    "sources/cache/sameerverma-final-assembly-__P646_400019_Thread_Bushing_Small_v4_4_,_simulation_upstrea-935adc19160e.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P647_91294A128_1_,_simulation_upstream_parts.py__-a89e8ba7d0c0.stl": {
+      "sha256": "63e0ea9ad0c227f5286c518b2f474ab1272edc19e0373e5a98e6836f1464876d",
+      "bytes": 153284
+    },
+    "sources/cache/sameerverma-final-assembly-__P648_400019_Thread_Bushing_Small_v4_5_,_simulation_upstrea-3b4578569d7b.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P649_400019_Thread_Bushing_Small_v4_6_,_simulation_upstrea-6c687ff001bd.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P650_400019_Thread_Bushing_Small_v4_7_,_simulation_upstrea-797943af39cb.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P651_400005_Bracket_v2_2_,_simulation_upstream_parts.py__-07394b30abf8.stl": {
+      "sha256": "e8a890b0e2e574dbe948484b218cdbdd3e03fb18ceeecdc768fd04101221f888",
+      "bytes": 73384
+    },
+    "sources/cache/sameerverma-final-assembly-__P652_400005_Bracket_v2_3_,_simulation_upstream_parts.py__-f1123830c1bd.stl": {
+      "sha256": "e8a890b0e2e574dbe948484b218cdbdd3e03fb18ceeecdc768fd04101221f888",
+      "bytes": 73384
+    },
+    "sources/cache/sameerverma-final-assembly-__P655_96144A292_1_,_simulation_upstream_parts.py__-3dcdf9d5f69a.stl": {
+      "sha256": "b383ec8c6095dfd03095b1680a5de22a82ef938b243ac1b3c9b79cca7cb90fd0",
+      "bytes": 198484
+    },
+    "sources/cache/sameerverma-final-assembly-__P656_93475A165_1_,_simulation_upstream_parts.py__-f4c4237b9c6e.stl": {
+      "sha256": "a2a25efbb5bd1fac1fc08cdaf15cf850a48b706564d76aef64112a664d9c30f7",
+      "bytes": 10484
+    },
+    "sources/cache/sameerverma-final-assembly-__P657_91430A003_2_,_simulation_upstream_parts.py__-46849e417204.stl": {
+      "sha256": "ac150c614875cbd7a5e8a83d7454ba5163165c8ddf5ddc10e1b91f7ec35a02af",
+      "bytes": 64784
+    },
+    "sources/cache/sameerverma-final-assembly-__P658_91430A003_1_1_,_simulation_upstream_parts.py__-267fb9377763.stl": {
+      "sha256": "9ab939071085d80bfa8562ef1f50401d94918023ffbab5fb0f9413f75177a6d5",
+      "bytes": 108284
+    },
+    "sources/cache/sameerverma-final-assembly-__P661_400003_Bushing_v3_2_,_simulation_upstream_parts.py__-7b11c5b9ed31.stl": {
+      "sha256": "497425c4ef89598c7f10cbc9b8f64f8f306fe4fdc114f1a820269fa3f69d31d7",
+      "bytes": 118484
+    },
+    "sources/cache/sameerverma-final-assembly-__P662_400001_Kerfring_v2_2_,_simulation_upstream_parts.py__-740e9bb96ebc.stl": {
+      "sha256": "20e94ceb91a1625a08f927abcd98abb2641a3cac2d59d32907d2a9a0997272b2",
+      "bytes": 66684
+    },
+    "sources/cache/sameerverma-final-assembly-__P693_400011_Roll_Plate_v2_2_,_simulation_upstream_parts.py-9f27844d0722.stl": {
+      "sha256": "6aff30e84f3df6a410bdee5dc6f9cb64d2f95f477daeb270b5ae56a217ebfe95",
+      "bytes": 494084
+    },
+    "sources/cache/sameerverma-final-assembly-__P694_400012_Steel_Bushing_v1_2_,_simulation_upstream_parts-ad68b2ce4702.stl": {
+      "sha256": "8c7f7228ee91af3034ee9de949588574337b639e58d11b10d9cf2a7dad29fe1d",
+      "bytes": 36484
+    },
+    "sources/cache/sameerverma-final-assembly-__P696_400016_Contact_Pin_v2_52_,_simulation_upstream_parts.-8be6b5f89567.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P697_400016_Contact_Pin_v2_53_,_simulation_upstream_parts.-257398ed6aa5.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P698_400016_Contact_Pin_v2_54_,_simulation_upstream_parts.-a0fe9bbb5b5f.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P699_400016_Contact_Pin_v2_55_,_simulation_upstream_parts.-4884904d99c4.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P6_91290A117_,_simulation_upstream_parts.py__-33843910a0f8.stl": {
+      "sha256": "fde68e809e66ba3c2e56595d76b242faf7ad8a3b14f99e66df8fc0a56a1405f2",
+      "bytes": 288684
+    },
+    "sources/cache/sameerverma-final-assembly-__P700_400016_Contact_Pin_v2_56_,_simulation_upstream_parts.-7aaf2c3c4dd1.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P701_400016_Contact_Pin_v2_57_,_simulation_upstream_parts.-f951bd6dd96e.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P702_400016_Contact_Pin_v2_58_,_simulation_upstream_parts.-d68bb1dfaf84.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P703_400016_Contact_Pin_v2_59_,_simulation_upstream_parts.-615fe8a076b8.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P704_400016_Contact_Pin_v2_60_,_simulation_upstream_parts.-c0d80f418fa7.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P705_400016_Contact_Pin_v2_61_,_simulation_upstream_parts.-ea6890229dab.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P706_400016_Contact_Pin_v2_62_,_simulation_upstream_parts.-68bc2604fbb2.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P707_400016_Contact_Pin_v2_63_,_simulation_upstream_parts.-a872bc5e8999.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P708_400016_Contact_Pin_v2_64_,_simulation_upstream_parts.-4d260e4392f0.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P709_400016_Contact_Pin_v2_65_,_simulation_upstream_parts.-ab636e7de18a.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P710_400016_Contact_Pin_v2_66_,_simulation_upstream_parts.-fa4541641a55.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P711_400016_Contact_Pin_v2_67_,_simulation_upstream_parts.-025b9c38e4e5.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P712_400016_Contact_Pin_v2_68_,_simulation_upstream_parts.-764a0630b431.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P713_400016_Contact_Pin_v2_69_,_simulation_upstream_parts.-faf14d8d5d99.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P714_400016_Contact_Pin_v2_70_,_simulation_upstream_parts.-5b55c91f1d10.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P715_400016_Contact_Pin_v2_71_,_simulation_upstream_parts.-cbcb52e0f969.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P716_400016_Contact_Pin_v2_72_,_simulation_upstream_parts.-1f305b1a0177.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P717_400016_Contact_Pin_v2_73_,_simulation_upstream_parts.-b188351379e8.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P718_400016_Contact_Pin_v2_74_,_simulation_upstream_parts.-b07112623b7f.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P719_400016_Contact_Pin_v2_75_,_simulation_upstream_parts.-eb519debd8b6.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P720_400016_Contact_Pin_v2_76_,_simulation_upstream_parts.-589d6a544a58.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P721_400016_Contact_Pin_v2_77_,_simulation_upstream_parts.-30cd9817058a.stl": {
+      "sha256": "8e09c6d0d0da7a01115a1973b4bb01619a60ecfee9689df1f59d531b41d591d2",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P723_400013_Thread_Bushing_v2_6_,_simulation_upstream_part-80719b468862.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P724_400013_Thread_Bushing_v2_7_,_simulation_upstream_part-d41dd8bd8bc2.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P725_400013_Thread_Bushing_v2_8_,_simulation_upstream_part-e69ba34e0559.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P780_400019_Thread_Bushing_Small_v4_8_,_simulation_upstrea-abdb3a92edb9.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P781_91294A128_2_,_simulation_upstream_parts.py__-f7e5dddce48f.stl": {
+      "sha256": "63e0ea9ad0c227f5286c518b2f474ab1272edc19e0373e5a98e6836f1464876d",
+      "bytes": 153284
+    },
+    "sources/cache/sameerverma-final-assembly-__P782_400019_Thread_Bushing_Small_v4_9_,_simulation_upstrea-e5ac9bc7f292.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P783_400019_Thread_Bushing_Small_v4_10_,_simulation_upstre-af049ab03046.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P784_400019_Thread_Bushing_Small_v4_11_,_simulation_upstre-5ec537793846.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P785_400005_Bracket_v2_4_,_simulation_upstream_parts.py__-f647e111c977.stl": {
+      "sha256": "e8a890b0e2e574dbe948484b218cdbdd3e03fb18ceeecdc768fd04101221f888",
+      "bytes": 73384
+    },
+    "sources/cache/sameerverma-final-assembly-__P786_400005_Bracket_v2_5_,_simulation_upstream_parts.py__-ed38278b29aa.stl": {
+      "sha256": "e8a890b0e2e574dbe948484b218cdbdd3e03fb18ceeecdc768fd04101221f888",
+      "bytes": 73384
+    },
+    "sources/cache/sameerverma-final-assembly-__P789_96144A292_2_,_simulation_upstream_parts.py__-9c3f449c4b01.stl": {
+      "sha256": "b383ec8c6095dfd03095b1680a5de22a82ef938b243ac1b3c9b79cca7cb90fd0",
+      "bytes": 198484
+    },
+    "sources/cache/sameerverma-final-assembly-__P790_93475A165_2_,_simulation_upstream_parts.py__-d2ae6bbf007f.stl": {
+      "sha256": "a2a25efbb5bd1fac1fc08cdaf15cf850a48b706564d76aef64112a664d9c30f7",
+      "bytes": 10484
+    },
+    "sources/cache/sameerverma-final-assembly-__P791_91430A003_3_,_simulation_upstream_parts.py__-66b74733dc36.stl": {
+      "sha256": "ac150c614875cbd7a5e8a83d7454ba5163165c8ddf5ddc10e1b91f7ec35a02af",
+      "bytes": 64784
+    },
+    "sources/cache/sameerverma-final-assembly-__P792_91430A003_1_2_,_simulation_upstream_parts.py__-28c886e99cf0.stl": {
+      "sha256": "9ab939071085d80bfa8562ef1f50401d94918023ffbab5fb0f9413f75177a6d5",
+      "bytes": 108284
+    },
+    "sources/cache/sameerverma-final-assembly-__P796_300005_Blank_v2_,_simulation_upstream_parts.py__-ac279c28a2b7.stl": {
+      "sha256": "0303e316c6745bca7d4202bcd47e05ab9638478ef39a5ccb688a58df1b86ede3",
+      "bytes": 56484
+    },
+    "sources/cache/sameerverma-final-assembly-__P7_91290A150_,_simulation_upstream_parts.py__-c17ac3aa39c0.stl": {
+      "sha256": "9ebce1924edc33d1d7ec7d1081042f9ffa431ae928c9238a2a9dc792bdafd7f5",
+      "bytes": 251984
+    },
+    "sources/cache/sameerverma-final-assembly-__P801_400019_Thread_Bushing_Small_v4_,_simulation_upstream_-0123c61a4b7a.stl": {
+      "sha256": "8fab1405e6604ff690140f7cf59859a737b403c79682295eedc765a0693c5e48",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P803_400013_Thread_Bushing_v2_,_simulation_upstream_parts.-b7fb32e59f04.stl": {
+      "sha256": "2731bc4de6a2444118287c822ca5b5711378b13e813fed2206f2cbf275a4dac9",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P804_300008_Isolator_Plate_v3_,_simulation_upstream_parts.-654f806b41c1.stl": {
+      "sha256": "ea8a9cf532ca382296a108454da744fdc20705f7d927821cd6f106ceb098d833",
+      "bytes": 52684
+    },
+    "sources/cache/sameerverma-final-assembly-__P806_300004_Wedge_v3_,_simulation_upstream_parts.py__-5ac82bcb7fa1.stl": {
+      "sha256": "7b801619f795d47d1be1a8f499f50c81b25db5b75ef5d83ba46a0360453f29e1",
+      "bytes": 32584
+    },
+    "sources/cache/sameerverma-final-assembly-__P807_91294A125_,_simulation_upstream_parts.py__-364ef2aff667.stl": {
+      "sha256": "86aacbf7c8f034bdcc44070d5cbf2f04bcf9166052579009e0894aa615fa1f88",
+      "bytes": 92084
+    },
+    "sources/cache/sameerverma-final-assembly-__P80_Component135_,_simulation_upstream_parts.py__-1a87f2c8faab.stl": {
+      "sha256": "b184cf4d87726f4cfadffbb5871c70554eadef8817a4b02bd013662aba265432",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P810_300006_Bushing_v2_,_simulation_upstream_parts.py__-3628927141c9.stl": {
+      "sha256": "60fdc2e29a6aa3a5bbcbb15d1369534feee5e4963e7849e78bd4c9b4b0e76507",
+      "bytes": 20884
+    },
+    "sources/cache/sameerverma-final-assembly-__P812_91294A126_,_simulation_upstream_parts.py__-313238e0ffe4.stl": {
+      "sha256": "c77f33496a6254bd906e838d74cf839c3f767f51be55509c1e6430e57f2cf4df",
+      "bytes": 113384
+    },
+    "sources/cache/sameerverma-final-assembly-__P813_91294A128_,_simulation_upstream_parts.py__-b9a68d66c109.stl": {
+      "sha256": "61ae16d9e8c27f4ebd779a5e28b395f8300819fe646d72ed5758380b0ca184ac",
+      "bytes": 153284
+    },
+    "sources/cache/sameerverma-final-assembly-__P815_91290A021_,_simulation_upstream_parts.py__-ee843c880797.stl": {
+      "sha256": "b65d6cb7958b0bf506a1be347ea04190adf5694d62f8c12ad2e40562386c53b2",
+      "bytes": 145184
+    },
+    "sources/cache/sameerverma-final-assembly-__P81_100012_Bearing_Block_Right_v4_,_simulation_upstream_pa-9a13a4238e43.stl": {
+      "sha256": "a0955ea254d4ba3cc7e2c11a6b69c74011ac1299e839b0beebfbc983a421aeeb",
+      "bytes": 153084
+    },
+    "sources/cache/sameerverma-final-assembly-__P822_300007_Screw_Plate_v1_,_simulation_upstream_parts.py_-02fc75d62d40.stl": {
+      "sha256": "e72683cedd803226bce4b113053db5d2546936ea034901fc6da4887f3062b1f2",
+      "bytes": 23884
+    },
+    "sources/cache/sameerverma-final-assembly-__P83_100010_Protection_Sheet_v1_,_simulation_upstream_parts-e0528b84e9b8.stl": {
+      "sha256": "9b805d4a6939e0b41d33769922baefec657b58daaefa88eeaec2fd58aeb61416",
+      "bytes": 32284
+    },
+    "sources/cache/sameerverma-final-assembly-__P84_100021_Pillar_Small_v1_,_simulation_upstream_parts.py_-f180eb4c94c5.stl": {
+      "sha256": "262176d5eb6f7125dc6750f9098c73a3c48096b2c3378eef9f34b9b3c6f58d4b",
+      "bytes": 31284
+    },
+    "sources/cache/sameerverma-final-assembly-__P85_100023_Column_Centre_Low_v1_,_simulation_upstream_part-2e76fbb93c5c.stl": {
+      "sha256": "4f87ddd934bbacd08923f16c9cf7900cf444be996694c477b35a96ed6eeba63e",
+      "bytes": 31284
+    },
+    "sources/cache/sameerverma-final-assembly-__P86_100016_Bolt_v2_,_simulation_upstream_parts.py__-75b76e749a8d.stl": {
+      "sha256": "7d7e14d725f5a4010bf9adea49444867ba19c0a001f5202daf2af3c5303f1170",
+      "bytes": 48084
+    },
+    "sources/cache/sameerverma-final-assembly-__P87_100019_Column_Short_v2_,_simulation_upstream_parts.py_-53cc62695635.stl": {
+      "sha256": "50b57dd4ca60cdb3db72b38e10fa8a08526d9b7207ef4034fa2365f91a540d8d",
+      "bytes": 31284
+    },
+    "sources/cache/sameerverma-final-assembly-__P88_100017_Column_Long_v3_,_simulation_upstream_parts.py__-cdc73342217a.stl": {
+      "sha256": "6b160b5ef57a4ce53ce4fd4dd6aaba2d952aac212492a610511173deaefd627c",
+      "bytes": 49584
+    },
+    "sources/cache/sameerverma-final-assembly-__P8_2_5x6_Pin_,_simulation_upstream_parts.py__-980f4e749c78.stl": {
+      "sha256": "fa6134962140a3f8d5130945bc4e497665f33e19db2904e6b064833817bebf8c",
+      "bytes": 10284
+    },
+    "sources/cache/sameerverma-final-assembly-__P92_100038_Bent_Low_v2_,_simulation_upstream_parts.py__-78e3b37319b2.stl": {
+      "sha256": "4a6aaa3802cab0c8e202ecd7c41a05b696025b8f43964062fef7196c387d5571",
+      "bytes": 29784
+    },
+    "sources/cache/sameerverma-final-assembly-__P93_100045_Bent_Cap_v1_,_simulation_upstream_parts.py__-d06731b41cd8.stl": {
+      "sha256": "1ba576a873890ffcfa2c5737ed18a89beca76712b3f3319c2bb3ee4075f4386e",
+      "bytes": 18084
+    },
+    "sources/cache/sameerverma-final-assembly-__P9_91290A011_,_simulation_upstream_parts.py__-9d04bff521ef.stl": {
+      "sha256": "e21926e4c0152c0e3fe259a6c787b8ac67930813f850c93457dab14ae623c148",
+      "bytes": 128384
+    },
+    "sources/cache/sameerverma-final-assembly-__RatchetIII_,_simulation_ratchet.py__-13601eb2bdcf.stl": {
+      "sha256": "75a1f724ab69a81386ab28308f3b89b5dbec4e0dd5588960819cff3610050241",
+      "bytes": 29391284
+    },
+    "sources/cache/sameerverma-final-assembly-__RatchetIV_,_simulation_ratchet.py__-bbb49b50af14.stl": {
+      "sha256": "75a1f724ab69a81386ab28308f3b89b5dbec4e0dd5588960819cff3610050241",
+      "bytes": 29391284
+    },
+    "sources/cache/sameerverma-final-assembly-__RatchetV_,_simulation_ratchet.py__-5329aaf40832.stl": {
+      "sha256": "75a1f724ab69a81386ab28308f3b89b5dbec4e0dd5588960819cff3610050241",
+      "bytes": 29391284
+    },
+    "sources/cache/sameerverma-final-assembly-__RearCarrierBaseplate_,_simulation_rear_carrier_attachment.-aff7930f990c.stl": {
+      "sha256": "6aabb4abcc50e25af42bcd5e223c1cde81bff7a59d506ccaf554161d30fbbbf5",
+      "bytes": 13841284
+    },
+    "sources/cache/sameerverma-final-assembly-__RearKeyScrew_,_simulation_fasteners.py__-08486160ead1.stl": {
+      "sha256": "af993bd0fa63cf908d43d12434cc42fbe7e8b0bf1c32a4f3d60a3f119f524886",
+      "bytes": 1900784
+    },
+    "sources/cache/sameerverma-final-assembly-__RearSleeveScrew_,_simulation_fasteners.py__-4d706eaa980c.stl": {
+      "sha256": "344a96534aab0770019d4909afa638619c97f34099930b80b4d9c6e459abf9d8",
+      "bytes": 2366384
+    },
+    "sources/cache/sameerverma-final-assembly-__ReflectorAxle_,_simulation_reflector.py__-e57dafb2e99d.stl": {
+      "sha256": "7ea2be45e952cac8528dabce9fa18d83f85707c54e4b8962a5b5d2171dd9b711",
+      "bytes": 201684
+    },
+    "sources/cache/sameerverma-final-assembly-__ReflectorCabinet_,_simulation_reflector.py__-a5c236cce14a.stl": {
+      "sha256": "e02614219f53a1c4319583c30c88a22374b923e626bd91df0a9ba8788c0657a8",
+      "bytes": 1053084
+    },
+    "sources/cache/sameerverma-final-assembly-__ReflectorLocatingPin_,_simulation_reflector.py__-4ffb61d6a75d.stl": {
+      "sha256": "97717180b9a4bd482627e70509a699d6e19a336b3ffcbcc8509492a0e54b5335",
+      "bytes": 422484
+    },
+    "sources/cache/sameerverma-final-assembly-__RepairedReflectorCover_,_simulation_reflector_cover.py__-e6b9235cd241.stl": {
+      "sha256": "d71e5830ca0739ab04b50cd144734659eea7d83aa3409ff2a6c60ee09e41fdb6",
+      "bytes": 1713984
+    },
+    "sources/cache/sameerverma-final-assembly-__RepairedRotorCoverIII_,_simulation_rotor_covers.py__-b319b59f6d00.stl": {
+      "sha256": "d71e5830ca0739ab04b50cd144734659eea7d83aa3409ff2a6c60ee09e41fdb6",
+      "bytes": 1713984
+    },
+    "sources/cache/sameerverma-final-assembly-__RepairedRotorCoverIV_,_simulation_rotor_covers.py__-de451477f163.stl": {
+      "sha256": "d71e5830ca0739ab04b50cd144734659eea7d83aa3409ff2a6c60ee09e41fdb6",
+      "bytes": 1713984
+    },
+    "sources/cache/sameerverma-final-assembly-__RepairedRotorCoverV_,_simulation_rotor_covers.py__-2a52db400b18.stl": {
+      "sha256": "d71e5830ca0739ab04b50cd144734659eea7d83aa3409ff2a6c60ee09e41fdb6",
+      "bytes": 1713984
+    },
+    "sources/cache/sameerverma-final-assembly-__RingScrewIII_,_simulation_fasteners.py__-4865bd981421.stl": {
+      "sha256": "646e17615c0cb0e08c9923b7032eea6eb3dc5c10aa11ac972d2ccf3cfcddd47a",
+      "bytes": 122284
+    },
+    "sources/cache/sameerverma-final-assembly-__RingScrewIV_,_simulation_fasteners.py__-e2c626d3acbb.stl": {
+      "sha256": "646e17615c0cb0e08c9923b7032eea6eb3dc5c10aa11ac972d2ccf3cfcddd47a",
+      "bytes": 122284
+    },
+    "sources/cache/sameerverma-final-assembly-__RingScrewV_,_simulation_fasteners.py__-c17e449a9e66.stl": {
+      "sha256": "646e17615c0cb0e08c9923b7032eea6eb3dc5c10aa11ac972d2ccf3cfcddd47a",
+      "bytes": 122284
+    },
+    "sources/cache/sameerverma-final-assembly-__RollRetainer_,_simulation_retainer.py__-2230f8825abf.stl": {
+      "sha256": "c35c7d1f68b7d58780f42e302ecd211c77da244f8fa0d9c19f1df7af72a89662",
+      "bytes": 1711384
+    },
+    "sources/cache/sameerverma-final-assembly-__RunningLatchPinIII_,_simulation_ring_latch.py__-aed2b11a88ad.stl": {
+      "sha256": "d4d9e05ae39869765f978a33b1d26c6846956917c2ab23aa583858fb3ace08ce",
+      "bytes": 20684
+    },
+    "sources/cache/sameerverma-final-assembly-__RunningLatchPinIV_,_simulation_ring_latch.py__-b7affbdea2a7.stl": {
+      "sha256": "d4d9e05ae39869765f978a33b1d26c6846956917c2ab23aa583858fb3ace08ce",
+      "bytes": 20684
+    },
+    "sources/cache/sameerverma-final-assembly-__RunningLatchPinV_,_simulation_ring_latch.py__-28dc80b5b75a.stl": {
+      "sha256": "d4d9e05ae39869765f978a33b1d26c6846956917c2ab23aa583858fb3ace08ce",
+      "bytes": 20684
+    },
+    "sources/cache/sameerverma-final-assembly-__RunningRotorShaft_,_simulation_rotor_shaft.py__-9a48c3a87d5a.stl": {
+      "sha256": "e2698fb6fd373c1d0a3f0fab975e2146f08bde0c2ed9c677bcb17feaf481df64",
+      "bytes": 428284
+    },
+    "sources/cache/sameerverma-final-assembly-__SpringIII_,_simulation_clamps.py__-e89fb4d5e431.stl": {
+      "sha256": "b1d40d7ece0d39becd584606eb44f1a0c6464b3131584d35aaef5a2265384378",
+      "bytes": 58884
+    },
+    "sources/cache/sameerverma-final-assembly-__SpringIV_,_simulation_clamps.py__-5b7834df29a1.stl": {
+      "sha256": "b1d40d7ece0d39becd584606eb44f1a0c6464b3131584d35aaef5a2265384378",
+      "bytes": 58884
+    },
+    "sources/cache/sameerverma-final-assembly-__SpringSleeve_,_simulation_compensator.py__-4356582d78cd.stl": {
+      "sha256": "6cb2e7dec293315ce249b5412921bae5c01aa0780a5c267d97cfaf5b7a616197",
+      "bytes": 2987684
+    },
+    "sources/cache/sameerverma-final-assembly-__SpringV_,_simulation_clamps.py__-cc463ffc6bd3.stl": {
+      "sha256": "b1d40d7ece0d39becd584606eb44f1a0c6464b3131584d35aaef5a2265384378",
+      "bytes": 58884
+    },
+    "sources/cache/sameerverma-final-assembly-__TopShaft_,_simulation_retainer.py__-b092cf32e02c.stl": {
+      "sha256": "e552444483e73881961136d72b26b61c3aba0b61d07334eae97bc91d72290d38",
+      "bytes": 450784
+    },
+    "sources/cache/sameerverma-final-assembly-__WedgeHolder_,_simulation_reflector.py__-e7c41ababb0f.stl": {
+      "sha256": "26a623d127bf01b458c58fa15d1041fe64366c8095b06be5dfc90311a1e38ba4",
+      "bytes": 2380084
+    }
+  },
+  "nodes": 2466,
+  "bindings": 205505,
+  "glass_model_identity": {
+    "lamps.bulbs-0.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-1.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-2.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-3.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-4.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-5.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-6.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-7.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-8.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-9.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-10.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-11.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-12.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-13.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-14.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-15.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-16.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-17.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-18.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-19.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-20.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-21.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-22.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-23.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-24.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    },
+    "lamps.bulbs-25.glass": {
+      "model": "simulation/declared_lamp_observation-ObservedLampGlass-6c24874db0a8.stl",
+      "piece": "470fa6a540e1"
+    }
+  },
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "probe_source_sha256": {
+    "enigma_browser_probe.py": "251db6a176ce27a892fd6d11602a2980dd862fb604891c66ee91e7b58d5dd4e9",
+    "enigma_owned_browser.py": "e00b5b4a0b54c334671c318ac56e437499459dbff0aebb81cd04265202c3ce65"
+  },
+  "project_source_sha256": {
+    "simulation/__init__.py": "ec4eccba188f1e9f344dae130178dfff7ba73ad219c153cb50874416fb5ceaa1",
+    "simulation/actual_rotor_contact_binding.py": "e1fe523869849cff3f820b7c90a7070240e021156bb74c76dcf1a159fd494f19",
+    "simulation/actuator_contact.py": "54eb2bbf51cd93c7553a17241493329c14f6b58394c3550368540a631f895370",
+    "simulation/actuator_geometry.py": "8d3c884c65e5fed1a07cc9d316ba840cb438115428510dd9d87e0763ae9e8e0f",
+    "simulation/battery_attachment.py": "0af6091be6068a09796e4bf822a43453db20504ff331e779ddb0999bc8fb37fe",
+    "simulation/battery_enclosure.py": "b3d29e5da68ee6cac1cd717c61d265ba99e7c7091faa67d4ac7f2143c7689d91",
+    "simulation/battery_enclosure_inspection.py": "50a1e09cf8f95e242d4883f452fc9909f231696a8ab5fb6e01f99b06113d5b46",
+    "simulation/battery_mount.py": "64c18495fcb1469015b5df1511fbf0f973c82d873eaabf48e8fbfd08d1f550db",
+    "simulation/candidate_machine.py": "c14b0d1d08915e2cf33e642dc332d64a59425027696a622975db8155fbf4451d",
+    "simulation/candidate_typing_mechanism.py": "4f9dba3524770e265ac8fae226a7d7163391aa76f84ab28cc32737f0ddddd211",
+    "simulation/candidate_typing_sequence.py": "a8ff27a67931bf0eabff385c22dbe827572456994741c2de575917f3689e6235",
+    "simulation/captured_chain.py": "63c26ef6e9c1c1e4f83a05e245d12b85e118857b0fa38ec3142ef86ae1652887",
+    "simulation/carrier_return_inspection.py": "e448a8f4686d3343decf0db3511c3089f5b73a75b021d8a89230775ef1ec7075",
+    "simulation/carrier_return_reference.py": "086854a70dad095ef5f4490369d18ce57a256d6048933ae68fda2b2a71c91455",
+    "simulation/carrier_returns.py": "b51c37316cd85c9bce034138f3869714ac1cdd631fef1e795b4a34b38e46cd11",
+    "simulation/circuit_trace.py": "ce140d46efd8a5e1b226dfcb8a02e80c13110c75e82dee92bc0c3543c40cf882",
+    "simulation/clamps.py": "6a895655ae2ce1000e8d2adaa5011ebfcb34f72b9f493a5b76e957c916ce1b47",
+    "simulation/common_work_feed.py": "c21c7820d8a32f040617cdb9278d7137f52525bf8639e565d5d5466b1a8b45f0",
+    "simulation/compensator.py": "7881b7019d393beb87df495f0101aa616e44bc00e090bed1dfb9d1026a5ea1ee",
+    "simulation/contact_attachment.py": "5ffdce3483b2c4013cf69a71824291efedd1f96be8277b8cfe03172545c968d1",
+    "simulation/contact_pins.py": "e792c7f3f3d25faefdfe6ff915e023995f02f1ef0cd216503be46f5632df9fa3",
+    "simulation/contact_rod.py": "219babe853a72695b1fa2f93c7ebd5fd5384bd8f76a11b4d31fb64a29f2d3f31",
+    "simulation/contact_springs.py": "29d54f796891a64fe2d6c4a5969ea9a65cf8e87d36368736ef818c9801a7f0bc",
+    "simulation/contracts.py": "af3c235892fa5e46ad629fa393ba8c2f4d785fb2b893d1251dc2d8d90eda2603",
+    "simulation/cover_front_attachment.py": "777f191e004513053160ce0e3a37f8c39299def9b71a65b7d38a648d52d0f3af",
+    "simulation/declared_lamp_observation.py": "cd56c1d221c0eef911f91c4ce565036f5e326fc29c81b4f9df6c80bd83f8d841",
+    "simulation/declared_lamp_probe.py": "0312ec3f28dcc6f55306586efaf0c0c6d47ccdb3b75b89da8112e416f02930ad",
+    "simulation/declared_ordinary_probe.py": "296d2b4886690aaa15b49742245c9b74999fdeebc238fbd506e9567b2fd522e1",
+    "simulation/detent_cycle.py": "7589599ab4a1a8978f019542024411bccb71f7f13e36a9f5d71a7935825fb900",
+    "simulation/detent_inspection.py": "4abb2df4367d3c465aa18bf2417656052f0430add2524a05eab6a8ab87924ed1",
+    "simulation/detent_return_contracts.py": "f00eb484d373af062061969a384bbbb6b814b697acad6e54b498c5acae50d910",
+    "simulation/detent_returns.py": "a575555aa72b3b9f37a59ed8796b8b5847e057cf16cb4ca528e1bc81d6ec391f",
+    "simulation/digit_rings.py": "15f6a9c50982b7f5fbc01c7153107fb1383988e0092b2dd2f8b623dfb9e32ab1",
+    "simulation/double_contact_families.py": "96b2e46a5a9c1c00e4bbe7649af0e69673295f4b0d76ec5cf225a9c1472b38ac",
+    "simulation/double_notch_entry.py": "8635797d35545d5bb4f775204172e7eb6b0419d7e9d2791b2381dcb155a0fc04",
+    "simulation/double_rim_forward_expression.py": "25f3ac62731e5abd5fc55ccd02b6f760fcd7a383401664c8c75389d196879159",
+    "simulation/double_rim_forward_pose.py": "0da665de0ca6ce7b5a577ff09e85887c6e506fb4c4dc7588a9b93e1bacf9e85a",
+    "simulation/double_rim_full_rearm.py": "1533d8eebd580e856c14a073a5207018f035fd9b85e06298a45f14d7d3a1f9b7",
+    "simulation/double_rim_full_return_pose.py": "2c0234cec598835a22013f46de9399c7912fca73c7e4aec004f1b83ea2e2561a",
+    "simulation/double_rim_full_source.py": "af49b4b458690b489d70a05822c4f9aef8c5216ea519f777567198dd348c1924",
+    "simulation/double_rim_indexed_pose.py": "a835e0acc87f80b967e98e9bfde66a29137fd3d443b10837aacc6ba59577c54b",
+    "simulation/double_rim_left_index.py": "ba4f56f8ba1c8a282a7e4512e9e94d93e0e7674dbf6203aec24dd1f511ebb753",
+    "simulation/double_rim_middle_index.py": "3f1bdb79c0da538074af300ebe917885a29d2f4d242d1f893bbf3695366f8032",
+    "simulation/double_rim_next_index.py": "b0634452f1a2d8b6607b9a21b75566361f9607f09af6deb045b411af6a07bf4c",
+    "simulation/double_rim_next_index_pose.py": "79c0560c35a28efbfa061abed130a04790b735914e5606112468cea9266a63ae",
+    "simulation/double_rim_next_rearm.py": "0081282fe56e4b0b2b36b5c8e297db752f4cb1d77b38ec151924a81a0fbb2a2a",
+    "simulation/double_rim_next_rearm_pose.py": "d733fcf68c8677e7c362651f8a2711f3a2d1363ade0b31a86782e98d8532cc1e",
+    "simulation/double_rim_partial_pose.py": "5fcb5393076c507740532cb2f6995e1dfbe3b5abd6e46fb4394885dd16abf0aa",
+    "simulation/double_rim_partial_return_pose.py": "8936c95f92afd52eceead2cf662b60d8c8e8d8e107742b2d66a2b8addc6822aa",
+    "simulation/double_rim_partial_stroke_packet.py": "65625b6d99e75d5029d670b2ca6c5b7bb5651884cdac13086ca35ccda4f6fb76",
+    "simulation/double_rim_partial_transitions.py": "73832032b1e23fd2ed82a0b9f9dccafcc9faaddc5c6879e7dfd74a6eacdea4af",
+    "simulation/double_rim_right_index.py": "9f7547e3c963b29e91af6122703c7a4120ea0af1ff1d8524bde6c28406508d80",
+    "simulation/double_rim_second_left_index.py": "2b4d370f62f47d6689c21ff2dbf33da1aeb2b8ed9c690215748db3ca721f48af",
+    "simulation/double_rim_second_left_packet.py": "86b98ddb886e5dea78896e88c4170b5cdfc260c1d6855ae0e06b1b1911ec6f9b",
+    "simulation/double_rim_second_left_pose.py": "53833c17e20f8d9d1f777bd5e29239fd72f7c3b08720d97c239840294f9349f9",
+    "simulation/double_rim_stroke_packet.py": "3e31c9370d5f428498f2d6823ab7bbfa757002210668b49a4345cda7e0fd9558",
+    "simulation/double_rim_warm_partial_pose.py": "396b260be763ac01415722f15af7f9985ddc58b514973426595f020b5a6bff91",
+    "simulation/double_step_session.py": "a13c6cd1c6791a214371648b4cb9dda85bc9114a7f033ffeedf0b493cd140af0",
+    "simulation/drawing_battery_enclosure.py": "369afcb480bd67bb6090013587ce7a47bcb7a2dbb93856bd4886dbdeb4575dd8",
+    "simulation/electrical.py": "3569eb6c6b7ea523b9006acb9186d724a464038fe609f733454faa8fa80a1222",
+    "simulation/enclosure_inspection.py": "406c13e30049f11ffd0b8b47a3a92536e9032515cde49c72f3299951ca3faf09",
+    "simulation/entered_repress.py": "edc0ee887b286c086cfde9e8ed9f75806415828fb97a95bd370b71d321208203",
+    "simulation/export_native_console.py": "880fd6fa682fdaaf942368276143c0af6bc6e866503180cfb98af5f6e26146fe",
+    "simulation/fasteners.py": "04c19b7fb0f561ec00a932fa3113a8cdce00a0601f0539697d189867e7e5e68d",
+    "simulation/fixed_contact_reachability.py": "2f7f09293fae73bd916138cffd67ddb30ee4494776d966c8fb5e33c1b81682c0",
+    "simulation/flexibles.py": "751d76be3a65d7b61c0cfe7b90a4e1f46eae23063533bdc964c3ca2d5f100b26",
+    "simulation/frame.py": "166daff06347c6cd1e6e393182fea80620c68cdbaa0501964678291fd63f20fc",
+    "simulation/full_root1_cycle.py": "6aa3a5d8980154a90fd1b3e7d7ffb9fc0287a1d1f243da738e39449017451740",
+    "simulation/full_root1_cycle_connectors.py": "3b8128ad5491fc904e8a4c75b4ca1b9ce3487cd76d4d50a4f3543e814bfccefd",
+    "simulation/full_root1_successor.py": "f6985711ca2a1160f5a2f84a283d7ace91a1441e9d026d8fbf04cde14f356446",
+    "simulation/guided_contact_pin.py": "a5decd37c71b5c5b2b6c57f9e5ab190619b0b8ce362f948f4238d2954af842bc",
+    "simulation/hardware.py": "7975b63f2ec1bb71ea56ec2871418655044b4112764af8e970574fb4aaa14888",
+    "simulation/historical_contact_assembly.py": "cee892201cd9292b1e8fb09717653c435e83ab788fc8d622968ea39b80285483",
+    "simulation/historical_contact_pin.py": "8293d66880c1e0336a6da731f107ab55951a6e995a8e627a9fee2f6fd3a2146e",
+    "simulation/historical_contact_spring.py": "2628f4a666608e9327be7de47f274f1e2b75a84e799c4c9fd71e23138bea24a1",
+    "simulation/historical_other_rotors.py": "44144dd9c5e10f44cd78b5ad3a01069ac5f61ab6b7aca835037ac254f91131f5",
+    "simulation/historical_reflector_contacts.py": "ebb6f72c97ef1641a9e06b8308668a40c5a8679c5e07dfdfc7a0efce2b6ef2a4",
+    "simulation/historical_reflector_wire.py": "8abc2e4b0b927d4eab623e225cc9a56f04c710e0d9a65bae515246d0fb7f1af6",
+    "simulation/historical_rotor_contacts.py": "21dbc30191e295b47b429cf083e4d02534bb58b9e22e8451d4d4efcf51b53dab",
+    "simulation/historical_rotor_inspection.py": "3809753cc31be72df6f42f89f2e68905f1582bf1751586c0d5bfcab87fa5c5b8",
+    "simulation/installed_lamps.py": "c8a97229d17f81fe327f8116815081935fa1336dd4dae4863997870321ecf1f3",
+    "simulation/installed_rotor_observer.py": "db816b492d80325c6548412c6960c828756e3990ea60f3b3452dc7de448205ee",
+    "simulation/key_legends.py": "a1c480658ad354eb1e072e2a2cd7e7b33503687c43ab874d0545650f9340d520",
+    "simulation/key_parts.py": "4c05572c80d60580f8018dc8eaed00d414b899a30865cf2a5aae1771e9de647e",
+    "simulation/key_stroke.py": "703706caa7fd46fb23a421c0281fb70ab61d0978affb05f2fd9a2e48bc77ec60",
+    "simulation/key_switch_observer.py": "73adcb88083ed0d4dece504952a41e649d36193b858abb802f5c7f222c5d8a17",
+    "simulation/keyboard.py": "ba238416373427d2108278f0adacc9fa0d950e832e6924fef312f7566dd90267",
+    "simulation/keyboard_contact_bank.py": "d3772cae42bf8a3af5a74688dbe67000acbcdea631db64bec3670df6bf32fd49",
+    "simulation/keyboard_contact_layout.py": "639ca8f3d3b6ac498a831a60fe52b49ddd7d1c2a8444995d2f718e41ba8643f0",
+    "simulation/keyboard_inspection.py": "9b370afdac211749cf47880f6346429be29d3669d8612de9aaeb02fdf31fc7ff",
+    "simulation/keyboard_late_transfer.py": "6b9f04018b55908ac1a5bc52808af1e31758e21dc3e92c60e37c012d71274dbe",
+    "simulation/keyboard_late_transfer_bank.py": "a355433f76472d78294be5a604013ef9fe7ed6e55bcd25c5df67f4e988b917f9",
+    "simulation/keyboard_machine.py": "28e6feddf927ed2501a1b6d52c09d160ae4ba3d4f4ebb4e72d37d773ab6a527a",
+    "simulation/keyboard_switch.py": "8318ea3ce4c007eb676df991ea63ea179e02add2d0a21f4749dcea248d393055",
+    "simulation/keyboard_travel.py": "1eb0fbbdd1bb9541981b2cfd72bada1fe0fcf057c8d3a4a4ee5447be37d7e928",
+    "simulation/lamp_attachment.py": "0004ebf870f873c0d5c629be4b3a905ef0fd06941ae263da3c14e2d966c58b8b",
+    "simulation/lamp_bank_candidate.py": "5834974a1945d6d9f9a884b16be6211d483cd40dbd608a8f13a3d6ccfc6887fa",
+    "simulation/lamp_dimensions.py": "f1f62c4bd722c0fec7dc0bd01fb076911d93c4c68d922d7253ae2ba8207c5448",
+    "simulation/loaded_control.py": "8b323787491591f83d56a3226c1952cb7c45d61444a1883ecd476547eb6eb6c4",
+    "simulation/loaded_control_data.py": "e6ebb2dbc50093ce0b11865fdee135fc1cc8ce5c8426138747749498f3973836",
+    "simulation/loaded_sequence.py": "184f795e2db748fa44e9c6ddc60f13d14e2883830dc7db9c7ef842b2db304bfa",
+    "simulation/machine.py": "f2d632ee108383cc199a98fc358fb09367ff784dc67330c3d3c091d866792c3e",
+    "simulation/main_hood_hinge.py": "a4f3cbcb874cdce331494bf6ead8a4103c9cc30684251d7aff77ca87b2b223e0",
+    "simulation/mounted_retainer_return.py": "a865322541544ddeed7c795b0cd882583d976a8493a0c0ba132158f7210ab893",
+    "simulation/moving_pawl_springs.py": "ae239042c99802f2c6d2f781a703c564cc8c6118e1a652e75453ac51f9e3f619",
+    "simulation/named_switch_contact_bank.py": "b175642eebe8eff4522d04e240e5ebae199dccbbcae03c06f80f22defefd5f79",
+    "simulation/native_console.py": "674fa0477724e618ea8d2beae84caa1e13bfaf256fe845daaeb8ce814b1ebd62",
+    "simulation/native_machine_session.py": "bef5b937119195d3f27fc9dd5208917f55922e771cef3db1a4c2b7754683033b",
+    "simulation/notch_entry_control.py": "efb57eeea0e1bf95174d6f524f1eb3de5f8c3254bbf708ae8b648d21ac2e261f",
+    "simulation/operating_circuit.py": "a301d1c746dcfadd3b7c1d37208ddc47e6611c6fae39057e761f9cba7eb40590",
+    "simulation/ordinary_current_connectors.py": "e8a7a4d023da42c2e952969db97fedd5fb7a3d29b63a847a687bf7a5e91b099b",
+    "simulation/ordinary_cycle_connection.py": "3ee8d6d8b0daa83d1ab7dd981e7f6f87f1a484047ba6862b82a79f3cf699150f",
+    "simulation/ordinary_cycle_visible.py": "ef83e32c4f353ab6969a8432fd7424cfecc88a99c0ccc9c18c1476ce215abe51",
+    "simulation/ordinary_first_cycle_pose.py": "56398ab2787e533912f4f27a77f5ea769d3d590b98ca7ad228d5fd8bf8464ecc",
+    "simulation/ordinary_first_press_expression.py": "443bfa489006948c089e03a82d8f8d5b4f463a2d8aa8a68b2297f1ba71a6c525",
+    "simulation/ordinary_first_press_visible.py": "ffce80d784212fc2b5057380299fb4a58ee33003cecf8955d637dcdc95fc4c0d",
+    "simulation/ordinary_flank_expression.py": "0edcf3fd781d99c09de16afa4362252f9c2c34abc2505b21fbee5a9a9251e666",
+    "simulation/ordinary_flank_visible.py": "b135d038d3445e156cf9c3e3b3cca2b3bd1242c8db773aafc7a003281ada5cee",
+    "simulation/ordinary_forward_expression.py": "0290af73eb316cacd757ba0f15f3a2d6dd7090b8fe122445de6701536e37c541",
+    "simulation/ordinary_forward_load.py": "4b0499e45bde7de5176784fd87f1b2bccae0e7eea5c0576926c2cbb1f374ab5b",
+    "simulation/ordinary_forward_visible.py": "89fb48a3d3e2d071df09162a78867813a7265c73a02382d3f699e94030309794",
+    "simulation/ordinary_interior_expression.py": "a1dc57ffc2ee82d9d5c1984c10e5097438c5151b4bc5a0e295fbdd43bfb2254c",
+    "simulation/ordinary_interior_visible_baseline.py": "e4d352d36801407d7793c1c85645bf40ead6e4564cee0f399b45f8a948c1519c",
+    "simulation/ordinary_parked_expression.py": "f6ef6fc4146c34dba7ca31b8d95c80da8d933f82142ec30da2e56df76ea72eea",
+    "simulation/ordinary_repress.py": "95eb53dca63a9b2f5a891a2e223644baa7c9b9e049210739702a208d16b8dc5e",
+    "simulation/ordinary_return_expression.py": "ac14501da27dc585b230a09694c14bae30ecc0745efc92319a3ae0ca8b4f4a77",
+    "simulation/ordinary_return_visible.py": "0b3e66b229706887c4780f67bc656547fb51ef7657c15a90e8887ed44c13096a",
+    "simulation/ordinary_root_expression.py": "50fda9aae26d54259739d3d30a56ea843f984344f806294cd352fe374cbd20d7",
+    "simulation/ordinary_second_cycle.py": "9ffc798f6b75540726778398b388d5213bb4c46aa46edccea3f75985961a97ed",
+    "simulation/ordinary_sector_control.py": "364ff3694c3ee505b5a2eb8e559e0492eccd089a075e28b63506d44835f68311",
+    "simulation/ordinary_sector_mechanism.py": "301862a254f4dcd6a4fad2a3084411669eddd5b8621dc0946f9d51bf0f5bb9ac",
+    "simulation/ordinary_stable_load.py": "9ca248376acc701314e9ca3cd2f70cddf54efe153d597481d35280497ef1c692",
+    "simulation/ordinary_two_cycle_connection.py": "0c825b84002218db228e4354276d33d2cc2db82c0ea9b9430bd6bfed2a45a7d3",
+    "simulation/other_rotor_inspection.py": "1c4e56e3ae22641da73274012b43ab60a588254e974e1d43118ccfc128f70117",
+    "simulation/partial_double_contacts.py": "01ee3017e342a82574f0c6a4f1b718cf390cf656dd84a52680741c9a398f7edc",
+    "simulation/pawl_approach.py": "8cff21f0d48392d5934b09bacfe145ea87e683c5d7bab83ed29169274385539a",
+    "simulation/pawl_contact.py": "3a838679cdf320bccf399d6a9b9261e65492a9f6bbf91ffa140ad8c9375e859a",
+    "simulation/pawl_cycle.py": "56238dbe342d4933cb1b6b3006a8408991e52cd1f8b2df16b54a6c2240042e04",
+    "simulation/pawl_cycle_data.py": "aea4e652663f274bd3725a2c40fa488441da148605c794f9ff3b99160858660d",
+    "simulation/pawl_drive.py": "3b7b64b09c3c518eda38ee411ed17feb7971432be672b43cc8fe096d31c41fb5",
+    "simulation/pawl_gate.py": "58c6810316e325e01c065bdd6a94c4d847a68a686e30d5dbd5c5277db99dd452",
+    "simulation/pawl_press.py": "86fa5250a6ae59852d5af41ecec046f4057409f06b36fb69262c0948064f3739",
+    "simulation/pawl_return.py": "8fd70420e9f7dc69eb4317fc93dceca63f80ea83d5b75acf2b73cd5b08167eff",
+    "simulation/physical_circuit.py": "608a0fa679d3bb99197b728b457b532d69809610a02b37abaf8e1bb2fd62ec7f",
+    "simulation/plugboard_body_map.py": "47d6f31a601cc4b11654b3a7cf4b6bd0e21e81c79ce90a4e2858a4a4bcc7a959",
+    "simulation/post_turnover.py": "81d0e3ca0922b40a083ed5fdc9f980fce1f4e698e7539b23dbdc0fa3b2fc8902",
+    "simulation/precapture_c1_connection.py": "03f5bf89bbd74ee77d9d99fb3bbfa9027e4ea1770fd19e24f010daf30ed3c861",
+    "simulation/precapture_c1_pose.py": "7aabb9e1a7f54e3d3231b1b5ceb9f50e7fd7c80a6c7bd10bf10d9ba1796fcabf",
+    "simulation/precapture_contacts.py": "247583e8dd49c6fc1241af27ebd3a05098d8a1c535ebeb958a5f83c8b08cacea",
+    "simulation/precapture_energy.py": "a568e6b04fadf8880d8e645b4689fcfd99580f6ec35488fba530cffe01e51139",
+    "simulation/precapture_f_certificate.py": "06a6cbfd5b4351f16f5e970ca9a14b251851f49b5ff6efded3a4484655733ad3",
+    "simulation/precapture_f_middle_expression.py": "68512b62dc1b13d1278cbfd098e5ba28c792307685ece0eeea5dbae10d000bc8",
+    "simulation/precapture_f_pose.py": "6a470899cc642688b2f9bd1328632e567fec0b007956abc10317c712cf57e190",
+    "simulation/precapture_f_return_load.py": "9b4ccbaad8a987f1c1b65efb68356bf1acaa70a3d6b580804bc51692ed73bbab",
+    "simulation/precapture_f_return_pose.py": "a2000c4dbdce7847a656306574d535060f64a00dc519d31f67f51e45b1fd2e89",
+    "simulation/precapture_fi_connection.py": "720dcf834119cb1dc1d7012cc1d8051cf6eb04307cf9aec8493e38b999ffac91",
+    "simulation/precapture_front_expression.py": "971d8cfe98aa702c134cfa8a654358991a35badfb13e01d479876ef79448f25b",
+    "simulation/precapture_history_connection.py": "ea895a6175f22c9fa58c43b6ce870d3b797ecfa6e1de46f6aac7f207b5fe47b7",
+    "simulation/precapture_id_connection.py": "e392bd45637d334ed4b45946c42d2e8940decb231c943f8096e79680522c6953",
+    "simulation/precapture_id_pose.py": "b9ec6d33372d5943d4ff043557ff1f054905c04e782b8d83305ed7e3086b41fa",
+    "simulation/precapture_indexed_return.py": "a4d4cf47708faa386b2f0395e6f5218e2b93de32eb98e1439cbb76d67a3eae7e",
+    "simulation/precapture_operating_connection.py": "018e6b77cf004fcc0bcceffe06a67fdfd3d891a784f5b8a9468d6f0487fc9186",
+    "simulation/precapture_p_certificate.py": "1ada8d9a105e3bdf2c18e7b23d7e6c4a559d7d653dc6204480105e11e32c148b",
+    "simulation/precapture_p_connected_certificate.py": "b62b0c3c14f7fd3fda02da09cf2f69147ddeea784fe1fe5e30c035e4cc57694b",
+    "simulation/precapture_p_connected_pose.py": "42a742471150f7d43fc8801648001d9910c8ff2f595172d98a932b244877652d",
+    "simulation/precapture_p_pose.py": "b3445150b971c7909e42d0b01a0222af12ae275b3f6f67cb02a20031d99d0b28",
+    "simulation/precapture_pf_certificate.py": "5671fb0c53f6368aa6e390c6dd0d562767ec82f4b92802a73bc20a062130ea67",
+    "simulation/precapture_pf_connection.py": "5d461a939b9371d3c1e1eb068caff31ce9a35357ecb92d6190bb090be9fab735",
+    "simulation/precapture_pf_free_opening.py": "b1b5b73ebc168bfb9a7dfb82e820c2cd3484cdee4a7812d5833483fa882e641c",
+    "simulation/precapture_program.py": "aa827caf68d69bccd5dd3c3e71d190df54cc1198f4d66fc6945c7e474ac3ee98",
+    "simulation/precapture_return.py": "9da5708bde0e9235fb8baf2a0471a2659cd7790ffe6dac0afe473eb05cca691f",
+    "simulation/precapture_warm_c_connection.py": "9a22b5bf7a00a7e66e67cf424f552677cdd401e42976175a75f6140c59b8354b",
+    "simulation/precapture_warm_c_pose.py": "efcf6e78e3b8982f0ea04f7fc474593b763412b65d65cb6d8b8e53486ce7067f",
+    "simulation/precapture_warm_c_repress_connection.py": "ad6d825e2ec02c2c49366c32bebe072fd42ce190fe27b75844f7453ca073f4fd",
+    "simulation/precapture_warm_c_repress_pose.py": "d9c9295512121728964f9e92ccaa896ddce930a1ae51583d93ff35ad0d8dec1a",
+    "simulation/precapture_warm_c_repress_return.py": "904f843c1be50773a8dd99a8a6e27993fa409ccf71c665a680064f66ffb44c33",
+    "simulation/precapture_warm_c_repress_stroke.py": "50bb21493e58609f8b2533b0ee123a8a079e290834fb14526b2c1bbbb1974c52",
+    "simulation/precapture_warm_c_repress_transitions.py": "d0e5a18f2de84d77cb35928a6a65c6b9f4d9c6a5eddf7d6133b4047d78aad140",
+    "simulation/precapture_warm_d_connection.py": "bc936ba24976632a38005b68fcc0e92e394e37fac0fb74884b5c3d0e5275208c",
+    "simulation/precapture_warm_d_expression.py": "135fa66b9b21362536ecbfdbfaa2a5e0ededf1f9da7509920c391e180ae59479",
+    "simulation/precapture_warm_d_pose.py": "68582bd80df62156d71affb0b9900ba8d7b612a4556b6f2075976f8a507fb86b",
+    "simulation/predouble_entry_pose.py": "bbcab5324e401a7a76da3ce81df0cf8b64938e3ff16da37fc40193ce58e91dcc",
+    "simulation/predouble_entry_qualification.py": "481f5e92b19a4998e247a381f7e34d4b116918830c075ec353ad6ed399830d51",
+    "simulation/profile_stop.py": "ec0fce9f1590f86b7275c863590d597265aa9aaa2ccc76060d01f62d0b0b1b11",
+    "simulation/public_rotor_contact_study.py": "e13f324bcf2bd7f9db2da93132057bae7524877999f05e882b9bd7c27b9625c6",
+    "simulation/public_switch_contacts.py": "e221bb859145d1def2206b9e38233361e19bf3b63ac4bdc7f6c9b211645ad59c",
+    "simulation/ratchet.py": "3f926c21536dc2348f2fc46bcf25be057ed0788979ebf8d52f2d0d367445dc5e",
+    "simulation/rear_carrier_attachment.py": "d4bbab58ecdab6332ef9a185eae8a2c3109d0c88a4b34f62112e81877ccfa259",
+    "simulation/rear_return_contracts.py": "88479c387e4b5403cd352c161069b674bae56987ec74fd1ddf3a4c498d844bc4",
+    "simulation/rear_returns.py": "a16281d3e0aba22740bcbc28382385fb325437e49778ab30bde08d49b803eeaa",
+    "simulation/reflector.py": "9e2b058b6b9b4ad1da809fe42f2593b2f94744df930857b9323ca3fa8523afc8",
+    "simulation/reflector_contact_inspection.py": "165ee0dcc4187ad2df3c75a5268fcd02f78b8b6872b44df98d3fd9a7d62938c4",
+    "simulation/reflector_cover.py": "9522f7d3dff921cd678181561231df33e9d9f1b8746d9884757da7662cd5cc7e",
+    "simulation/release_fasteners.py": "a1222adbbbe5e49934a18a2b73e4ba9018ea7ccf89c5ad28f8b8ba400e5f7a31",
+    "simulation/release_fit.py": "964a5fb2a425a4c320b5d95e3712f8487f920156043c05e8df5651d5d19f474c",
+    "simulation/release_lever.py": "4cff85380dbde344561714ac2c29a62b342235da8bf01b1aa07472e91b937905",
+    "simulation/release_motion.py": "1aa249f307ad1789b9f60753b25712d6c694accdf926760768a80aa80b9876a6",
+    "simulation/release_threads.py": "7746cd51973da384f482430b65397b8fb4d4ec9b8e72c68a8cbd2af57a159222",
+    "simulation/remaining_rest_lamp_leads.py": "d8455e179a7ea3fd37d6ba06c85d435f73238f826518861f21b6e3407bcdb06c",
+    "simulation/rest_lamp_lead_bank.py": "d0641fa95f7162c964044f142d9f48beb1a9936070ec5535470349ebe269f063",
+    "simulation/retainer.py": "9bc9bae72254dda3318d1e41e6ad0f750589862bb5092d86bb3debeed336aaf2",
+    "simulation/retainer_motion.py": "78a1d812385a4513187a703ff4aef2bc9e7d4f095924930b5a95079f5c03d41a",
+    "simulation/retainer_return.py": "1c2eecff176a869d8c5c576e995c7e540b294f10a81c3100e8d3271e17962d22",
+    "simulation/retainer_return_cutaway.py": "c7c0b52e47ebe7d99db14d3105a7fee6df193c995c54a874d86283ba05a6baf6",
+    "simulation/return_springs.py": "d0530d0527ca5ae74d4c52f065832408a1c93f61e473b4365fde258da3ff1a1a",
+    "simulation/rigid_rotor_contacts.py": "c353c2b92e79db9df312bc9c099824cfb0bfc77dd494c8156a9dd62be980f6dd",
+    "simulation/ring_latch.py": "b44e5e4d58f17fcfd30651ec456b556bc5cdbb77da50cbca092610bea45b6269",
+    "simulation/rod_contact.py": "edb28d006911a805831f984cc33e0476a452e8e39d5e4501d27dd84961678c3d",
+    "simulation/rotor_contact_expressions.py": "67fd2259229b13212903cd3714882dd0e0fdf922606bc69a07acf391ca0db720",
+    "simulation/rotor_cover_access.py": "eeb18369d52ae2797585fafa6020cbf45461f3de221cf14a2ce6112d7de30306",
+    "simulation/rotor_covers.py": "a77f467ed3361b9dd4445c28e38fb8f2a036e54f42e92c1376e7b0a9d732ec92",
+    "simulation/rotor_positions.py": "0e74fa19fb87fc9ea3ad113158d90874c1f4a9ef5e4ecd1f6577a2ca27581fe2",
+    "simulation/rotor_shaft.py": "9bccf2fc866c3b9d5de1b08215f41f597bc58a97d0fd9e3058397c9ab16cbc94",
+    "simulation/rotors.py": "5069470298fd8d51a3e4726a17cfd871353338d91be32da19906724dff8cd225",
+    "simulation/row_rest_lamp_leads.py": "977541df5d2a4b80669e2a1b2df3088c18a4bd34d6d2367bb882e40e8df3a048",
+    "simulation/smooth_rod_contact.py": "d3f2c795701ad34d1f84cc5dacfd1e4e482df48b7fc0cbdc99dda34159bd2be2",
+    "simulation/source_contact_circuit.py": "cce4fc54f8bec7ef3b3f104aa5d8692678a0aa144bc14071ab9e6d2ac03c3111",
+    "simulation/source_matching_reachability.py": "60e7bd35b0a025239eaf308001303cfc4116a292335672170ac9aed6b37b24c6",
+    "simulation/sprung_upper_profile_mechanism.py": "34ff0c45b75a790bcc0c101519dce3e38a94110055516c46eca84c853d5e1307",
+    "simulation/stepping_contacts.py": "1a343fdd512fed92d982f3553cc807b30504042161bcc03ff3faf520843900f8",
+    "simulation/stepping_history.py": "db9c8d53f9ac1a3a5dfa6df89fe8b1850b756ac9dbdcd9547168bb457f9617a5",
+    "simulation/stepping_loads.py": "33151cb3853246f40188649f2c07f414a8b05f73717a864a83e9ebf91d392e29",
+    "simulation/stepping_mechanism.py": "4b1b1bc73315e420d92a491746808e051eb40ddacd84fcd2714a218d8fdeb67b",
+    "simulation/stepping_session.py": "024d5e5d261ee80894bed3159087765ae35f359f4c586a8d4f39595d748a8a38",
+    "simulation/switch_contact_bounds.py": "f666198a302dc28d69b2c6028fdd27b22c84e10d72db5fdda873e9c96fd2e9c6",
+    "simulation/test_compensator.py": "3eb958f195d6550448f69b25ea71d7f1e360d99cc64f2e487a9512ed3346a73b",
+    "simulation/test_fasteners.py": "978c2ca0d3e2c218c1a469962faf464f5d3d82cbfe5fc5467dd26538bfbb6cbe",
+    "simulation/test_flexibles.py": "0aff236d6c52253a255acdcf1347e7b37c21f9b92fed4111fd0664a7fa36138f",
+    "simulation/test_frame.py": "269cbecb6bdce9f224b08af9899c93d3340f109dd8c28a35400bd4a7056eea30",
+    "simulation/test_key_stroke.py": "44fe67d71cbe1c2186b261702c2bed342d96d839e9396ef77c4572716d174f95",
+    "simulation/test_keyboard.py": "54a511b2340b8ab4c7e3b36f4dfc177642b1288fba9a1ff603fb367844e4e5fe",
+    "simulation/test_pawl_approach.py": "f3647efc3647d3bf9179fbb7405b7f1fe7be637856c1f8eab5aa89928a159f0c",
+    "simulation/test_ratchet.py": "574c459724889b2d7eae2b047f22438a25b619a8164d45f2939c61b8d1bc0787",
+    "simulation/test_rear_returns.py": "d4ca58ffcf6e739d0522bf6112032050a6a7d3bed4d03e9b1998ea6309478478",
+    "simulation/test_reflector.py": "d1628232bed71a99330a6c9c88d1a5e625b1d2a92bc2b659a75ffb6119436a99",
+    "simulation/test_release_fit.py": "5e0e45505c5f1336ddec988148d74e781eb49824566662cb53359429609e2906",
+    "simulation/test_retainer.py": "53da844c1d80c8291e29941de8854df3aa45128c3103113948bcd45a8ca9779c",
+    "simulation/test_retainer_motion.py": "fd104e944712bc1d3b442626356e17c7637250ccdd320cc65548e45f3b687156",
+    "simulation/test_retainer_return.py": "17fc9d5ccac583b5f7229c060d509db78d2354ba18c34cffc08b5c1e57f95bab",
+    "simulation/test_return_springs.py": "fda3beed1de607ed1b92341804a8c1b11b8018eba3878193eff408b1f9003a30",
+    "simulation/test_rotors.py": "ff807108988606cdec8698d90e161d748cbba2b54f4dd19aebf87f1570bf4c4d",
+    "simulation/turnover_press.py": "0f82b83c75857cd40d32b819685df3c554d81c082b7c8a7de7ad549ec4a62480",
+    "simulation/turnover_return.py": "d799bdd50083621fc9769695917e216f9751065f997beda00d8b70c80aa14e6a",
+    "simulation/upper_profile_control.py": "1fa5f95ab85d4f780fc62f6391c16e5841a826c41c3b747c9c43700574bacb1e",
+    "simulation/upper_profile_control_coordinates.py": "141f608b7bb6316f1bc265f913a90eba8db1573db1cc15c2c74d74534a9ce3e7",
+    "simulation/upper_profile_control_data.py": "7ba5dcfcc9412b0591d71176a6622d15578b3c4525a27f29eb5bc1ab7bec8bde",
+    "simulation/upper_profile_history.py": "0948ed4682de46a3a59bdfba95b0dbfff9e7257c08a719917ce76179dc901f09",
+    "simulation/upper_profile_mechanism.py": "ba9ebfed8a2d7a9a7e460d3d0c9854478039df8f19ca7ba094d0957a88b1ca0d",
+    "simulation/v_all_boundary_mapping.py": "b61a5ba02bd054d00e15557c23ff3e8cd1bb7c3ef8dffd45fe5eda11c8502f5f",
+    "simulation/v_analytic_interior_qualification.py": "d8660ca563921deb87fe4563c7a2b0589a7f2ba333c1da0a35f4d67cd88fa202",
+    "simulation/v_clear_side_comparison.py": "39767d8e3bc5c22bb949bc5ebc925689b9b5d9436cbab2a19d0e97aaa63cb6d6",
+    "simulation/v_correlated_boundary_mapping.py": "cee10e7f74b31ee6bf650ff2b489adb0bb1b3efafb63fd2f9dcf423723bf8863",
+    "simulation/v_cylinder14_contact.py": "24cf3b73e9e01d515df332d265d3404cbfef9fb30bab4ad866ed7838ac98fb9a",
+    "simulation/v_cylinder14_expression.py": "fd36c5f7acae8d086d414e2cac2c26d3466b1d36f59469b3981d493819901d78",
+    "simulation/v_cylinder14_qualification.py": "5df0aa232b68dbf8c4336f739571faa579845f08c6d2cdde01ce14303e2c5701",
+    "simulation/v_cylinder_successor_discriminator.py": "8b1adc913d65f746fa8d00f1c98bd0d7e03b23c7c5e9353247da11c6f76439be",
+    "simulation/v_edge121_support.py": "9c4bff28b6c5231b32854d828d0042fec499881cfe91c9c89f2435dab2482457",
+    "simulation/v_edge24_finite_planes.py": "f9d9ac3e601d158e08869ba7c5c2da492f1ce3099869e76b9aff8b082028ea37",
+    "simulation/v_edge24_rim_branch.py": "1d15b460f271ec3a6120538454d2c22b808bfcd885bce93523ce0642ddf40c36",
+    "simulation/v_edge25_face9_section.py": "1574936923faee3595a984d31a5b80b2371206da2ba6ac14d77a8c77e201986f",
+    "simulation/v_edge25_mapped_support.py": "b16ec7be668a7bfe04f96ce358fa40469c1b920ebfc6aaea20ee407fa4c37881",
+    "simulation/v_edge25_other_source_cover.py": "42dbb6aa5695f89b9322ab598b8cb55221d72ecf1b0401b5c4b47e6b14f51de0",
+    "simulation/v_edge25_top_disk_motion.py": "b106553c5927b6e213a709b12b380e22b5c5de6be322c36b4f7f8b1a5753decd",
+    "simulation/v_edge25_top_disk_source.py": "eb075969afec97f95436437ddb876b3f763ab6ae3b04c4a39713789c7e372cad",
+    "simulation/v_edge25_union_probe.py": "d51ea2e9b50400ddc318e65b948670ae7024c755ee329c60b3612ce8263d07c2",
+    "simulation/v_entry_chart.py": "1a6ba2bc12543fedb2a841d69193d47e8590136fd75aed455b79b2603ceffd03",
+    "simulation/v_entry_composition.py": "40a079dba767593fbc8533519a1000a54bf6becbb4a24f598655c25ad2635cce",
+    "simulation/v_entry_expression.py": "437e30e06c972c4bd68cc12292eb2f6c34cc4665410a84b1a9951b67537c50b5",
+    "simulation/v_entry_face12_contact.py": "7f48a7635ec188d1ce5a7f9baf0a4e0426b762e5b020d6edd12df3b9b0a5e705",
+    "simulation/v_entry_face12_enclosure.py": "3d31d7a914d98d0ecef8e03d6fe199debfa5d0da9c697d5cb3d78d1f61a7b90b",
+    "simulation/v_entry_face12_support.py": "cefb9ba116f50e82e7f64408f4aea7d75e0db8e97c75d51992411cc3ba0ecf15",
+    "simulation/v_entry_face14_separator.py": "a703ec9b61cce66a274ffe1579516431a26dd77078a8f69242b9a376f508ecc1",
+    "simulation/v_entry_handoff.py": "d3c52d36853d054dfd6535df0d419af111eca9c7c2434a4bceb3a20bbb5906fd",
+    "simulation/v_entry_numerics.py": "dd601feef02a9e162dfbabb3838653ab01f406c526bc79db7b4d2e0ab20dadc2",
+    "simulation/v_entry_source_qualification.py": "27b43e9f9834b81332d5f742914f3c99d5014320bf8399751bab048376f10e8f",
+    "simulation/v_face12_rim_branch.py": "51cb0eb063812781b68f911dafe81ad691bd5c407497ef121dca63325f134b6e",
+    "simulation/v_face12_stationary_cover.py": "2d3c4bfc4a616147ea6a587569bcf50dc36a2acd77459b1855521fb7e3f9071d",
+    "simulation/v_face14_boundary_transfer.py": "8ed22b0b490680bb300bfcccc612e47c688a9ba35b268b50716941f68541abc6",
+    "simulation/v_face14_branch_competition.py": "2e8df2f6f4fdc1ea0f7f2f3b0fca39e21408c037418c1bd71b0453733de81752",
+    "simulation/v_face14_bridge_planes.py": "13da68b49c9ff8f1053a7383dc7866df6b820788d58d89eeba75cc6f8d4d85be",
+    "simulation/v_face14_bridge_qualification.py": "3930d2608f646031063220f0b7209ab06d75320f0a67dec57f469f772b3184a8",
+    "simulation/v_face14_trim.py": "dd294ef35203889e9424bf3a5f29ff098a4f54cd23506ff5849194df850ab7a5",
+    "simulation/v_face9_rim_plane_qualification.py": "e9ce7db714c37ffedb1ff565ea41011a789c84cbd4d2a7dddc2114ab2d1045a2",
+    "simulation/v_face_interior_rectangles.py": "36725e091c3a6aeb35dd65a7addcaeb17199866caa18ea86f7a736d836da68a0",
+    "simulation/v_first_stroke_free.py": "88af6a48b314d24607e2670e15ec965b5d6cd4f93bfa44d71f2b423271164594",
+    "simulation/v_follower_branch_discriminator.py": "00fb6cbf18267e18bfecc266ec998ac7581df57ad179a7f10343fa2ef71abcc7",
+    "simulation/v_follower_expressions.py": "be1f6a856e70fa3ba7acd619c0e599921bf272d9d4241df86ca5bbb896707e52",
+    "simulation/v_follower_flank_expressions.py": "13e8a9a4d76d7c14ae36d613a2c64cc130fee4278165d0d07e81ebb5a8a9a194",
+    "simulation/v_follower_rim_reference.py": "6b49a310dda00c76e55a988b854188902e81009dd19ab0ec7fcbe9eebcc3bc0d",
+    "simulation/v_follower_source_polynomials.py": "4be1ef008f2fe2d17d3c870ac87bc280d74ee7d6f20a25f7f6a7441e1e3720a6",
+    "simulation/v_follower_source_surfaces.py": "93d9deb2a6cf5a4c76c3166f3d21a010d0910bfc7bf3c8d799e7b0d3a095b279",
+    "simulation/v_frozen_reference_pieces.py": "0040948e8e3bec93b288d6b43e6dbc0128e42981d9b06cfe0f945fe40feaf110",
+    "simulation/v_independent_boundary_forests.py": "f57c31f1f0a167426ef3b384b4823d304587ae8aafa36d8bc36225d69b264ba9",
+    "simulation/v_initial_contact_edge_discriminator.py": "0fc802e25c0f07172e9d4bbdc4b5f61bca60f34a0c91755f9683c6ad857c4122",
+    "simulation/v_native_boundary_semantics.py": "e321caa5d943f5e0f9ce7971ef642f5fb84c568839cf9fe8d34a06d218d3f9e9",
+    "simulation/v_patch_distance_bounds.py": "40bbf5f9776b4d31f5090359832fdef5bb370269ed09206a24e5f7555b2debd0",
+    "simulation/v_pcurve_domain_ledger.py": "ace213973e66521a8ca5b1e57741c648897bc1a19c87cf772e53fad10499f2ce",
+    "simulation/v_rest_lamp_lead.py": "a7453a6534675c153c15286bc725739b1ef6ecf5552b8b32e139fee0ad9da3fb",
+    "simulation/v_rim_bridge_arithmetic.py": "0ffefed348f83da75368d622d7dca40a31a334b1e1ed7bb6915ebc4ace499403",
+    "simulation/v_rim_bridge_composition.py": "2bcc3a570e8da6897a70e91a7d5e085526c3c15a2e92de726bd261ceccd315bd",
+    "simulation/v_rim_bridge_correlation.py": "058cdf8647fbfc6a4ac459a6c543636a57d4030b5f683a082778354dcc0af2a4",
+    "simulation/v_rim_bridge_cover_qualification.py": "74b2b41319ddb2e36d8bc6562d9fb70ef26be038d6e047d73e66be6f9f048141",
+    "simulation/v_rim_bridge_cylinder_witness.py": "1563a858d3242d4c6fe9afe42f8778feafc93b3a978cf42bab4a88ad5d467858",
+    "simulation/v_rim_bridge_expression.py": "aaa72d5ab5f0b68d959d132c99ea830b7fbcb9ad8d6a50079c530f8840cacbd6",
+    "simulation/v_rim_bridge_handoffs.py": "b583babb789438c30c54f35739c83dd428a1ea09a2a7105d2217c23ffe59bacb",
+    "simulation/v_rim_bridge_old_plane.py": "e29a63a4ddd0b2465568b389f6efe4971c742243045a262e145481c5e03321c7",
+    "simulation/v_rim_bridge_other_covers.py": "f37c744d05cff3c8efa34106964c286d6f9bc8096578e3c73926dd34047db01c",
+    "simulation/v_rim_bridge_witness.py": "6f90acd71ae41f9ee1c36d4a7cc8f57ff3f4eeae118f67f1b5ec916186e5aec3",
+    "simulation/v_rim_scalar_expression.py": "ac5d0124e8907d9d763faa35fc21171bfbfafb5d8e4fee302c7af54e398fb604",
+    "simulation/v_successor_arithmetic.py": "b3d8933de4bd3c97222d1e4a5f14bb292ee0eab1b1e97ea6352042eb242612f0",
+    "simulation/v_successor_composition.py": "28cc256ea9f727ce66bbdd609b41a26b6d83ec3609d8e3037007ea69cd9df0ee",
+    "simulation/v_successor_correlation_bounds.py": "6a107f0cfada3cb44103397cdbfa7b974ed33464e97d4a3e55124444db1e38e2",
+    "simulation/v_successor_coverage.py": "ede1a8734c1fcea0319e50c32dbda8e99fbeeea96e9e8534dd6a60c7256eff66",
+    "simulation/v_successor_cylinder_interval.py": "51b9a587bf0ea3045b5e9755b19a4d9e50fea0329c45dbd942cc5f1ccb398d0e",
+    "simulation/v_successor_edge_interval.py": "5ec37aa916ed6959e146ef719ab62ca1b57bd1bcae0203b2e90529a8703fb71a",
+    "simulation/v_successor_enclosure.py": "b347c840e3ba079709da37847437865f80d59dab6c48331c5e44539c3dcae2e8",
+    "simulation/v_successor_envelope.py": "0a1de2653462b0bc13d15ad15ed9bab1d3d0761e8b0456803e3f08aea0f5d98a",
+    "simulation/v_successor_expression.py": "5abd8d11251aec46dff96ab73719e674c2e9f771a89ed3a80d592043e2c042b9",
+    "simulation/v_successor_face12_domain.py": "c0028679f602c69c0f407327f5806b20f00a34bd49e852642a6d49ec7f793327",
+    "simulation/v_successor_face12_math.py": "6ea7362bc25d82a194579728f12885f46f89a47655a2fb6db6c9056aee1fee4a",
+    "simulation/v_successor_face12_support.py": "0b1608969ed844ee786d43cdf9fbe75517f9474306937032cac75655b1c46d06",
+    "simulation/v_successor_face14_domain.py": "36669cf99a1020275f78fc0ecaddbe4a672bae45b3862c7721f8c06b12c5dfae",
+    "simulation/v_successor_face14_support.py": "5f243ab82cd4b21cfa5aa0e3490d4dd1b3c9787b792b42df5a866030a5e67b72",
+    "simulation/v_successor_handoff.py": "22123c4d224de4c4d7ebdb77b4c6d3aca01e46abb5fdafbc08bd18a31536b2ed",
+    "simulation/v_successor_interval.py": "7ec1690b61c61eec933c3d252a5486d5e743b7037659230ed420dbe9b4c274d4",
+    "simulation/v_successor_near_support.py": "1bcf588c380870b971b3869197957c732a2fa562afde6058c8095900fd0b0377",
+    "simulation/v_successor_numerical_qualification.py": "f1441e4531480d86979a5535f4fea4fcee43d6290db4eba86e9198a3342d9dcc",
+    "simulation/v_successor_validation.py": "e13d6fe0d04ac8db00529d4f0d0fe51736b4b78a8d5007e6a836025a9bf1166a",
+    "simulation/v_top_disk_composition.py": "fd2b0c6d09333e2272b0657283e1cb6a312dfbf737eff5ffa3d7a6d62c308815",
+    "simulation/v_top_disk_envelope.py": "7643ff5b25a6f78bcbd242fe7fd5736803615509d497101d7dfcef14bf9c204f",
+    "simulation/v_top_disk_expression.py": "8dea756734118c601b8f2fa37a740a17681c77a0e6f0ef531b0062f2d314a71f",
+    "simulation/v_top_disk_extension.py": "408d34c2059980329b5f82578225341e756f00552589250c386040ea0f9ec8da",
+    "simulation/v_top_disk_extension_certificate.py": "05d09188b31548945b9f6105781dc8977b4e7bd86b698a97a85e44f16e1525a5",
+    "simulation/v_top_disk_extension_composition.py": "da6bfd21468a541cfdbe4ebfc10f43ad3ccfdde2469d8eec615f1bbffdd157d9",
+    "simulation/v_top_disk_qualification.py": "039ddbe647562dfceaf79ca5d478158ca4892817250023b761f6b8ce02d2c68f",
+    "simulation/work_feed_pair.py": "41cc0673a22851fede35ce0cb768f90f2c04d7ad837e5397b0a585c3b7cb2ffc"
+  }
+}

@@ -1,0 +1,18 @@
+.............F                           [100%]
+=================================== FAILURES ===================================
+_ NativeAppearanceAdmissionTest.test_invalid_later_color_preserves_clocked_bank_events_and_earlier_glass _
+
+self = <tests.test_state_color.NativeAppearanceAdmissionTest testMethod=test_invalid_later_color_preserves_clocked_bank_events_and_earlier_glass>
+
+    def test_invalid_later_color_preserves_clocked_bank_events_and_earlier_glass(self):
+        from .color_project.model import InvalidClocked
+        node = InvalidClocked(); sim = Sim(node, record=20)
+        before = dict(sim.state)
+>       before_events = list(sim.events)
+                             ^^^^^^^^^^
+E       AttributeError: 'Sim' object has no attribute 'events'
+
+packages/machinome/tests/test_state_color.py:196: AttributeError
+=========================== short test summary info ============================
+FAILED packages/machinome/tests/test_state_color.py::NativeAppearanceAdmissionTest::test_invalid_later_color_preserves_clocked_bank_events_and_earlier_glass
+1 failed, 13 passed, 32 subtests passed in 1.76s

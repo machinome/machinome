@@ -1,0 +1,149 @@
+................................................................ [ 23%]
+...............................ss.................. [ 41%]
+............................................... [ 58%]
+........................................................... [ 79%]
+.........................................................                [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/formparsers.py:12
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+.venv/lib/python3.12/site-packages/starlette/testclient.py:41
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/starlette/testclient.py:41: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    [], typing.ContextManager[anyio.abc.BlockingPortal]
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:247: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    list(alpha.crop((0, 0, image.width, 1)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:248: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((0, image.height - 1, image.width, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:249: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((0, 0, 1, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:250: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    + list(alpha.crop((image.width - 1, 0, image.width, image.height)).getdata())
+
+tests/test_capture.py::CaptureEndToEndTest::test_the_photograph_has_a_transparent_border_and_an_opaque_model
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:253: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertIn(255, alpha.getdata())
+
+tests/test_capture.py::MarkedStagedDocumentTest::test_a_marked_model_is_photographed_with_its_markings
+tests/test_capture.py::MarkedStagedDocumentTest::test_a_marked_model_is_photographed_with_its_markings
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:469: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for red, green, blue in image.getdata():
+
+tests/test_capture.py::FullscreenCaptureTest::test_the_photograph_has_a_transparent_bottom_right_corner
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_capture.py:537: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertEqual(set(corner.getchannel('A').getdata()), {0})
+
+tests/test_running_document.py::TouchedByHandTest::test_a_part_the_table_does_not_name_moves_the_camera
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_running_document.py:1186: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for index, pixel in enumerate(diff.getdata())
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+    warnings.warn(  # deprecated in 14.0 - 2024-11-09
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_impl.py:16: DeprecationWarning: websockets.server.WebSocketServerProtocol is deprecated
+    from websockets.server import WebSocketServerProtocol
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/legacy/server.py:1168: DeprecationWarning: remove second argument of ws_handler
+    warnings.warn("remove second argument of ws_handler", DeprecationWarning)
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/exceptions.py:137: DeprecationWarning: ConnectionClosed.code is deprecated; use Protocol.close_code or ConnectionClosed.rcvd.code
+    warnings.warn(  # deprecated in 13.1 - 2024-09-21
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_server.py::DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+tests/test_session.py::LiveSessionTest::test_a_reload_reaches_every_open_page_without_closing_it
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/websockets/exceptions.py:148: DeprecationWarning: ConnectionClosed.reason is deprecated; use Protocol.close_reason or ConnectionClosed.rcvd.reason
+    warnings.warn(  # deprecated in 13.1 - 2024-09-21
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_server.py:238: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    red = sum(1 for r, g, b in image.getdata()
+
+tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_server.py:240: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    blue = sum(1 for r, g, b in image.getdata()
+
+tests/test_state_color.py::ModelColorBrowserTest::test_clocked_snapshot_reset_restore_replay_and_event_parity
+tests/test_state_color.py::ModelColorBrowserTest::test_ordinary_slider_default_overlay_and_reload_use_the_same_glass
+tests/test_state_color.py::ModelColorBrowserTest::test_running_committed_frames_restore_reset_and_replay
+tests/test_state_color.py::ModelColorBrowserTest::test_settled_relation_property_reaches_the_ordinary_viewer
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_state_color.py:90: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertGreater(sum(max(pixel) > 4 for pixel in diff.getdata()), 100)
+
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_state_color.py:289: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertIn(255, images[name].getchannel('A').getdata())
+
+tests/test_widget_e2e.py::WidgetE2ETest::test_full_cycle_returns_to_start
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_time_parameter_poses_the_animation
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:73: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for pixel in image.getdata() if predicate(*pixel))
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1240: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    green = lambda image: sum(1 for r, g, b in image.getdata() if g > 150 and g > r + 60 and g > b + 60)
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1317: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(difference.getdata()) / (a.width * a.height)
+
+tests/test_widget_e2e.py: 12 warnings
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1691: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for width, low in zip(spread.getdata(), darkest.getdata())))
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1702: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for value in mask.getdata() if value)
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1705: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    indices = [index for index, value in enumerate(mask.getdata()) if value]
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_widget_e2e.py:1747: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    in zip(changed.getdata(), decal.getdata())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] packages/machinome-viewer/tests/test_curta_drawing.py:375: the Curta's own builds are not at /home/asa/devel/machinome/machinome/WTs/projects/Calculators/Curta-Type-I-3x/_build
+SKIPPED [1] packages/machinome-viewer/tests/test_curta_drawing.py:469: the Curta's own builds are not at /home/asa/devel/machinome/machinome/WTs/projects/Calculators/Curta-Type-I-3x/_build
+276 passed, 2 skipped, 71 warnings, 211 subtests passed in 282.97s (0:04:42)

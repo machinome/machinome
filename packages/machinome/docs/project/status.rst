@@ -16,6 +16,15 @@ all ``machinome``. The :doc:`upgrading page <upgrading>` lists every move
 from 0.8 and every breaking change from 0.7, and maps the 0.6 names to the
 new.
 
+Current source after this release
+---------------------------------
+
+``machinome.color.color_when`` is unreleased. It selects two fixed colors
+on the same body from model state; conditional live documents require
+format 14 and viewer API |source_viewer_api|. The source reader supports
+|source_document_versions|, while the released viewer facts above remain
+those of |release|. No package publication is implied.
+
 What |version| is
 -----------------
 

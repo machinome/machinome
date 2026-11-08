@@ -1,0 +1,17 @@
+
+> @machinome/viewer@0.9.0 test
+> vitest run --maxWorkers=2 src/color.test.ts src/tree.test.ts src/presentation.test.ts src/document.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+
+ ✓ src/tree.test.ts (69 tests) 100ms
+ ✓ src/color.test.ts (19 tests) 41ms
+ ✓ src/document.test.ts (65 tests) 40ms
+ ✓ src/presentation.test.ts (18 tests) 10ms
+
+ Test Files  4 passed (4)
+      Tests  171 passed (171)
+   Start at  20:20:44
+   Duration  1.46s (transform 843ms, setup 0ms, collect 1.42s, tests 191ms, environment 1ms, prepare 401ms)
+

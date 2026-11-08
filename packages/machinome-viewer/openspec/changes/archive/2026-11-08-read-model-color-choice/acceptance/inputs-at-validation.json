@@ -1,0 +1,19 @@
+{
+  "package-lock.json": "4cc6875ee3bcecdff37fb2f86bd0e8ec863e151723f906652cccb7172715be8f",
+  "packages/machinome-viewer/machinome/viewer/web/capture.py": "b03d72722533894b71583620666a8b1864c2668af6625661cc3cbe62ba04fbdf",
+  "packages/machinome-viewer/machinome/viewer/web/widget/package.json": "131895c3a914923520836c059b65eb872ad3e63221d790411e5915875a1ce336",
+  "packages/machinome-viewer/machinome/viewer/web/widget/build.mjs": "629021175587c51ce3aff25a1b1f83158b7283aaf46f955fa9a08062d0491eeb",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/viewer.ts": "f1cef45e0db2386478473477bd7a21c2d6db0d05d8f3380093c4daf39eb4671d",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/types.ts": "1f70f457e9185ec2e0c51895247ec59b753ec975c6e45fa0f592a2545750f9e0",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/tree.ts": "508a13584fb906928cd8b9fdd547cfda8d7ed7a5d9552970124ed3d186152b83",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/color.ts": "a160988988dffd2e0b8b46d5ee5ccdb1a2f8c5e3cd7f1e635933905a1f7b9e53",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/presentation.ts": "dc6e6ee46fdccbf782371d6f0e132c23bfca23ffa437743dc60497599a422cb3",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/run/program.ts": "12fc4d2fa32273ea20fc663eb8295b1aca9da4308025d372ec1cd84695e07ea1",
+  "packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js": "2b4836154d730a0bb4c48e0226f87e03acf5ebb8ebe1015fdda4a79ad3ada90d",
+  "packages/machinome-viewer/tests/fixtures/state-color/receipt.json": "5c4cb2bd3a02cdfdb2e59fed0e9cfcb66119089503c5339414c9c82807414f98",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/color.test.ts": "2d6e6300264eb761a120e35453128426e2119159fe1f34da80b450e6a3e5b255",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/document.test.ts": "e0d61ed2baed4b2c4cd98a4690dc7b2ec02d35e7b26d91ce52d13260f72fd6a4",
+  "packages/machinome-viewer/machinome/viewer/web/widget/src/version.test.ts": "dfb8beb7ffcd61bd67728e4ff2b3fbe9e88ede44a82460dcac4ffd42125ea819",
+  "packages/machinome-viewer/tests/test_state_color.py": "fe37abdeca445495102983c7d8a6191df130caf5a4183b627f3533c1f3b144ee",
+  "packages/machinome-viewer/tests/test_documentation.py": "7a697b0f37c2426a04400df7daccb248ff96c2bca2c99bb76b1d2688c66300f8"
+}

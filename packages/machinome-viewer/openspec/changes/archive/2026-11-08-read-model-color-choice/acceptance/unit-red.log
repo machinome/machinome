@@ -1,0 +1,155 @@
+
+> @machinome/viewer@0.9.0 test
+> vitest run --maxWorkers=2 src/color.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+
+ ❯ src/color.test.ts (12 tests | 12 failed) 58ms
+   × version-14 model colors > loads a posed choice without inventing a missing running program 26ms
+     → /lamp.json declares document version 14, which this viewer does not render; it renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13. The document is written to a schema this build cannot read: refusing it rather than rendering part of a machine it does not understand.
+   × version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#fff","off":"#e5dfce"} 8ms
+     → expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+   × version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978","off":"yellow"} 1ms
+     → expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+   × version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978"} 1ms
+     → expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+   × version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978","off":"#e5dfce","extra":1} 1ms
+     → expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+   × version-14 model colors > refuses malformed choices before rendering: {"when":1,"on":"#ffd978","off":"#e5dfce"} 1ms
+     → expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+   × version-14 model colors > refuses malformed choices before rendering: %j 1ms
+     → expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+   × version-14 model colors > refuses old-version choices and undeclared binding inputs 2ms
+     → expected [Function] to throw an error
+   × version-14 model colors > resolves finite zero/nonzero, inheritance, overrides and fixed markings without replacing anything 11ms
+     → expected 'ffffff' to be 'ffd978' // Object.is equality
+   × version-14 model colors > prepares colors and transforms atomically and recovers scope after sqrt(2 - powered) 2ms
+     → expected [Function] to throw an error
+   × version-14 model colors > prepares colors and transforms atomically and recovers scope after ((powered > 2) ? powered.missing : 0) 1ms
+     → expected [Function] to throw an error
+   × version-14 model colors > rebases every overlay from the current declared color, preserving material identity 1ms
+     → owner.setBaseColor is not a function
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > loads a posed choice without inventing a missing running program
+Error: /lamp.json declares document version 14, which this viewer does not render; it renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13. The document is written to a schema this build cannot read: refusing it rather than rendering part of a machine it does not understand.
+ ❯ assertRenderableScoped src/viewer.ts:2954:11
+    2952|   }
+    2953|   if (!RENDERED_VERSIONS.includes(document.version)) {
+    2954|     throw new Error(
+       |           ^
+    2955|       `${sourceUrl} declares document version ${document.version}, whi…
+    2956|       `this viewer does not render; it renders versions ` +
+ ❯ src/viewer.ts:2938:32
+ ❯ withExpressions src/expressions.ts:460:12
+ ❯ Module.assertRenderable src/viewer.ts:2938:10
+ ❯ src/color.test.ts:34:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#fff","off":"#e5dfce"}
+ FAIL  src/color.test.ts > version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978","off":"yellow"}
+ FAIL  src/color.test.ts > version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978"}
+ FAIL  src/color.test.ts > version-14 model colors > refuses malformed choices before rendering: {"when":"powered","on":"#ffd978","off":"#e5dfce","extra":1}
+ FAIL  src/color.test.ts > version-14 model colors > refuses malformed choices before rendering: {"when":1,"on":"#ffd978","off":"#e5dfce"}
+ FAIL  src/color.test.ts > version-14 model colors > refuses malformed choices before rendering: %j
+AssertionError: expected [Function] to throw error matching /color/i but got '/lamp.json declares document version …'
+
+- Expected: 
+/color/i
+
++ Received: 
+"/lamp.json declares document version 14, which this viewer does not render; it renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13. The document is written to a schema this build cannot read: refusing it rather than rendering part of a machine it does not understand."
+
+ ❯ src/color.test.ts:44:67
+     42|     { when: 1, on: ON, off: OFF }, [],
+     43|   ])('refuses malformed choices before rendering: %j', color => {
+     44|     expect(() => assertRenderable(document(color), '/lamp.json')).toTh…
+       |                                                                   ^
+     45|   });
+     46|   it('refuses old-version choices and undeclared binding inputs', () =…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > refuses old-version choices and undeclared binding inputs
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/color.test.ts:47:81
+     45|   });
+     46|   it('refuses old-version choices and undeclared binding inputs', () =…
+     47|     expect(() => assertRenderable({ ...document(), version: 2 }, '/lam…
+       |                                                                                 ^
+     48|     const body = document(choice('_shared'));
+     49|     body.bindings = [{ name: '_shared', expression: 'missing.powered' …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > resolves finite zero/nonzero, inheritance, overrides and fixed markings without replacing anything
+AssertionError: expected 'ffffff' to be 'ffd978' // Object.is equality
+
+Expected: "ffd978"
+Received: "ffffff"
+
+ ❯ src/color.test.ts:65:26
+     63|     for (const powered of [1, 0, -2, 0]) {
+     64|       tree.update(clockedScope({ powered }, 0, table), changed('powere…
+     65|       expect(hex(glass)).toBe((powered ? ON : OFF).slice(1));
+       |                          ^
+     66|       expect(tree.assembly().children[0].color).toBe(powered ? ON : OF…
+     67|       expect(hex(fixed)).toBe('112233');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > prepares colors and transforms atomically and recovers scope after sqrt(2 - powered)
+ FAIL  src/color.test.ts > version-14 model colors > prepares colors and transforms atomically and recovers scope after ((powered > 2) ? powered.missing : 0)
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/color.test.ts:87:61
+     85|     tree.update(scope(0));
+     86|     const before = tree.children.map(n => [...n.group.matrix.elements]…
+     87|     expect(() => tree.update(scope(3), changed('powered'))).toThrow(/l…
+       |                                                             ^
+     88|     expect(tree.children.map(n => [...n.group.matrix.elements])).toEqu…
+     89|     expect(hex(tree.children[0])).toBe(OFF.slice(1));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  src/color.test.ts > version-14 model colors > rebases every overlay from the current declared color, preserving material identity
+TypeError: owner.setBaseColor is not a function
+ ❯ src/color.test.ts:107:13
+    105|       owner.setHover([target, other]);
+    106|       owner.setHighlight({ lit: [target], others: [other], color: '#00…
+    107|       owner.setBaseColor(target, ON); owner.setBaseColor(other, ON);
+       |             ^
+    108|       expect(target.material).toBe(material);
+    109|       if (mode === 'dim') expect(other.material.color.r).toBeCloseTo(n…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  12 failed (12)
+   Start at  20:08:49
+   Duration  980ms (transform 531ms, setup 0ms, collect 694ms, tests 58ms, environment 0ms, prepare 74ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+npm error workspace @machinome/viewer@0.9.0
+npm error location /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget
+npm error command failed
+npm error command sh -c vitest run --maxWorkers=2 src/color.test.ts

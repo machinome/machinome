@@ -1,0 +1,27 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ PublishedColorTest.test_failure_during_symbolic_traversal_restores_color_state_and_pose _
+
+self = <tests.test_state_color.PublishedColorTest testMethod=test_failure_during_symbolic_traversal_restores_color_state_and_pose>
+
+    def test_failure_during_symbolic_traversal_restores_color_state_and_pose(self):
+        node = FailingPublication(); bind_declared_defaults(node); node.set_state(powered=1, independent=3)
+        before = dict(node._states)
+        before_ops = [op.serialized for op in node.glass.operations]
+        with self.assertRaisesRegex(RuntimeError, 'after color assignment'):
+            document(node)
+>       self.assertEqual(node._states, before)
+
+packages/machinome/tests/test_state_color.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ExpressionNode binop '=='>
+
+    def __bool__(self):
+>       raise SymbolicTruthError(self)
+E       machinome.expression_graph.SymbolicTruthError: <ExpressionNode binop '=='> is symbolic: its truth depends on animation time or a driver, which have no value until they are bound, so it cannot steer `if`, `and`, `or` or `not`. Compose it with machinome.math instead (min, max, clamp, sign), or bind the drivers first.
+
+packages/machinome/machinome/expression_graph.py:162: SymbolicTruthError
+=========================== short test summary info ============================
+FAILED packages/machinome/tests/test_state_color.py::PublishedColorTest::test_failure_during_symbolic_traversal_restores_color_state_and_pose
+1 failed, 6 deselected in 0.91s

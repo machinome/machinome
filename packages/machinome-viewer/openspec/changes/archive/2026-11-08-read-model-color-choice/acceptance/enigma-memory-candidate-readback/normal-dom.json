@@ -1,0 +1,90 @@
+{
+  "url": "http://127.0.0.1:42785/",
+  "title": "",
+  "canvas_count": 1,
+  "inspector_count": 1,
+  "drivers": [
+    {
+      "label": "battery_lid (deg)",
+      "type": "range",
+      "value": "0"
+    },
+    {
+      "label": "battery_lid exact value (deg)",
+      "type": "text",
+      "value": "0.0000"
+    },
+    {
+      "label": "carrier_angle (deg)",
+      "type": "range",
+      "value": "0"
+    },
+    {
+      "label": "carrier_angle exact value (deg)",
+      "type": "text",
+      "value": "0.0000"
+    },
+    {
+      "label": "deflection",
+      "type": "range",
+      "value": "0"
+    },
+    {
+      "label": "deflection exact value",
+      "type": "text",
+      "value": "0.0000"
+    },
+    {
+      "label": "key_number",
+      "type": "range",
+      "value": "1"
+    },
+    {
+      "label": "key_number exact value",
+      "type": "text",
+      "value": "1.0000"
+    },
+    {
+      "label": "left_phase (deg)",
+      "type": "number",
+      "value": "13.297555"
+    },
+    {
+      "label": "left_pitch_offset (deg)",
+      "type": "number",
+      "value": "0"
+    },
+    {
+      "label": "middle_phase (deg)",
+      "type": "number",
+      "value": "317.91294"
+    },
+    {
+      "label": "middle_pitch_offset (deg)",
+      "type": "number",
+      "value": "0"
+    },
+    {
+      "label": "right_phase (deg)",
+      "type": "number",
+      "value": "664.066786"
+    },
+    {
+      "label": "right_pitch_offset (deg)",
+      "type": "number",
+      "value": "0"
+    },
+    {
+      "label": "supply_connected",
+      "type": "range",
+      "value": "0"
+    },
+    {
+      "label": "supply_connected exact value",
+      "type": "text",
+      "value": "0.0000"
+    }
+  ],
+  "navigator_rows": 9,
+  "body_text": "Assembly\nCandidateMachineInspection\nbattery_lid\n0.0000 deg\ncarrier_angle\n0.0000 deg\ndeflection\n0.0000\nkey_number\n1.0000\nleft_phase\n13.2976 deg\nleft_pitch_offset\n0.0000 deg\nmiddle_phase\n317.9129 deg\nmiddle_pitch_offset\n0.0000 deg\nright_phase\n664.0668 deg\nright_pitch_offset\n0.0000 deg\nsupply_connected\n0.0000"
+}

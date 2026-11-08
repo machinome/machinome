@@ -42,7 +42,10 @@ release_date = '31 October 2026'
 # its API and document versions are its widget's, which tests hold them to.
 viewer_version = '0.9.0'
 viewer_api = '29'               # a clocked machine captured on demand
-document_versions = '1 to 13'    # supported by the paired viewer
+document_versions = '1 to 13'    # supported by the released paired viewer
+# Source capabilities after that release; publication state lives in status.
+source_viewer_api = '30'
+source_document_versions = '1 to 14'
 framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'
 # The studio's, held to its source by the studio's documentation test
 # (packages/machinome-studio/tests/test_documentation.py, change
@@ -67,6 +70,8 @@ rst_prolog = f'''
 .. |viewer_version| replace:: {viewer_version}
 .. |viewer_api| replace:: {viewer_api}
 .. |document_versions| replace:: {document_versions}
+.. |source_viewer_api| replace:: {source_viewer_api}
+.. |source_document_versions| replace:: {source_document_versions}
 .. |framework_licence| replace:: {framework_licence}
 .. |studio_viewer_api| replace:: {studio_viewer_api}
 .. |studio_claude_models| replace:: {literals(studio_claude_models)}

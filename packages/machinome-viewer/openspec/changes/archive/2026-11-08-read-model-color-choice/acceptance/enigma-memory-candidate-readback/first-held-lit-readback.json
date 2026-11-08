@@ -1,0 +1,12 @@
+{
+  "draw_ms": 5.199999988079071,
+  "read_ms": 5458.300000011921,
+  "path": "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma-memory-candidate-readback/first-held-lit.png",
+  "sha256": "c931f67f159f295413f6bcbb493e0ec0472a7ab4ad25d97312e7220cbd43ae8f",
+  "bytes": 195879,
+  "size": [
+    1367,
+    1000
+  ],
+  "non_dominant_pixels": 67314
+}

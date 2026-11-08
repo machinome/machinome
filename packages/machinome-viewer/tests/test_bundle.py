@@ -59,11 +59,11 @@ class BundleLookupTest(TestCase):
         # `play-the-instruction`) -- is the one after that. API 28 is the
         # film annotations (`track-a-part-on-screen`); API 29 is an
         # on-demand mount of a clocked machine (`on-demand-clocked`).
-        self.assertEqual(bundle.api_version(), 29)
+        self.assertEqual(bundle.api_version(), 30)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
 
     def test_the_released_floor_does_not_move_with_the_build(self):
         # `RELEASED_DOCUMENT_VERSIONS` is what a viewer that PREDATES
@@ -81,7 +81,7 @@ class BundleLookupTest(TestCase):
         self.assertEqual(described['documentVersions'],
                          bundle.document_versions())
         self.assertEqual(described['documentVersions'],
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
         self.assertEqual(described['apiVersion'], bundle.api_version())
 
     def test_paths_and_remedy_share_one_source(self):

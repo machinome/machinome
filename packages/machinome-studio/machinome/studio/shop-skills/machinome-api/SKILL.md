@@ -29,6 +29,7 @@ the published 0.6.0 package or what an installed checkout contains.
 Each module answers one question, and an import line says which:
 
 ```python
+from machinome.color import color_when           # select the same body’s visual color
 from machinome.node.assembly import AssemblyNode   # what the machine is made of
 from machinome.node.fusion import FusionNode
 from machinome.node.cadquery import CadQueryNode
@@ -1429,7 +1430,30 @@ actual pointer operation, not its package version or export alone.
 - `.connect(source, sink)` on internal nodes; `.omit()` and `.check()` as
   above; `.shape_tolerance` on a flexible leaf; `.dxf_file` on a sheet.
 
-Class attributes: `color = '#RRGGBB'` (anything else raises); `fn = N`
+`color_when(condition, *, on, off)` from `machinome.color` takes two required
+six-digit hex strings. A finite zero numeric condition selects off; every
+other finite bool/real selects on. A supported symbolic scalar retains the
+condition without Python truth evaluation. Invalid palettes/conditions refuse
+by argument name. Assign in `simulate()` where a resolved observation is
+available, for example `self.glass.color = color_when(self.energized > .5,
+on='#ffd978', off='#e5dfce')`. The same body keeps its geometry, physical
+identity and calculations; reset, restore and replay recompute its color from
+standing state, with no retained appearance history. This is visual color,
+not emitted light. Conditional live publication requires document 14 and a
+reader supporting it, viewer API 30; this source capability is unreleased.
+Numeric selections are ordinary hex strings and retain the earlier format.
+
+A relation output is read after it settles. An authored `@property color`
+may call `color_when` on an explicitly referenced SignalPort's `.value` when
+normal presentation reads color after whole-tree solving. Pass its resolved
+scalar, not the port object. Reading it early in `simulate()` is still refused;
+no manual phase calls, callbacks or appearance state are needed. The wire
+choice is `{when, on, off}` in the same expression/binding scope as pose.
+Version 14 execution still comes from `clocked`/`program` payloads, or neither
+for posed content; both together are invalid. Old readers refuse 14.
+
+Class attributes: `color = '#RRGGBB'` or the supported two-color selection
+below (other values raise); `fn = N`
 sets OpenSCAD's `$fn` and affects only `Solid2Node` and `OpenScadNode`;
 `optimize` defaults true and false keeps unflattened SCAD for the
 OpenSCAD viewer. On an exact leaf (`CadQueryNode`, `Build123dNode`,

@@ -1,0 +1,6 @@
+{
+  "mem_available": 13322883072,
+  "minimum_start_available": 10737418240,
+  "allocation": "root-declared-lamp-browser-memory-20261108-01-baseline",
+  "heavy_jobs_excluded_by_root_coordination": true
+}

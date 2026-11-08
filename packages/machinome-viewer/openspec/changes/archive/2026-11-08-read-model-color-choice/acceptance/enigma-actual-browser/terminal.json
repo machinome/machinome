@@ -1,0 +1,92 @@
+{
+  "allocation": "root-declared-lamp-browser-20261108-01",
+  "argv": [
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/bin/python",
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma_browser_probe.py",
+    "--oracle",
+    "/mnt/data/machinome-projects/enigma-i-worktrees/electrical/sources/derived/declared-lamp-binding-v1/browser-oracle-v1.json",
+    "--bundle",
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/machinome/viewer/web/widget/dist/machinome-viewer.js",
+    "--output",
+    "/home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/openspec/changes/read-model-color-choice/acceptance/enigma-actual-browser"
+  ],
+  "supervisor": {
+    "pid": 2570765,
+    "birth": 1794171585.5,
+    "ppid": 571723,
+    "name": "python",
+    "status": "running"
+  },
+  "child": {
+    "pid": 2570769,
+    "birth": 1794171585.61,
+    "ppid": 2570765,
+    "name": "python",
+    "status": "running"
+  },
+  "returncode": -15,
+  "stop_reason": "aggregate RSS exceeded 4 GiB",
+  "wall_seconds_including_cleanup": 13.5932862770278,
+  "wall_limit": 300,
+  "aggregate_rss_limit": 4294967296,
+  "peak_aggregate_rss": 4325691392,
+  "owned_identities": [
+    {
+      "pid": 2570769,
+      "birth": 1794171585.61,
+      "ppid": 2570765,
+      "name": "python",
+      "status": "zombie"
+    },
+    {
+      "pid": 2570772,
+      "birth": 1794171586.68,
+      "ppid": 2570765,
+      "name": "MainThread",
+      "status": "zombie"
+    },
+    {
+      "pid": 2570786,
+      "birth": 1794171587.03,
+      "ppid": 2570772,
+      "name": "chrome-headless-shell",
+      "status": "sleeping"
+    },
+    {
+      "pid": 2570788,
+      "birth": 1794171587.05,
+      "ppid": 2570765,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2570789,
+      "birth": 1794171587.05,
+      "ppid": 2570765,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2570805,
+      "birth": 1794171587.09,
+      "ppid": 2570765,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2570807,
+      "birth": 1794171587.09,
+      "ppid": 2570765,
+      "name": "chrome-headless",
+      "status": "zombie"
+    },
+    {
+      "pid": 2570814,
+      "birth": 1794171587.11,
+      "ppid": 2570765,
+      "name": "chrome-headless",
+      "status": "zombie"
+    }
+  ],
+  "remaining_owned": []
+}

@@ -1,0 +1,8 @@
+.......                                                               [100%]
+=============================== warnings summary ===============================
+tests/test_cli.py::ModuleCommandTest::test_the_deprecated_serve_flags_are_refused
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/.venv/lib/python3.12/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+7 passed, 1 warning, 3 subtests passed in 3.27s

@@ -1,0 +1,21 @@
+mounted {"api": 30, "mount_ms": 10188.800000011921, "next_frame_ms": 367.80000001192093, "driver_ids": ["battery_lid", "carrier_angle", "deflection", "key_number", "left_phase", "left_pitch_offset", "middle_phase", "middle_pitch_offset", "right_phase", "right_pitch_offset", "supply_connected"], "view": {"camera": {"x": 172.19085714327616, "y": -52.19085686015441, "z": 244.75368583383013}, "target": {"x": -3.0000000000002416, "y": 123.000000283122, "z": 104.601000119209}, "up": {"x": 0, "y": 0, "z": 1}, "fov": 50}, "run": null, "machine": null}
+state W-held 6857.400000035763
+state W-released 1838.5
+state X-held 4100.699999988079
+state X-released 1690.199999988079
+state Y-held 4640.200000047684
+state Y-released 2380.699999988079
+state Z-held 3988.5
+state Z-released 2334.900000035763
+state old-seat 4152.300000011921
+state half-pitch 2300
+state next-seat 1968.300000011921
+state partial-transfer 3836
+state default-supply-off 5664.199999988079
+state held 5920.199999988079
+state power-loss 1457.1000000238419
+state power-restored 1811.5999999642372
+state reset 3930.600000023842
+state restored-driver-bank 3511.599999964237
+state replayed-power-cycle 35.39999997615814
+continuation-complete 19 oracle states

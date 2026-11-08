@@ -1,0 +1,18 @@
+............                                                    [100%]
+=============================== warnings summary ===============================
+tests/test_state_color.py::ModelColorBrowserTest::test_clocked_snapshot_reset_restore_replay_and_event_parity
+tests/test_state_color.py::ModelColorBrowserTest::test_ordinary_slider_default_overlay_and_reload_use_the_same_glass
+tests/test_state_color.py::ModelColorBrowserTest::test_running_committed_frames_restore_reset_and_replay
+tests/test_state_color.py::ModelColorBrowserTest::test_settled_relation_property_reaches_the_ordinary_viewer
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_state_color.py:90: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertGreater(sum(max(pixel) > 4 for pixel in diff.getdata()), 100)
+
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+tests/test_state_color.py::ModelColorCaptureTest::test_standard_produced_modes_capture_their_native_default_color
+  /home/asa/devel/machinome/machinome/WTs/illuminate-model-lamps/packages/machinome-viewer/tests/test_state_color.py:289: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertIn(255, images[name].getchannel('A').getdata())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+12 passed, 8 warnings, 9 subtests passed in 19.05s

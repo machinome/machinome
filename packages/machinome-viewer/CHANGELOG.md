@@ -3,6 +3,18 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased
+
+- Viewer API 30 reads document versions 1 through 14. A node's published
+  `color: {when, on, off}` selects its existing body's color from the same
+  standing state as its pose, including ordinary controls, reset, restore
+  and replay. Hover and highlight remain overlays over the latest model
+  color, with no geometry replacement or asset fetch for a color change.
+  Invalid conditions refuse before any candidate color or transform is
+  published; a clocked request keeps its standing bank and events as well.
+  Version-14 posed, clocked and running documents retain their execution
+  kind by their existing payloads. Earlier documents keep their behavior.
+
 ## 0.9.0 — 31 October 2026
 
 Released with Machinome 0.9.0 and numbered with it, the first release of

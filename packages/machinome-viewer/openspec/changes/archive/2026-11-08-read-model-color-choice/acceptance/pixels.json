@@ -1,0 +1,27 @@
+{
+  "native_palette": {
+    "off": "#e5dfce",
+    "on": "#ffd978"
+  },
+  "changed_pixels_above_4": 13711,
+  "changed_bounds": [
+    321,
+    239,
+    475,
+    370
+  ],
+  "released_equals_dark": true,
+  "powered_first_equals_lit": true,
+  "invalid_republish_keeps_highlight_pixels": true,
+  "png_sha256": {
+    "posed-dark.png": "010c4160b485e660d06888a2f5d3d273c7df869e1aa5babcefa39399623029e9",
+    "republish-standing.png": "795be86d66bc3d97aa45ef271110bbe6faba221528d059e67a81967a9d56c555",
+    "state-clocked-lit.png": "146c58c944cdf02a74c0b8bb891b7273329764631ed47591ae703120a1376816",
+    "republish-refused.png": "795be86d66bc3d97aa45ef271110bbe6faba221528d059e67a81967a9d56c555",
+    "clocked-lit.png": "146c58c944cdf02a74c0b8bb891b7273329764631ed47591ae703120a1376816",
+    "posed-released.png": "010c4160b485e660d06888a2f5d3d273c7df869e1aa5babcefa39399623029e9",
+    "powered-first-frame.png": "2d3b7ec0c93e44c009950b12834701f47c988c809c98726bb3c4c9faef83a04e",
+    "running-lit.png": "2d3b7ec0c93e44c009950b12834701f47c988c809c98726bb3c4c9faef83a04e",
+    "posed-lit.png": "2d3b7ec0c93e44c009950b12834701f47c988c809c98726bb3c4c9faef83a04e"
+  }
+}
