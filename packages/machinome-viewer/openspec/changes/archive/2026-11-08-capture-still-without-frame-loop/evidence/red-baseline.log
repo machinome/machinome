@@ -1,0 +1,64 @@
+.F.                                                              [100%]
+=================================== FAILURES ===================================
+_ StillCaptureSelectionTest.test_eligible_stills_use_all_on_demand_companion_options (document={'version': 4}) _
+
+self = <tests.test_capture.StillCaptureSelectionTest testMethod=test_eligible_stills_use_all_on_demand_companion_options>
+
+    def test_eligible_stills_use_all_on_demand_companion_options(self):
+        for document in ({'version': 4}, {'version': 4, 'instructions': {}},
+                         {'version': 8, 'clocked': {},
+                          'instructions': {'Stroke': {}}}):
+            with self.subTest(document=document):
+                options = self.stage_options(document)
+>               self.assertEqual(options['renderMode'], 'on-demand')
+                                 ^^^^^^^^^^^^^^^^^^^^^
+E               KeyError: 'renderMode'
+
+packages/machinome-viewer/tests/test_capture.py:134: KeyError
+_ StillCaptureSelectionTest.test_eligible_stills_use_all_on_demand_companion_options (document={'version': 4, 'instructions': {}}) _
+
+self = <tests.test_capture.StillCaptureSelectionTest testMethod=test_eligible_stills_use_all_on_demand_companion_options>
+
+    def test_eligible_stills_use_all_on_demand_companion_options(self):
+        for document in ({'version': 4}, {'version': 4, 'instructions': {}},
+                         {'version': 8, 'clocked': {},
+                          'instructions': {'Stroke': {}}}):
+            with self.subTest(document=document):
+                options = self.stage_options(document)
+>               self.assertEqual(options['renderMode'], 'on-demand')
+                                 ^^^^^^^^^^^^^^^^^^^^^
+E               KeyError: 'renderMode'
+
+packages/machinome-viewer/tests/test_capture.py:134: KeyError
+_ StillCaptureSelectionTest.test_eligible_stills_use_all_on_demand_companion_options (document={'version': 8, 'clocked': {}, 'instructions': {'Stroke': {}}}) _
+
+self = <tests.test_capture.StillCaptureSelectionTest testMethod=test_eligible_stills_use_all_on_demand_companion_options>
+
+    def test_eligible_stills_use_all_on_demand_companion_options(self):
+        for document in ({'version': 4}, {'version': 4, 'instructions': {}},
+                         {'version': 8, 'clocked': {},
+                          'instructions': {'Stroke': {}}}):
+            with self.subTest(document=document):
+                options = self.stage_options(document)
+>               self.assertEqual(options['renderMode'], 'on-demand')
+                                 ^^^^^^^^^^^^^^^^^^^^^
+E               KeyError: 'renderMode'
+
+packages/machinome-viewer/tests/test_capture.py:134: KeyError
+__ StillCaptureSelectionTest.test_final_public_view_is_drawn_before_readiness __
+
+self = <tests.test_capture.StillCaptureSelectionTest testMethod=test_final_public_view_is_drawn_before_readiness>
+
+    def test_final_public_view_is_drawn_before_readiness(self):
+        self.capture.write_mount_page({'renderMode': 'on-demand'})
+        page = Path(self.tempdir.name, 'index.html').read_text()
+>       self.assertIn('viewer.setView(viewer.view())', page)
+E       AssertionError: 'viewer.setView(viewer.view())' not found in '<!doctype html>\n<html><head><meta charset="utf-8"><style>\nhtml,body,#host{margin:0;width:100%;height:100%;overflow:hidden;\nbackground:transparent}\ncanvas{background:transparent}\n.machinome-fullscreen{display:none!important}\n</style></head><body><div id="host"></div>\n<script src="machinome-viewer.js"></script><script>\nMachinomeViewer.mount(\'#host\', \'viewer.json\', {"renderMode": "on-demand"}).then((viewer) => {\n  requestAnimationFrame(() => requestAnimationFrame(() => {\n    var run = viewer.run();\n    if (run) {\n      // The instant this picture was taken at. A run is created paused\n      // and nothing here starts it, so a document carrying a program is\n      // photographed at its rest state.\n      document.body.dataset.tick = String(run.tick());\n      document.body.dataset.clock = String(run.elapsed());\n      document.body.dataset.state = JSON.stringify(run.state());\n    }\n    document.body.dataset.ready = \'1\';\n  }));\n}).catch((error) => { document.body.dataset.error = String(error); });\n</script></body></html>'
+
+packages/machinome-viewer/tests/test_capture.py:154: AssertionError
+=========================== short test summary info ============================
+SUBFAILED(document={'version': 4}) packages/machinome-viewer/tests/test_capture.py::StillCaptureSelectionTest::test_eligible_stills_use_all_on_demand_companion_options
+SUBFAILED(document={'version': 4, 'instructions': {}}) packages/machinome-viewer/tests/test_capture.py::StillCaptureSelectionTest::test_eligible_stills_use_all_on_demand_companion_options
+SUBFAILED(document={'version': 8, 'clocked': {}, 'instructions': {'Stroke': {}}}) packages/machinome-viewer/tests/test_capture.py::StillCaptureSelectionTest::test_eligible_stills_use_all_on_demand_companion_options
+FAILED packages/machinome-viewer/tests/test_capture.py::StillCaptureSelectionTest::test_final_public_view_is_drawn_before_readiness
+4 failed, 2 passed, 31 deselected, 5 subtests passed in 0.19s

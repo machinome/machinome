@@ -1,0 +1,273 @@
+{
+  "argv": [
+    "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+    "viewer",
+    "capture",
+    "/tmp/machinome-capture-still-20261108-sfov_t26/candidate",
+    "-o",
+    "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/candidate.png",
+    "--imgsize",
+    "1100x800",
+    "--time",
+    "0",
+    "--viewer",
+    "web"
+  ],
+  "cwd": "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop",
+  "budget": 180,
+  "first_browser_elapsed": 1.105435068020597,
+  "snapshot_stage": null,
+  "owner": {
+    "pid": 2475728,
+    "birth": 1794167762.58,
+    "ppid": 2472848,
+    "argv": [
+      "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+      "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+      "viewer",
+      "capture",
+      "/tmp/machinome-capture-still-20261108-sfov_t26/candidate",
+      "-o",
+      "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/candidate.png",
+      "--imgsize",
+      "1100x800",
+      "--time",
+      "0",
+      "--viewer",
+      "web"
+    ],
+    "status": "running"
+  },
+  "returncode": 0,
+  "timeout": false,
+  "command_elapsed": 27.414681667054538,
+  "including_cleanup": 27.41563532903092,
+  "owned": [
+    {
+      "pid": 2475728,
+      "birth": 1794167762.58,
+      "ppid": 2472848,
+      "argv": [
+        "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+        "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+        "viewer",
+        "capture",
+        "/tmp/machinome-capture-still-20261108-sfov_t26/candidate",
+        "-o",
+        "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/candidate.png",
+        "--imgsize",
+        "1100x800",
+        "--time",
+        "0",
+        "--viewer",
+        "web"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475750,
+      "birth": 1794167763.15,
+      "ppid": 2475728,
+      "argv": [
+        "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/lib/python3.12/site-packages/playwright/driver/node",
+        "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/lib/python3.12/site-packages/playwright/driver/package/cli.js",
+        "run-driver"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475762,
+      "birth": 1794167763.53,
+      "ppid": 2475750,
+      "argv": [
+        "/home/asa/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+        "--disable-field-trial-config",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-back-forward-cache",
+        "--disable-breakpad",
+        "--disable-client-side-phishing-detection",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-component-update",
+        "--no-default-browser-check",
+        "--disable-default-apps",
+        "--disable-dev-shm-usage",
+        "--disable-edgeupdater",
+        "--disable-extensions",
+        "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+        "--enable-features=CDPScreenshotNewSurface",
+        "--allow-pre-commit-input",
+        "--disable-hang-monitor",
+        "--disable-ipc-flooding-protection",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-renderer-backgrounding",
+        "--disable-updater-scheduler",
+        "--force-color-profile=srgb",
+        "--metrics-recording-only",
+        "--no-first-run",
+        "--password-store=basic",
+        "--use-mock-keychain",
+        "--no-service-autorun",
+        "--export-tagged-pdf",
+        "--disable-search-engine-choice-screen",
+        "--unsafely-disable-devtools-self-xss-warnings",
+        "--edge-skip-compat-layer-relaunch",
+        "--disable-infobars",
+        "--disable-search-engine-choice-screen",
+        "--disable-sync",
+        "--enable-unsafe-swiftshader",
+        "--headless",
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+        "--no-sandbox",
+        "--use-gl=angle",
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader",
+        "--user-data-dir=/tmp/playwright_chromiumdev_profile-Spur1c",
+        "--remote-debugging-pipe",
+        "--no-startup-window"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475764,
+      "birth": 1794167763.56,
+      "ppid": 2475762,
+      "argv": [
+        "/home/asa/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+        "--type=zygote",
+        "--no-zygote-sandbox",
+        "--no-sandbox",
+        "--headless"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475765,
+      "birth": 1794167763.56,
+      "ppid": 2475762,
+      "argv": [
+        "/home/asa/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+        "--type=zygote",
+        "--no-sandbox",
+        "--headless"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475782,
+      "birth": 1794167763.62,
+      "ppid": 2475762,
+      "argv": [
+        "/home/asa/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+        "--type=utility",
+        "--utility-sub-type=network.mojom.NetworkService",
+        "--lang=en-US",
+        "--service-sandbox-type=none",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--use-angle=swiftshader",
+        "--use-gl=angle",
+        "--mute-audio",
+        "--headless=old",
+        "--shared-files=v8_context_snapshot_data:100",
+        "--field-trial-handle=3,i,2791451455892356604,6368414539232284406,262144",
+        "--enable-features=CDPScreenshotNewSurface",
+        "--disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn",
+        "--variations-seed-version",
+        "--pseudonymization-salt-handle=7,i,16105249115669406586,5650139327067794727,4",
+        "--trace-process-track-uuid=3190708989122997041"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475792,
+      "birth": 1794167763.64,
+      "ppid": 2475765,
+      "argv": [
+        "/home/asa/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+        "--type=renderer",
+        "--headless=old",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-back-forward-cache",
+        "--disable-background-timer-throttling",
+        "--disable-breakpad",
+        "--force-color-profile=srgb",
+        "--remote-debugging-pipe",
+        "--allow-pre-commit-input",
+        "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+        "--ozone-platform=headless",
+        "--lang=en-US",
+        "--num-raster-threads=4",
+        "--enable-main-frame-before-activation",
+        "--renderer-client-id=4",
+        "--launch-time-ticks=329444644293",
+        "--shared-files=v8_context_snapshot_data:100",
+        "--field-trial-handle=3,i,2791451455892356604,6368414539232284406,262144",
+        "--enable-features=CDPScreenshotNewSurface",
+        "--disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn",
+        "--variations-seed-version",
+        "--pseudonymization-salt-handle=7,i,16105249115669406586,5650139327067794727,4",
+        "--trace-process-track-uuid=3190708990060038890"
+      ],
+      "status": "sleeping"
+    },
+    {
+      "pid": 2475780,
+      "birth": 1794167763.61,
+      "ppid": 2475764,
+      "argv": [
+        "/home/asa/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+        "--type=gpu-process",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-breakpad",
+        "--headless",
+        "--ozone-platform=headless",
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader",
+        "--gpu-preferences=YAAAAAAAAAAgAAAEAAAAAAAAAAAAAGAASAAAAAAAAAABAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAMAAAAAQAAAAAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAA==",
+        "--use-gl=angle",
+        "--shared-files",
+        "--field-trial-handle=3,i,2791451455892356604,6368414539232284406,262144",
+        "--enable-features=CDPScreenshotNewSurface",
+        "--disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn",
+        "--variations-seed-version",
+        "--pseudonymization-salt-handle=7,i,16105249115669406586,5650139327067794727,4",
+        "--trace-process-track-uuid=3190708988185955192"
+      ],
+      "status": "sleeping"
+    }
+  ],
+  "remaining_owned": [],
+  "studio_server_after": {
+    "pid": 1575345,
+    "birth": 1794082273.19,
+    "ppid": 571723,
+    "argv": [
+      "/home/asa/devel/machinome/.venv/bin/python",
+      ".venv/bin/machinome",
+      "studio",
+      "--projects-dir",
+      "/mnt/data/machinome-projects"
+    ],
+    "status": "sleeping"
+  },
+  "image": {
+    "path": "candidate.png",
+    "bytes": 157086,
+    "sha256": "6f6c529a27f7129c209fe0787e245b959d4aaea32af5c393526a357d2f758f6e",
+    "size": [
+      1100,
+      800
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ]
+  }
+}

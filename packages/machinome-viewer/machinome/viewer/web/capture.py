@@ -157,7 +157,18 @@ class Capture:
         self.assert_not_root()
         document = self.staged_document()
         self.assert_instant(document, options)
-        self.add_viewer(options)
+        # A still uses the existing API 29 admission, without changing
+        # the caller's options or repairing a malformed document. Keep a
+        # program on its continuous path even in a later document version.
+        selected = dict(options)
+        if (isinstance(document, dict) and 'program' not in document
+                and not carries_program(document)
+                and (carries_clocked(document)
+                     or not document.get('instructions'))):
+            selected.update(renderMode='on-demand', autoplay=False,
+                            animation='external', driverControls='none',
+                            partControls='none')
+        self.add_viewer(selected)
         self.capture(output, imgsize)
 
     def staged_document(self):
@@ -215,6 +226,8 @@ class Capture:
 
     def write_mount_page(self, options):
         payload = json.dumps(options)
+        redraw = ("viewer.setView(viewer.view());"
+                  if options.get('renderMode') == 'on-demand' else '')
         page = f"""<!doctype html>
 <html><head><meta charset="utf-8"><style>
 html,body,#host{{margin:0;width:100%;height:100%;overflow:hidden;
@@ -225,6 +238,9 @@ canvas{{background:transparent}}
 <script src="{BUNDLE_NAME}"></script><script>
 MachinomeViewer.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{
   requestAnimationFrame(() => requestAnimationFrame(() => {{
+    // Layout can resize the canvas after mount. Draw its final public
+    // view without changing the camera, animation instant or machine bank.
+    {redraw}
     var run = viewer.run();
     if (run) {{
       // The instant this picture was taken at. A run is created paused

@@ -1,0 +1,47 @@
+{
+  "baseline": {
+    "returncode": -15,
+    "timeout": true,
+    "command_elapsed": 180.19805318897124,
+    "remaining_owned": [],
+    "image": null
+  },
+  "candidate": {
+    "returncode": 0,
+    "timeout": false,
+    "command_elapsed": 27.414681667054538,
+    "remaining_owned": [],
+    "image": {
+      "path": "candidate.png",
+      "bytes": 157086,
+      "sha256": "6f6c529a27f7129c209fe0787e245b959d4aaea32af5c393526a357d2f758f6e",
+      "size": [
+        1100,
+        800
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    }
+  },
+  "ordinary": {
+    "returncode": 0,
+    "timeout": false,
+    "command_elapsed": 105.48466679098783,
+    "remaining_owned": [],
+    "image": {
+      "path": "ordinary.png",
+      "bytes": 157086,
+      "sha256": "6f6c529a27f7129c209fe0787e245b959d4aaea32af5c393526a357d2f758f6e",
+      "size": [
+        1100,
+        800
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    }
+  }
+}

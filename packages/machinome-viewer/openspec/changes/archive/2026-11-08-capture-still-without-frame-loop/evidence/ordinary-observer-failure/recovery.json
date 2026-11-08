@@ -1,0 +1,28 @@
+{
+  "returncode": null,
+  "returncode_status": "UNKNOWN: observer terminated before child.wait()",
+  "owner": {
+    "pid": 2476909,
+    "birth": 1794167790.08,
+    "ppid": 2472848,
+    "argv": [
+      "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+      "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+      "snapshot",
+      "simulation.candidate_machine:CandidateMachineInspection",
+      "--viewer",
+      "web",
+      "-o",
+      "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+      "--imgsize",
+      "1100x800"
+    ],
+    "status": "running"
+  },
+  "image_written_elapsed_from_process_birth": 105.21431565284729,
+  "first_recovery_observed_elapsed_upper_bound": 113,
+  "stdout_reports_snapshot_saved": true,
+  "all_owned_processes_absent_at_recovery": true,
+  "observation_failure": "JSONDecodeError while staged viewer.json was still being written",
+  "command_repeated_only_for_exact_terminal_receipt_at_same_240s_budget": true
+}

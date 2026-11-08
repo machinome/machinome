@@ -19,7 +19,7 @@ capture_module = importlib.import_module('machinome.viewer.web.capture')
 
 from .support import (
     HAS_PIL, HAS_PLAYWRIGHT, SPINNER, needs_bundle, needs_pil,
-    needs_playwright, published_build, published_marked, published_run,
+    needs_playwright, published_build, published_calculator, published_marked, published_run,
     strip_markings,
 )
 
@@ -106,6 +106,54 @@ class CaptureFailureTest(TestCase):
             with self.assertRaisesRegex(CaptureError, 'viewer.json'):
                 self.capture.render('out.png', (10, 10), mount_options())
         browser.assert_not_called()
+
+
+class StillCaptureSelectionTest(TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.capture = Capture(self.tempdir.name)
+
+    def stage_options(self, document, options=None):
+        Path(self.tempdir.name, 'viewer.json').write_text(json.dumps(document))
+        supplied = mount_options(time=0.25) if options is None else options
+        before = json.loads(json.dumps(supplied))
+        with patch.object(self.capture, 'add_viewer') as stage, \
+             patch.object(self.capture, 'capture'), \
+             patch.object(self.capture, 'assert_not_root'):
+            self.capture.render('out.png', (320, 240), supplied)
+        self.assertEqual(supplied, before)
+        return stage.call_args.args[0]
+
+    def test_eligible_stills_use_all_on_demand_companion_options(self):
+        for document in ({'version': 4}, {'version': 4, 'instructions': {}},
+                         {'version': 8, 'clocked': {},
+                          'instructions': {'Stroke': {}}}):
+            with self.subTest(document=document):
+                options = self.stage_options(document)
+                self.assertEqual(options['renderMode'], 'on-demand')
+                self.assertEqual(options['animation'], 'external')
+                self.assertIs(options['autoplay'], False)
+                self.assertEqual(options['driverControls'], 'none')
+                self.assertEqual(options['partControls'], 'none')
+                self.assertEqual(options['time'], 0.25)
+
+    def test_running_and_instruction_documents_keep_the_continuous_path(self):
+        for document in ({'version': 5, 'program': {}},
+                         {'version': 13, 'program': {}},
+                         {'version': 4, 'instructions': {'Press': {}}},
+                         {'version': 4, 'program': None},
+                         'invalid document'):
+            with self.subTest(document=document):
+                options = self.stage_options(document, mount_options())
+                self.assertNotEqual(options.get('renderMode'), 'on-demand')
+
+    def test_final_public_view_is_drawn_before_readiness(self):
+        self.capture.write_mount_page({'renderMode': 'on-demand'})
+        page = Path(self.tempdir.name, 'index.html').read_text()
+        self.assertIn('viewer.setView(viewer.view())', page)
+        self.assertLess(page.index('viewer.setView(viewer.view())'),
+                        page.index("document.body.dataset.ready = '1'"))
 
 
 class CanvasPhotographTest(TestCase):
@@ -487,3 +535,150 @@ class FullscreenCaptureTest(TestCase):
         corner = image.crop(
             (image.width - size, image.height - size, image.width, image.height))
         self.assertEqual(set(corner.getchannel('A').getdata()), {0})
+
+
+@needs_bundle
+@needs_playwright
+@needs_pil
+class StillCapturePageTest(TestCase):
+    """Observe the page produced by render, using the shipped bundle.
+
+    The wrapper only records public calls and RAF callbacks; it changes no
+    viewer options, machine requests, layout or pixels.
+    """
+
+    OBSERVE = r"""
+const mount = MachinomeViewer.mount;
+MachinomeViewer = {...MachinomeViewer, mount: (...args) => mount(...args).then(viewer => {
+  window.captureViewer = viewer;
+  window.captureProbe = {options: args[2], view: viewer.view(), redraws: 0,
+    requests: 0, bank: viewer.machine()?.state() ?? viewer.run()?.state()};
+  const setView = viewer.setView;
+  viewer.setView = view => { window.captureProbe.redraws++; return setView(view); };
+  for (const target of [viewer, viewer.machine(), viewer.run()].filter(Boolean)) {
+    for (const name of ['move', 'restore', 'reset', 'trigger', 'setClockPlaying']) {
+      if (typeof target[name] !== 'function') continue;
+      const original = target[name];
+      target[name] = (...args) => { window.captureProbe.requests++; return original(...args); };
+    }
+  }
+  return viewer;
+})};
+"""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+
+    def observe(self, staging, options):
+        capture = Capture(str(staging))
+        output = Path(self.tempdir.name) / f'{staging.name}.png'
+
+        def photograph(path, imgsize):
+            with capture.serve() as base, sync_playwright() as runtime:
+                browser = capture.launch(runtime.chromium)
+                try:
+                    page = browser.new_page(viewport={'width': 320, 'height': 240})
+                    page.add_init_script("""
+                      window.captureFrames = 0;
+                      const raf = window.requestAnimationFrame.bind(window);
+                      window.requestAnimationFrame = callback => raf(time => {
+                        window.captureFrames++; callback(time);
+                      });
+                    """)
+                    bundle = (staging / 'machinome-viewer.js').read_text()
+                    page.route('**/machinome-viewer.js', lambda route:
+                               route.fulfill(body=bundle + '\n' + self.OBSERVE,
+                                             content_type='text/javascript'))
+                    page.goto(f'{base}/index.html')
+                    page.wait_for_function(
+                        'document.body.dataset.ready || document.body.dataset.error')
+                    self.assertIsNone(page.locator('body').get_attribute('data-error'))
+                    probe = page.evaluate('window.captureProbe')
+                    actual_view = page.evaluate('captureViewer.view()')
+                    # OrbitControls normalizes its spherical coordinates on
+                    # every public setView; allow its sub-picometre rounding.
+                    for field in ('camera', 'target', 'up'):
+                        for axis in ('x', 'y', 'z'):
+                            self.assertAlmostEqual(actual_view[field][axis],
+                                                   probe['view'][field][axis], places=10)
+                    self.assertEqual(actual_view['fov'], probe['view']['fov'])
+                    if 'view' in options:
+                        for field in ('camera', 'target'):
+                            for axis, value in zip(('x', 'y', 'z'), options['view'][field]):
+                                self.assertAlmostEqual(actual_view[field][axis], value, places=10)
+                        self.assertEqual(actual_view['fov'], options['fov'])
+                        self.assertEqual(list(actual_view['up'].values()), options['up'])
+                    document = json.loads((staging / 'viewer.json').read_text())
+                    machine = document.get('clocked', document.get('program'))
+                    if machine:
+                        expected = ({name: coordinate['initial']
+                                     for name, coordinate in machine['coordinates'].items()}
+                                    if 'program' in document else
+                                    {name: coordinate['default']
+                                     for name, coordinate in
+                                     {**document['drivers'], **document['states']}.items()})
+                        self.assertEqual(probe['bank'], expected)
+                    self.assertEqual(page.evaluate('captureViewer.machine()?.state() '
+                                                   '?? captureViewer.run()?.state()'),
+                                     probe.get('bank'))
+                    self.assertEqual(probe['requests'], 0)
+                    frames = page.evaluate('captureFrames')
+                    page.wait_for_timeout(160)
+                    later = page.evaluate('captureFrames')
+                    on_demand = probe['options'].get('renderMode') == 'on-demand'
+                    self.assertEqual(probe['redraws'], 1 if on_demand else 0)
+                    if on_demand:
+                        self.assertEqual(later, frames)
+                    else:
+                        self.assertGreater(later, frames)
+                    page.screenshot(path=path, omit_background=True,
+                                    clip=page.locator('canvas').bounding_box())
+                    return probe
+                finally:
+                    browser.close()
+
+        with patch.object(capture, 'capture', side_effect=photograph):
+            capture.render(str(output), (320, 240), options)
+        image = Image.open(output).convert('RGBA')
+        self.assertEqual(image.size, (320, 240))
+        self.assertEqual(image.getpixel((0, 0))[3], 0)
+        self.assertEqual(image.getchannel('A').getextrema(), (0, 255))
+        return image
+
+    def test_posed_instant_and_camera_are_preserved_without_a_frame_loop(self):
+        first = published_build(Path(self.tempdir.name) / 'first')
+        later = published_build(Path(self.tempdir.name) / 'later')
+        view = ((80, -100, 90), (0, 0, 0))
+        a = self.observe(first, mount_options(view=view, up=(0, 0, 1), fov=40))
+        b = self.observe(later, mount_options(time=0.25, view=view,
+                                              up=(0, 0, 1), fov=40))
+        self.assertNotEqual(a.tobytes(), b.tobytes())
+
+    def test_clocked_initial_bank_with_instructions_is_drawn_without_a_loop(self):
+        staging = published_calculator(Path(self.tempdir.name) / 'clocked')
+        self.observe(staging, mount_options(time=0.25))
+
+    def test_running_rest_state_keeps_its_continuous_path(self):
+        staging = published_run(Path(self.tempdir.name) / 'running')
+        self.observe(staging, mount_options())
+
+    def test_posed_instructions_keep_their_continuous_path_without_playing(self):
+        staging = published_build(Path(self.tempdir.name) / 'instructions')
+        path = staging / 'viewer.json'
+        document = json.loads(path.read_text())
+        document['drivers'] = {'angle': {'default': 0, 'range': [0, 1]}}
+        document['instructions'] = {'Press': {'targets': {'angle': 1}, 'duration': 1}}
+        path.write_text(json.dumps(document))
+        self.observe(staging, mount_options(time=0.25))
+
+    def test_a_malformed_clocked_document_remains_a_loader_refusal(self):
+        staging = published_calculator(Path(self.tempdir.name) / 'malformed')
+        path = staging / 'viewer.json'
+        document = json.loads(path.read_text())
+        del document['clocked']
+        path.write_text(json.dumps(document))
+        output = Path(self.tempdir.name) / 'invalid.png'
+        with self.assertRaisesRegex(CaptureError, 'clocked'):
+            Capture(str(staging)).render(str(output), (320, 240), mount_options())
+        self.assertFalse(output.exists())

@@ -1,0 +1,22 @@
+{
+  "at": "2026-11-08T19:59:31.885255+00:00",
+  "studio_server": {
+    "pid": 1575345,
+    "birth": 1794082273.19,
+    "ppid": 571723,
+    "argv": [
+      "/home/asa/devel/machinome/.venv/bin/python",
+      ".venv/bin/machinome",
+      "studio",
+      "--projects-dir",
+      "/mnt/data/machinome-projects"
+    ],
+    "status": "sleeping"
+  },
+  "active_jobs": [],
+  "event_state": {
+    "model_building": false,
+    "model_build_error": null,
+    "latest_event_sequence": 137854
+  }
+}

@@ -1,0 +1,19 @@
+baseline {"returncode": -15, "timeout": true, "command_elapsed": 180.19805318897124, "remaining_owned": []}
+candidate {"returncode": 0, "timeout": false, "command_elapsed": 27.414681667054538, "remaining_owned": []}
+Traceback (most recent call last):
+  File "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/enigma_capture_probe.py", line 248, in <module>
+    results['ordinary'] = run('ordinary', argv, PROJECT, 240, env)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/enigma_capture_probe.py", line 110, in run
+    staged = json.loads(path.read_text())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ^^^^^^^^^^^^^^^^^^^^^^
+json.decoder.JSONDecodeError: Expecting ':' delimiter: line 1 column 1779541 (char 1779540)

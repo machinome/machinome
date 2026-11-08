@@ -1,0 +1,194 @@
+[
+  {
+    "elapsed": 0.009103335964027792,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 10.017525391944218,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 20.03933302499354,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 30.041702323942445,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 40.23745446495013,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 50.43440012395149,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 60.43641859595664,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  },
+  {
+    "elapsed": 70.45315957599087,
+    "owned": [
+      {
+        "pid": 2476909,
+        "birth": 1794167790.08,
+        "ppid": 2472848,
+        "argv": [
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/python",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/.venv/bin/machinome",
+          "snapshot",
+          "simulation.candidate_machine:CandidateMachineInspection",
+          "--viewer",
+          "web",
+          "-o",
+          "/home/asa/devel/machinome/machinome/WTs/capture-still-without-frame-loop/packages/machinome-viewer/openspec/changes/capture-still-without-frame-loop/evidence/ordinary.png",
+          "--imgsize",
+          "1100x800"
+        ],
+        "status": "running"
+      }
+    ],
+    "other_jobs": []
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "planning_base": "5c07ea93682bc1007849cefe7ef30f96710fd409",
+  "planning_commit": "2effdcb6",
+  "change_validation_before_archive": "strict valid",
+  "snapshot_capture_spec_validation_after_sync_and_archive": "strict valid",
+  "spec_sync": "added eligible-still requirement through OpenSpec sync workflow; full delta compared present before archive",
+  "archive_command": [
+    "openspec",
+    "archive",
+    "capture-still-without-frame-loop",
+    "--skip-specs",
+    "--yes",
+    "--json"
+  ],
+  "archive_result": "2026-11-08-capture-still-without-frame-loop",
+  "final_capture_tests": "34 passed, 8 subtests passed; no skips, Python 3.12 locked bench",
+  "review": "coordinator reviewed planning, source/tests and successful Enigma pixels; authorized archive/content commit",
+  "ADR": "none: existing API29 mode and ADR077 reused",
+  "integration": "handed to coordinator for main integration and registered-worktree cleanup; no push/publication/contact"
+}
