@@ -2519,3 +2519,38 @@ the viewer's mesh refetch on a restamped artifact, and the floor itself
   pilot:** whether CI should install the CLI through the root npm
   workspace's lock, or keep the maker's install and accept such races, is
   a `release-tooling` decision, not taken here.
+
+# Findings from the Enigma I first-keypress film (13 November 2026)
+
+Project `enigma-i`, model `simulation.teaching_machine:TeachingMachine`:
+2,863 leaves, 2,646 mesh instances, 15.3 million instanced triangles. Met
+while verifying its Studio controls and filming it at 1280×720 on a 16-core
+machine with no usable GPU. The project's receipts are
+`sources/movie-render-cost-v1.json`, `sources/movie-studio-operation-v1.json`
+and `sources/movie-first-keypress-recording-v1.json`.
+
+- **`setVisible` draws the scene at every call** (viewer). A cutaway that
+  keeps a few groups of a model hides the other hundred by name, and each
+  call costs a whole render: minutes, under a software renderer, before the
+  first frame of a view and again when it is left. The project orders its
+  hide lists heaviest first, and when scouting points the camera away from
+  the model before toggling. **Recorded, for the pilot:** whether the handle
+  should take several paths in one call, or leave the draw to the next
+  `setView` on demand, is a viewer interface decision, not taken here.
+- **Under a software WebGL a Studio click on this model takes minutes, and
+  none of it is the model.** A CPU profile of one `Press` spent at most 2% of
+  629 s in viewer and model code. A whole-scene frame costs 33 s under ANGLE
+  on SwiftShader and 11 s under ANGLE on Mesa llvmpipe, and one click is
+  followed by several: the request's own draw, the panel rebuild's resize,
+  and the frames of the drawn transition. An automated check of the page
+  therefore times out long before the bank it wants to read is reachable,
+  which earlier sessions read as a failed instruction. The project's checker
+  pauses the page clock and advances it one animation frame at a time.
+  **Recorded:** nothing was measured on a hardware GPU, and no change is
+  proposed.
+- **The web capture launches the same software renderer.** `capture.py`
+  passes `--use-angle=swiftshader`, as Videomaker did by default; on this
+  model llvmpipe (`--use-gl=angle --use-angle=gl-egl`) is three times faster
+  and is what the film was drawn with, through an opt-in variable added to
+  Videomaker. **Recorded, for the pilot:** whether `machinome snapshot` and
+  the hub's previews should prefer llvmpipe where Mesa provides it.
