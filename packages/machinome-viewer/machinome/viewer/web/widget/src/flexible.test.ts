@@ -385,3 +385,189 @@ describe('flexible bindings: a republish that changes only the table (D6)', () =
     expect(evaluations()).toBe(1);
   });
 });
+
+// OpenSpec `rebuild-only-changed-flexible-parts` (design D1, D2, D5). A
+// changed name decides which parts have their parameters evaluated; the
+// values decide which of those are rebuilt. A part whose values all stand
+// keeps its vertex data, so the work it skips -- molejo's evaluation, the
+// upload and the bounds pass -- is what is counted: molejo calls through
+// the spy, the position attribute's `version` (what the renderer reads),
+// and calls to the geometry's two bounds methods.
+describe('a reached part is rebuilt only when a value moved', () => {
+  const lifted = () => ({ time: false, drivers: new Set(['valvetrain.lift']) });
+
+  // 46.8 at lifts 0 and 3, 36.8 at 30: the name moves, the value does not
+  // until the lift passes 20.
+  const clamped = (node: Partial<ManifestNode> = {}) => spring(
+    { params: { height: 'min(46.8, (66.8 - valvetrain.lift))' } }, node);
+
+  const bounds = (mesh: THREE.Mesh) => ({
+    box: vi.spyOn(mesh.geometry, 'computeBoundingBox'),
+    sphere: vi.spyOn(mesh.geometry, 'computeBoundingSphere'),
+  });
+
+  it('keeps a part whose values a changed name left as they were', async () => {
+    const tree = await mounted(engine([clamped()]));
+    const mesh = meshOf(tree.children[0]);
+    const attribute = positionsOf(mesh);
+    const before = Array.from(attribute.array);
+    const version = attribute.version;
+    const { box, sphere } = bounds(mesh);
+    expect(evaluations()).toBe(1);
+
+    tree.update(scope(3), lifted());
+
+    expect(evaluations()).toBe(1);
+    expect(attribute.version).toBe(version);
+    expect(box).not.toHaveBeenCalled();
+    expect(sphere).not.toHaveBeenCalled();
+    expect(Array.from(attribute.array)).toEqual(before);
+  });
+
+  it('rebuilds that part when a value then moves', async () => {
+    const tree = await mounted(engine([clamped()]));
+    const mesh = meshOf(tree.children[0]);
+    const attribute = positionsOf(mesh);
+    tree.update(scope(3), lifted());
+    const before = Array.from(attribute.array);
+    const version = attribute.version;
+    const count = evaluations();
+    const { box, sphere } = bounds(mesh);
+
+    tree.update(scope(30), lifted());
+
+    expect(evaluations()).toBe(count + 1);
+    expect(attribute.version).toBeGreaterThan(version);
+    expect(box).toHaveBeenCalledTimes(1);
+    expect(sphere).toHaveBeenCalledTimes(1);
+    expect(Array.from(attribute.array)).not.toEqual(before);
+  });
+
+  it('rebuilds only the one of two reached parts whose values moved', async () => {
+    const tree = await mounted(engine([
+      clamped({ name: 'kept' }),
+      spring({}, { name: 'moved' }),
+    ]));
+    const kept = positionsOf(meshOf(tree.children[0]));
+    const moved = positionsOf(meshOf(tree.children[1]));
+    const keptVersion = kept.version;
+    const movedVersion = moved.version;
+    const count = evaluations();
+
+    tree.update(scope(3), lifted());
+
+    expect(evaluations()).toBe(count + 1);
+    expect(kept.version).toBe(keptVersion);
+    expect(moved.version).toBeGreaterThan(movedVersion);
+  });
+
+  it('rebuilds nothing on an update of everything at unchanged values', async () => {
+    const tree = await mounted();
+    const mesh = meshOf(tree.children[0]);
+    const attribute = positionsOf(mesh);
+    const version = attribute.version;
+    const { box, sphere } = bounds(mesh);
+    expect(evaluations()).toBe(1);
+
+    tree.update(scope(0));
+
+    expect(evaluations()).toBe(1);
+    expect(attribute.version).toBe(version);
+    expect(box).not.toHaveBeenCalled();
+    expect(sphere).not.toHaveBeenCalled();
+  });
+
+  it('keeps what it remembers when a parameter expression throws part-way', async () => {
+    // `z` sorts after `height` and the spec does not read it. Reading a
+    // member of the number 1 throws the native TypeError (ADR-043); at
+    // `gate.on = 0` the member reads as undefined and `z` is NaN.
+    const tree = new WidgetTree(engine([spring({
+      params: { height: '(46.8 - valvetrain.lift)', z: '(1 + gate.on.x)' },
+    })]), '/build/');
+    await tree.loaded;
+    const gated = (lift: number, on: number) =>
+      ({ time: 0, drivers: { valvetrain: { lift }, gate: { on } } });
+    const both = () =>
+      ({ time: false, drivers: new Set(['valvetrain.lift', 'gate.on.x']) });
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+    tree.update(gated(0, 0));
+    const attribute = positionsOf(meshOf(tree.children[0]));
+    const before = Array.from(attribute.array);
+    const version = attribute.version;
+    expect(evaluations()).toBe(1);
+
+    expect(() => tree.update(gated(3, 1), both())).toThrow(TypeError);
+    expect(evaluations()).toBe(1);
+    expect(attribute.version).toBe(version);
+    expect(Array.from(attribute.array)).toEqual(before);
+
+    tree.update(gated(0, 0), both());
+
+    expect(evaluations()).toBe(1);
+    expect(attribute.version).toBe(version);
+  });
+
+  it('holds a NaN in a parameter the spec does not read as the same value', async () => {
+    const tree = await mounted(engine([spring({
+      params: { height: '46.8', gap: '((valvetrain.lift / 0) * 0)' },
+    })]), 1);
+    const attribute = positionsOf(meshOf(tree.children[0]));
+    const version = attribute.version;
+    expect(evaluations()).toBe(1);
+
+    tree.update(scope(2), lifted());
+
+    expect(evaluations()).toBe(1);
+    expect(attribute.version).toBe(version);
+  });
+
+  // The rebuilds the skip must not swallow.
+
+  it('rebuilds after the evaluator refused, whatever it left in the buffers', async () => {
+    const tree = await mounted();
+    const attribute = positionsOf(meshOf(tree.children[0]));
+    const standing = Array.from(attribute.array);
+    // A refusal that has already written into the array it was handed:
+    // molejo 0.2.0 writes nothing on the way to failing, and the design
+    // does not depend on it.
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      (_spec: unknown, _values: unknown, buffers?: { positions: Float32Array }) => {
+        buffers?.positions.fill(NaN);
+        throw new Error('values: refused');
+      });
+
+    expect(() => tree.update(scope(6), lifted())).toThrow(/refused/);
+    const count = evaluations();
+
+    tree.update(scope(0), lifted());
+
+    expect(evaluations()).toBe(count + 1);
+    expect(Array.from(attribute.array)).toEqual(standing);
+  });
+
+  it('rebuilds after a reconcile rebound its expressions, at equal values', async () => {
+    const tree = await mounted();
+    const array = positionsOf(meshOf(tree.children[0])).array;
+
+    await tree.reconcile(engine([
+      spring({ params: { height: '(46.8 - (1.0 * valvetrain.lift))' } }),
+    ]), '/build/');
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+    tree.update(scope(0), lifted());
+
+    // The same buffers, so this was the rebind and not a new shape.
+    expect(positionsOf(meshOf(tree.children[0])).array).toBe(array);
+    expect(evaluations()).toBe(1);
+  });
+
+  it('holds -0 and 0 to be different values', async () => {
+    const tree = await mounted(engine([spring({
+      params: { height: '46.8', tilt: '(0 * valvetrain.lift)' },
+    })]), 1);
+    expect(evaluations()).toBe(1);
+
+    tree.update(scope(-1), lifted());
+
+    expect(evaluations()).toBe(2);
+  });
+});

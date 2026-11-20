@@ -690,9 +690,10 @@ and the pilot's browser has one: nothing below is a statement about how long
 a GPU takes to draw the scene.
 
 **Status: recorded.** The first finding is closed by the change
-`keep-a-live-model-parsed`, archived 20 November 2026; what closed it is
-noted under it. The other three are open; the pilot has accepted them as
-later steps, one at a time.
+`keep-a-live-model-parsed` and the second by
+`rebuild-only-changed-flexible-parts`, both archived 20 November 2026; what
+closed each is noted under it. The other two are open; the pilot has
+accepted them as later steps, one at a time.
 
 ## A model larger than the store's ceiling is parsed again at every pose
 
@@ -761,6 +762,18 @@ later steps, one at a time.
   the selection of a different key refill the same 86 of which none
   changes. Taken up as the change `rebuild-only-changed-flexible-parts`.
 
+- **Closed by `rebuild-only-changed-flexible-parts`**, archived 20 November
+  2026. A flexible part now remembers the values its vertex data was built
+  from and is rebuilt only when one of them differs. On this page a key
+  press refills 7 parts a frame instead of 86, a key selection none, and a
+  right-wheel step one, whose values move by rounding. It bought less than
+  the triangle counts suggested: a key press frame went from 0.33 s to
+  0.22 s of script and a wheel step still shows its start and its end,
+  because what a moved input feeds must still be evaluated and the press
+  path is unchanged. The change's
+  `openspec/changes/archive/2026-11-20-rebuild-only-changed-flexible-parts/evidence.md`
+  has the measurement.
+
 - **Seen without any motion.** Measured with the first finding closed:
   selecting a different key (`Key B`, an instruction of no duration) moves no
   mesh and refills the same 86 parts, in a press task of 0.37 to 0.44 s;
@@ -778,6 +791,11 @@ later steps, one at a time.
   again. `drawingFrame` advances the transition by the loop's wall delta
   since the previous frame, which contains the press's own task, so a press
   that took longer than its instruction lands on its first frame.
+
+- **Measured with the first two findings closed.** A right-wheel step's
+  press task is 0.30 s against a motion declared at 0.4 s: the first
+  animation frame begins 0.30 s after the click and the next one lands the
+  step, so it still shows its start and its end.
 
 ## Every part has its own geometry and material, and an idle page draws all of it every frame
 

@@ -22,6 +22,11 @@ it carries release together and share one version.
   when a document is loaded, refused or replaced, and when a viewer is
   disposed. Viewer API 30 and document versions 1 through 14 are
   unchanged.
+- A flexible part reached by a changed input is rebuilt only when one of
+  its parameter values moved: a part whose values all stand keeps its
+  geometry, with no evaluation by molejo, no upload and no bounds pass,
+  where it was rebuilt whenever an input its parameters read changed.
+  Viewer API 30 and document versions 1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

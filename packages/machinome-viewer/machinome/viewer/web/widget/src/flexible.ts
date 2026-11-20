@@ -13,7 +13,10 @@
 // evaluating pose with `geometry = f(params)` where the matrix path has
 // `matrix = f(params)`, and it is bounded by the same rule: a node
 // recomputes only on frames where a free variable of one of its own
-// expressions changed.
+// expressions changed. On such a frame its parameters are evaluated, and
+// its geometry is rebuilt only when one of their values differs from the
+// ones its present vertex data was built from: the shape is a function of
+// the spec and the values alone, so equal values would write equal data.
 //
 // What makes that affordable at frame rate is molejo's declared
 // tessellation. Vertex count, vertex ordering and the whole index follow
@@ -84,6 +87,15 @@ export class FlexibleShape {
   // Undefined until the first evaluation: molejo derives the counts from
   // the spec, so the first call is what allocates and writes the index.
   private buffers: MolejoBuffers | undefined;
+  // The parameter values, in the order of `params`, that the vertex data
+  // now in `buffers` was built from. The invariant: whenever this is
+  // defined, the position array holds exactly what the evaluator produces
+  // from `spec` and these values, and the bounds were computed from that
+  // array. Only `evaluate` writes the buffers, so only it may set this --
+  // after the write, never before -- and it is forgotten before every
+  // write and by `rebind`. A writer of the position array that does not
+  // go through `evaluate` must forget it too.
+  private built: number[] | undefined;
 
   constructor(name: string, flexible: ManifestFlexible,
               color: string | null, bindings: BindingTable = EMPTY_BINDINGS) {
@@ -164,6 +176,10 @@ export class FlexibleShape {
     this.params = parameterList(flexible);
     this.bindings = bindings;
     this.freeVars = undefined;
+    // New expressions or a new table: what the buffers were built from
+    // is no longer comparable position by position, so the next
+    // evaluation rebuilds.
+    this.built = undefined;
   }
 
   setColor(color: string | null): void {
@@ -173,15 +189,37 @@ export class FlexibleShape {
       .forEach((material) => material.dispose());
   }
 
-  /** Evaluate the parameters in `scope` and refill the buffers.
+  /** Evaluate the parameters in `scope` and refill the buffers if a value
+   * moved.
    *
-   * The first call allocates them and wires the attributes; every later
-   * one writes into the arrays already on the GPU's side of the fence. */
+   * The first call allocates them and wires the attributes; a later one
+   * writes into the arrays already on the GPU's side of the fence, but
+   * only when one of the values differs from the ones the buffers were
+   * built from. Two values are the same when `Object.is` says so: `-0`
+   * and `0` differ, and `NaN` is the same as `NaN`. When none differs
+   * the part keeps its vertex data, its bounds and its buffers: the
+   * evaluator is not called, nothing is uploaded and no bounds pass runs.
+   * A parameter expression that throws does so before anything is
+   * written or forgotten. */
   evaluate(scope: EvalScope): void {
-    const values: Record<string, number> = {};
-    for (const [name, expression] of this.params) {
-      values[name] = evalExpr(expression, scope);
+    const next: number[] = this.params.map(
+      ([, expression]) => evalExpr(expression, scope));
+
+    const built = this.built;
+    if (this.buffers !== undefined && built !== undefined
+        && next.length === built.length
+        && next.every((value, i) => Object.is(value, built[i]))) {
+      return;
     }
+
+    // Forgotten before the evaluator is asked: if it refuses, whatever
+    // the buffers hold afterwards is described by nothing, and the next
+    // evaluation rebuilds.
+    this.built = undefined;
+    const values: Record<string, number> = {};
+    this.params.forEach(([name], i) => {
+      values[name] = next[i];
+    });
 
     const buffers = evaluate(this.spec, values, this.buffers);
     if (this.buffers === undefined) {
@@ -196,6 +234,7 @@ export class FlexibleShape {
     // changed both.
     this.geometry.computeBoundingBox();
     this.geometry.computeBoundingSphere();
+    this.built = next;
   }
 
   dispose(): void {
