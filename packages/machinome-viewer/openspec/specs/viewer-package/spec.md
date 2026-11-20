@@ -1403,15 +1403,23 @@ indefinitely before geometry is requested solely because its valid binding
 table exceeds expression-cache headroom. Invalid content in such a document
 SHALL still be refused before rendering it, preserving any last good model.
 
-When a supported machine's prepared expression graph fits within the
-viewer's finite cache capacity, consecutive ticks SHALL reuse that graph
-without reclaiming and reparsing it between those ticks. This reuse SHALL
-NOT change the machine's admitted travel, coordinate bank, event records,
-snapshot/replay behavior, numerical semantics or refusal behavior.
+A loaded document's prepared expression graph SHALL be reused across
+consecutive operations on the loaded documents — poses, drawn frames,
+clocked requests and run ticks — whatever the size of that graph. Operating
+loaded documents SHALL NOT by itself reclaim and reprepare their graphs;
+obsolete expression state SHALL be reclaimed where it is created: when a
+document is loaded, when a replacement is installed, when a document is
+refused, whether at validation or after it, and when any viewer is
+disposed, whether or not it is the last. Repeating operations on a loaded
+document SHALL NOT add expression state. This reuse SHALL NOT change the
+machine's admitted travel, coordinate bank, event records, snapshot/replay
+behavior, numerical semantics or refusal behavior.
 
-Expression retention across repeated publications SHALL be bounded by
-current live work and cache headroom, not accumulated publication history.
-Disposing of the last viewer SHALL release retained expression state.
+Whenever no document is being loaded, expression retention SHALL be bounded
+by the expression graphs of the currently loaded documents and finite cache
+headroom, not by accumulated publication history, refused documents or
+disposed viewers. Disposing of the last viewer SHALL release retained
+expression state.
 
 #### Scenario: A large operating machine opens
 
@@ -1435,6 +1443,16 @@ Disposing of the last viewer SHALL release retained expression state.
 - **THEN** loading refuses that content by the existing named error, no
   tree is rendered from it, and a last good model remains standing
 
+#### Scenario: Consecutive operations reuse a loaded graph of any size
+
+- **WHEN** a loaded document's prepared expression graph is larger than the
+  cache's reclamation threshold and it is posed, drawn, requested or ticked
+  several times in succession
+- **THEN** those operations reuse the prepared graph without a cache
+  generation change or a repeated binding-table preparation between them,
+  and produce the same values, banks and event records as evaluation under
+  forced reclamation
+
 #### Scenario: Consecutive ticks reuse a fitting graph
 
 - **WHEN** a supported running document has a prepared graph within the
@@ -1442,6 +1460,47 @@ Disposing of the last viewer SHALL release retained expression state.
 - **THEN** those ticks reuse the prepared graph without a cache generation
   change between ticks and produce the same complete bank and event records
   as evaluation under forced reclamation
+
+#### Scenario: A large document is installed without being prepared again
+
+- **WHEN** a document whose expression graph is larger than the
+  reclamation threshold finishes loading and its viewer installs it
+- **THEN** its first and later operations reuse the graph its load
+  prepared, without preparing its expressions or its binding table again
+
+#### Scenario: Documents of very different size are operated alternately
+
+- **WHEN** two loaded documents, one with a graph larger than the
+  reclamation threshold and one small, use the same binding names for
+  different expressions and are operated alternately after both have loaded
+- **THEN** neither graph is reclaimed between those operations, and each
+  document poses and operates according to its own bindings
+
+#### Scenario: Repeated operation adds no expression state
+
+- **WHEN** a loaded document's requests, ticks or poses are repeated after
+  they have run once
+- **THEN** the repetition prepares no expression state that the first run
+  did not
+
+#### Scenario: A viewer that is not the last is disposed
+
+- **WHEN** two viewers are mounted on one page, one of them showing a
+  document whose expression graph is larger than the reclamation threshold,
+  and that viewer is disposed while the other stays mounted
+- **THEN** the disposed document's expression state is not retained beyond
+  finite cache headroom, and the remaining viewer continues to pose and
+  operate according to its own document
+
+#### Scenario: A refused replacement leaves no partial graph behind
+
+- **WHEN** a viewer refuses a replacement document after preparing a large
+  part of its expressions, whether the refusal comes from validating its
+  expressions or from a later step such as a required asset that fails to
+  load, and the last good model is then operated
+- **THEN** the refused document's expression state is not retained beyond
+  finite cache headroom, and the last good model poses and operates as it
+  did before the refusal
 
 #### Scenario: Reclamation happens between operations
 
@@ -5393,3 +5452,4 @@ The viewer SHALL advertise API 30 and document versions 1–14. A version-14 doc
 
 - **WHEN** the legacy fixture corpus is rendered without conditional color data
 - **THEN** its color, geometry, runtime and host interfaces retain their current behavior
+

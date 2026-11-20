@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { bindingTable } from './bindings';
 import {
   EXPRESSION_LIMITS, expressionGeneration, expressionMetrics, prepare,
-  releaseExpressions, retainExpressions, valueOf, withExpressions,
+  releaseExpressions, retainExpressions, valueOf, withDocumentLoad, withExpressions,
 } from './expressions';
 import { evaluateExpression, kinkLevel, loadProgram } from './run/program';
 import { evalExpr } from './evaluator';
@@ -25,11 +25,20 @@ import type { ClockedSnapshot } from './clocked/machine';
 import { WidgetTree } from './tree';
 
 const limit = EXPRESSION_LIMITS.nodes;
+const everyOperation = EXPRESSION_LIMITS.everyOperation;
 beforeEach(() => { retainExpressions(); releaseExpressions(); });
 afterEach(() => {
   EXPRESSION_LIMITS.nodes = limit;
+  EXPRESSION_LIMITS.everyOperation = everyOperation;
   retainExpressions(); releaseExpressions();
 });
+
+/** Forced reclamation before every outermost operation (OpenSpec
+ * `keep-a-live-model-parsed`, design Decision 5). */
+function pressure(threshold: number): void {
+  EXPRESSION_LIMITS.nodes = threshold;
+  EXPRESSION_LIMITS.everyOperation = true;
+}
 
 function document(): RunDocument {
   return {
@@ -80,7 +89,8 @@ describe('expression lifetime under cache pressure', () => {
   }, 30_000);
 
   it('reconciles document-local binding changes and poses the new tree under pressure', async () => {
-    EXPRESSION_LIMITS.nodes = 5;
+    pressure(5);
+    const generation = expressionGeneration();
     const a = document() as Manifest;
     const b = document() as Manifest;
     b.bindings![0].expression = '$t - 2';
@@ -95,11 +105,12 @@ describe('expression lifetime under cache pressure', () => {
     tree.update({ time: 5, get bindings() { return tableB.roots(); } },
       { time: true, drivers: new Set() });
     expect(tree.group.matrix.elements[12]).toBe(3);
+    expect(expressionGeneration()).toBeGreaterThan(generation);
     tree.dispose();
   });
 
   it('defers reclamation in nested scopes and releases scopes after exceptions', () => {
-    EXPRESSION_LIMITS.nodes = 1;
+    pressure(1);
     withExpressions(() => {
       const first = prepare('2 + 3');
       const generation = expressionGeneration();
@@ -122,10 +133,38 @@ describe('expression lifetime under cache pressure', () => {
       expect(valueOf(root, { time: 0 })).toBe(130);
     });
     expect(expressionMetrics().nodes).toBe(0);
+
+    // A refused LOAD under the shipping policy releases its scope and
+    // reclaims at its own end; nested in an open scope, it reclaims only
+    // at that scope's end (design Decision 1, point 2).
+    EXPRESSION_LIMITS.everyOperation = false;
+    const beforeRefusal = expressionGeneration();
+    expect(() => withDocumentLoad(() => {
+      prepare('21 + 31');
+      throw Error('refused load');
+    })).toThrow('refused load');
+    expect(expressionGeneration()).toBe(beforeRefusal + 1);
+    expect(expressionMetrics().nodes).toBe(0);
+    withExpressions(() => prepare('41 + 51'));
+    expect(expressionGeneration()).toBe(beforeRefusal + 1);
+    withDocumentLoad(() => prepare('61 + 71'));
+    expect(expressionGeneration()).toBe(beforeRefusal + 2);
+    withExpressions(() => {
+      const outer = expressionGeneration();
+      expect(() => withDocumentLoad(() => {
+        prepare('81 + 91');
+        throw Error('refused nested load');
+      })).toThrow('refused nested load');
+      expect(expressionGeneration()).toBe(outer);
+      expect(valueOf(prepare('61 + 71'), { time: 0 })).toBe(132);
+    });
+    expect(expressionGeneration()).toBe(beforeRefusal + 3);
+    expect(expressionMetrics().nodes).toBe(0);
   });
 
   it('keeps live documents separate and bounds successful/failed replacement history', () => {
-    EXPRESSION_LIMITS.nodes = 5;
+    pressure(5);
+    const generation = expressionGeneration();
     const a = loadProgram(document(), '/a.json');
     const other = document();
     other.bindings![0].expression = 'crank - 2';
@@ -143,14 +182,17 @@ describe('expression lifetime under cache pressure', () => {
       high = Math.max(high, expressionMetrics().nodes);
     }
     expect(high).toBeLessThanOrEqual(50);
+    expect(expressionGeneration()).toBeGreaterThan(generation);
     console.info(`60 replacements plus refusals: at most ${high} retained nodes (threshold 5)`);
     retainExpressions(); releaseExpressions();
     expect(expressionMetrics().nodes).toBe(0);
   });
 
   it('keeps a running bank stable while traversing a kink across generations', () => {
-    const execute = (threshold: number) => {
+    const execute = (threshold: number, forced: boolean) => {
       EXPRESSION_LIMITS.nodes = threshold;
+      EXPRESSION_LIMITS.everyOperation = forced;
+      const generation = expressionGeneration();
       const run = new Run(loadProgram(document(), '/running.json'), 0.1);
       run.move('crank', { to: 8, duration: 1 });
       for (let tick = 0; tick < 12; tick += 1) {
@@ -158,15 +200,20 @@ describe('expression lifetime under cache pressure', () => {
         run.advance();
       }
       expect(run.state()).toEqual({ crank: 8, wheel: 5 });
-      return run.snapshot();
+      return { snapshot: run.snapshot(), generations: expressionGeneration() - generation };
     };
-    expect(execute(5)).toEqual(execute(limit));
+    const pressured = execute(5, true);
+    const standing = execute(limit, false);
+    expect(pressured.generations).toBeGreaterThan(0);
+    expect(standing.generations).toBe(0);
+    expect(pressured.snapshot).toEqual(standing.snapshot);
   });
 
   it('replays all clocked corpus operations unchanged under pressure', () => {
     const corpus = JSON.parse(readFileSync(new URL('./clocked-corpus.json', import.meta.url), 'utf8'));
     const execute = (entry: typeof corpus.machines[number], threshold: number) => {
       EXPRESSION_LIMITS.nodes = threshold;
+      EXPRESSION_LIMITS.everyOperation = threshold !== limit;
       const doc = entry.document as Manifest;
       const machine = clockedMachine(loadClocked(doc, entry.name, bindingTable(doc, entry.name)));
       const saved = new Map<string, ClockedSnapshot>();
@@ -190,15 +237,20 @@ describe('expression lifetime under cache pressure', () => {
       });
     };
     for (const entry of corpus.machines) {
-      expect(execute(entry, 5), entry.name).toEqual(execute(entry, limit));
+      const generation = expressionGeneration();
+      const pressured = execute(entry, 5);
+      expect(expressionGeneration(), entry.name).toBeGreaterThan(generation);
+      expect(pressured, entry.name).toEqual(execute(entry, limit));
     }
   });
 
   it('reconstructs a pose scope acquired before reclamation', () => {
     const table = bindingTable(document() as Manifest, '/pose.json');
     const scope = poseScope({ crank: 7 }, 'time', 0, table);
-    EXPRESSION_LIMITS.nodes = 1;
+    pressure(1);
+    const generation = expressionGeneration();
     prepare('400 + 500');
+    expect(expressionGeneration()).toBeGreaterThan(generation);
     expect(evalExpr('_b1', scope)).toBe(4);
   });
 
@@ -210,15 +262,19 @@ describe('expression lifetime under cache pressure', () => {
     const paths = new LevelPaths(program, new Set(['crank']));
     const piece = paths.newPiece();
     expect(paths.value(plan, jump, piece, { crank: 1, fixed: 20 }, 'path', 'wheel')).toBe(18);
-    EXPRESSION_LIMITS.nodes = 1;
+    pressure(1);
+    const generation = expressionGeneration();
     prepare('[100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]');
+    expect(expressionGeneration()).toBeGreaterThan(generation);
     expect(paths.value(plan, jump, piece, { crank: 7, fixed: 999 }, 'path', 'wheel')).toBe(24);
   });
 
   it('prepares a multi-entry binding map larger than the threshold coherently', () => {
-    EXPRESSION_LIMITS.nodes = 5;
+    pressure(5);
+    const generation = expressionGeneration();
     const table = bindingTable(document() as Manifest, '/pressure.json');
     const roots = table.roots()!;
+    expect(expressionGeneration()).toBeGreaterThan(generation);
     const scope = { time: 0, drivers: { crank: 1 }, bindings: roots };
     expect(valueOf(roots.get('_pad0')!, scope)).toBe(11);
     expect(valueOf(roots.get('_pad11')!, scope)).toBe(22);
@@ -227,13 +283,15 @@ describe('expression lifetime under cache pressure', () => {
   });
 
   it('classifies root plus bindings above the threshold, cold or warm', () => {
-    EXPRESSION_LIMITS.nodes = 5;
+    pressure(5);
+    const generation = expressionGeneration();
     for (let warm = 0; warm < 3; warm += 1) {
       prepare(`${900 + warm} + unrelated`);
       const program = loadProgram(document(), '/pressure.json');
       expect(program.edges[0].shapes).toEqual(['kinked']);
       expect(evaluateExpression(program, '_b1', { crank: 7 })).toBe(4);
     }
+    expect(expressionGeneration()).toBeGreaterThan(generation);
   });
 
   it('reconstructs retained kink operands when old IDs name DIFFERENT nodes', () => {
@@ -242,7 +300,7 @@ describe('expression lifetime under cache pressure', () => {
     expect(kinkLevel(program, kink, { crank: 1 })).toBe(2);
     const old = kink.a;
     const generation = expressionGeneration();
-    EXPRESSION_LIMITS.nodes = 1;
+    pressure(1);
     prepare('[100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]');
     expect(expressionGeneration()).toBeGreaterThan(generation);
     expect(valueOf(old, { time: 0 })).not.toBe(0);

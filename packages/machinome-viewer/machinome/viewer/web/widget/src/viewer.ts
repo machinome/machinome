@@ -42,8 +42,9 @@ import type { RunIdentity } from './run/republish';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import {
   validationProfileInspector, prepare, releaseExpressions, retainExpressions,
-  withExpressions,
+  withDocumentLoad,
 } from './expressions';
+import type { DocumentSettlement } from './expressions';
 import { BindingTable, bindingTable, EMPTY_BINDINGS } from './bindings';
 import { loadProgram, uncomputedValues } from './run/program';
 import type {
@@ -1655,52 +1656,58 @@ export async function mount(
 
   const replaceTree = async (view: ViewerView | null) => {
     const { document, table, program, machine: loaded,
-            controls: declared } = await loadDocument(sourceUrl);
-    assertCaptureDocument(document);
-    if (disposed) return;
-    // Prepare all geometry before replacing any of the last good document's
-    // driver, binding or runtime state. A failed required asset changes none.
-    const next = new WidgetTree(document.root, baseUrl, null, table, undefined, presentation);
-    pendingTrees.add(next);
+            controls: declared, settlement } = await loadDocument(sourceUrl);
+    // Every exit before the installation abandons the validated document
+    // (OpenSpec `keep-a-live-model-parsed`, design Decision 1, point 3);
+    // after `installed()` the `finally` does nothing.
     try {
-      await next.loaded;
-      if (!disposed) {
-        drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
-        bindingsTable = table;
-        startMachine(loaded);
-        await startRuntime(document, program);
-        if (disposed) { runtime?.dispose(); runtime = undefined; }
-        else next.update(scope());
+      assertCaptureDocument(document);
+      if (disposed) return;
+      // Prepare all geometry before replacing any of the last good document's
+      // driver, binding or runtime state. A failed required asset changes none.
+      const next = new WidgetTree(document.root, baseUrl, null, table, undefined, presentation);
+      pendingTrees.add(next);
+      try {
+        await next.loaded;
+        if (!disposed) {
+          drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
+          bindingsTable = table;
+          startMachine(loaded);
+          await startRuntime(document, program);
+          if (disposed) { runtime?.dispose(); runtime = undefined; }
+          else next.update(scope());
+        }
+      } catch (error) { next.dispose(); throw error; }
+      finally { pendingTrees.delete(next); }
+      if (disposed) {
+        next.dispose();
+        return;
       }
-    } catch (error) { next.dispose(); throw error; }
-    finally { pendingTrees.delete(next); }
-    if (disposed) {
-      next.dispose();
-      return;
-    }
-    if (tree) {
-      // Every base goes back before the materials are disposed with the
-      // tree (OpenSpec `highlight-a-part`, design D7).
-      presentation.forget();
-      scene.remove(tree.group);
-      tree.dispose();
-    }
-    tree = next;
-    scene.add(tree.group);
-    assemblyNavigation.reconcile(tree);
-    applyFrame(view);
-    // One of the three places a mesh can be replaced (design D4).
-    loadedControls = declared;
-    rebuildPartControls();
-    presentHighlight();
+      settlement.installed();
+      if (tree) {
+        // Every base goes back before the materials are disposed with the
+        // tree (OpenSpec `highlight-a-part`, design D7).
+        presentation.forget();
+        scene.remove(tree.group);
+        tree.dispose();
+      }
+      tree = next;
+      scene.add(tree.group);
+      assemblyNavigation.reconcile(tree);
+      applyFrame(view);
+      // One of the three places a mesh can be replaced (design D4).
+      loadedControls = declared;
+      rebuildPartControls();
+      presentHighlight();
 
-    refreshControls(document);
-    // Mount calls this before the handle exists, so no listener can be
-    // subscribed yet and this notifies nobody by construction -- not a
-    // flag, a property of the ordering (design D5). reload() reaches
-    // this with the handle already returned, and notifies whoever is
-    // subscribed.
-    notifyAssemblyChange();
+      refreshControls(document);
+      // Mount calls this before the handle exists, so no listener can be
+      // subscribed yet and this notifies nobody by construction -- not a
+      // flag, a property of the ordering (design D5). reload() reaches
+      // this with the handle already returned, and notifies whoever is
+      // subscribed.
+      notifyAssemblyChange();
+    } finally { settlement.abandoned(); }
   };
 
   // A clocked machine is accepted on demand (OpenSpec `on-demand-clocked`,
@@ -2092,62 +2099,68 @@ export async function mount(
       notifyAssemblyChange();
     },
     async manifestChanged() {
-      const { document, table, program, machine: incomingMachine, controls: declared } =
-        await loadDocument(sourceUrl);
-      assertCaptureDocument(document);
-      // Installed before the update that follows (design D6): a
-      // republish carrying a different table invalidates the free set
-      // of every node that reads it differently, whether or not that
-      // node's own operations changed.
-      // Prepare assets and admit the incoming presentation before clearing
-      // any standing overlays. Read its candidate bank after the awaits,
-      // with the incoming table, without mutating the standing runtime.
-      const keepMachine = incomingMachine !== null && machine !== undefined
-        && loadedMachine?.identity === incomingMachine.identity;
-      const candidateScope = (): EvalScope => {
-        if (document.version === 14 && incomingMachine !== null) {
-          return clockedScope(keepMachine ? drawnBank ?? machine!.state()
-            : incomingMachine.initial, time, table);
+      const { document, table, program, machine: incomingMachine, controls: declared,
+              settlement } = await loadDocument(sourceUrl);
+      // Every exit before the installation abandons the validated document
+      // (OpenSpec `keep-a-live-model-parsed`, design Decision 1, point 3);
+      // after `installed()` the `finally` does nothing.
+      try {
+        assertCaptureDocument(document);
+        // Installed before the update that follows (design D6): a
+        // republish carrying a different table invalidates the free set
+        // of every node that reads it differently, whether or not that
+        // node's own operations changed.
+        // Prepare assets and admit the incoming presentation before clearing
+        // any standing overlays. Read its candidate bank after the awaits,
+        // with the incoming table, without mutating the standing runtime.
+        const keepMachine = incomingMachine !== null && machine !== undefined
+          && loadedMachine?.identity === incomingMachine.identity;
+        const candidateScope = (): EvalScope => {
+          if (document.version === 14 && incomingMachine !== null) {
+            return clockedScope(keepMachine ? drawnBank ?? machine!.state()
+              : incomingMachine.initial, time, table);
+          }
+          if (document.version !== 14 && machine !== undefined) {
+            return clockedScope(drawnBank ?? machine.state(), time, table);
+          }
+          if (program !== null) {
+            const keep = runtime !== undefined && loadedProgram?.identity === program.identity;
+            return poseScope(keep ? bank : program.initial, program.clock,
+              keep ? elapsedSeconds : 0, table);
+          }
+          const current = drivers.drivers();
+          const values = Object.fromEntries(Object.entries(document.drivers ?? {}).map(
+            ([id, declaration]) => [id, id in current ? drivers.driver(id) : declaration.default]));
+          return clockedScope(values, time, table);
+        };
+        await tree?.reconcile(document.root, baseUrl, null, table, candidateScope, () => {
+          partSurface.clear();
+          presentation.forget();
+        });
+        if (disposed) return;
+        drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
+        bindingsTable = table;
+        if (document.version === 14) {
+          if (keepMachine) loadedMachine = incomingMachine;
+          else startMachine(incomingMachine);
         }
-        if (document.version !== 14 && machine !== undefined) {
-          return clockedScope(drawnBank ?? machine.state(), time, table);
+        await startRuntime(document, program, true);
+        if (disposed) { runtime?.dispose(); runtime = undefined; return; }
+        settlement.installed();
+        if (tree) {
+          const rootChanged = assemblyNavigation.reconcile(tree);
+          tree.update(scope());
+          refreshControls(document);
+          if (rootChanged) {
+            applyFrame(null);
+          }
         }
-        if (program !== null) {
-          const keep = runtime !== undefined && loadedProgram?.identity === program.identity;
-          return poseScope(keep ? bank : program.initial, program.clock,
-            keep ? elapsedSeconds : 0, table);
-        }
-        const current = drivers.drivers();
-        const values = Object.fromEntries(Object.entries(document.drivers ?? {}).map(
-          ([id, declaration]) => [id, id in current ? drivers.driver(id) : declaration.default]));
-        return clockedScope(values, time, table);
-      };
-      await tree?.reconcile(document.root, baseUrl, null, table, candidateScope, () => {
-        partSurface.clear();
-        presentation.forget();
-      });
-      if (disposed) return;
-      drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
-      bindingsTable = table;
-      if (document.version === 14) {
-        if (keepMachine) loadedMachine = incomingMachine;
-        else startMachine(incomingMachine);
-      }
-      await startRuntime(document, program, true);
-      if (disposed) { runtime?.dispose(); runtime = undefined; return; }
-      if (tree) {
-        const rootChanged = assemblyNavigation.reconcile(tree);
-        tree.update(scope());
-        refreshControls(document);
-        if (rootChanged) {
-          applyFrame(null);
-        }
-      }
-      loadedControls = declared;
-      rebuildPartControls();
-      presentHighlight();
-      renderer.render(scene, camera);
-      notifyAssemblyChange();
+        loadedControls = declared;
+        rebuildPartControls();
+        presentHighlight();
+        renderer.render(scene, camera);
+        notifyAssemblyChange();
+      } finally { settlement.abandoned(); }
     },
     assembly() {
       if (!tree) {
@@ -2887,6 +2900,10 @@ export interface LoadedDocument {
    * key, which is every document published before this viewer could
    * read one. */
   controls: LoadedControl[];
+  /** Called by the viewer once the validated document is installed or
+   * abandoned; the first call wins (OpenSpec `keep-a-live-model-parsed`,
+   * design Decision 1, point 3). */
+  settlement: DocumentSettlement;
 }
 
 /** `#RRGGBB`, and nothing else. The producer REQUIRES a colour on a
@@ -2959,15 +2976,21 @@ export function assertMarkings(node: ManifestNode, sourceUrl: string): void {
   });
 }
 
+/** The document load (OpenSpec `keep-a-live-model-parsed`, design
+ * Decision 1): a refused document requests a reclamation as it is
+ * refused, and a validated one carries the `settlement` its viewer calls
+ * once it has installed or abandoned it. */
 export function assertRenderable(document: Manifest,
                                  sourceUrl: string): LoadedDocument {
-  return withExpressions(() => assertRenderableScoped(document, sourceUrl));
+  const { value, settlement } = withDocumentLoad(
+    () => assertRenderableScoped(document, sourceUrl));
+  return { ...value, settlement };
 }
 
 /** Fetching and parsing finish before this complete synchronous validation.
  * Its binding roots and negative inspection facts never cross an await. */
 function assertRenderableScoped(document: Manifest,
-                                sourceUrl: string): LoadedDocument {
+                                sourceUrl: string): Omit<LoadedDocument, 'settlement'> {
   if (document.format !== DOCUMENT_FORMAT
       && document.format !== LEGACY_DOCUMENT_FORMAT) {
     throw new Error(
@@ -3194,9 +3217,9 @@ async function loadDocument(
   } catch (error) {
     throw new Error(`Failed to parse ${sourceUrl}: ${String(error)}`);
   }
-  const { table, program, machine, controls } = assertRenderable(
+  const { table, program, machine, controls, settlement } = assertRenderable(
     document, sourceUrl);
-  return { document, table, program, machine, controls };
+  return { document, table, program, machine, controls, settlement };
 }
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {

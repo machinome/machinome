@@ -16,12 +16,14 @@ import { evalExpr } from './evaluator';
 import type { Manifest } from './types';
 
 const limit = EXPRESSION_LIMITS.nodes;
+const everyOperation = EXPRESSION_LIMITS.everyOperation;
 beforeEach(() => {
   retainExpressions(); releaseExpressions();
   resetExpressionMetrics(); resetBindingPreparationMetrics();
 });
 afterEach(() => {
   EXPRESSION_LIMITS.nodes = limit;
+  EXPRESSION_LIMITS.everyOperation = everyOperation;
   retainExpressions(); releaseExpressions();
 });
 
@@ -44,8 +46,28 @@ function document(size = 80, readers = 30): Manifest {
   };
 }
 
-it('prepares one coherent validation graph above finite headroom and reconstructs afterward', () => {
+it('prepares one coherent validation graph above finite headroom and keeps it for the next operation', () => {
+  // The shipping policy (OpenSpec `keep-a-live-model-parsed`, design
+  // Decision 5): an ordinary operation after the load reclaims nothing.
   EXPRESSION_LIMITS.nodes = 5;
+  const generation = expressionGeneration();
+  const { table } = assertRenderable(document(), '/pressure.json');
+  expect(bindingPreparationMetrics()).toBe(1);
+  expect(expressionMetrics().nodes).toBeGreaterThan(5);
+  expect(expressionGeneration()).toBe(generation);
+  const result = withExpressions(() => evalExpr('_b79', {
+    time: 0, drivers: { x: 2 }, bindings: table.roots(),
+  }));
+  expect(Object.is(result, 3164)).toBe(true);
+  expect(expressionGeneration()).toBe(generation);
+  expect(bindingPreparationMetrics()).toBe(1);
+});
+
+it('prepares one coherent validation graph above finite headroom and reconstructs afterward', () => {
+  // Forced reclamation before every outermost operation (design
+  // Decision 5): the operation after the load reclaims and re-prepares.
+  EXPRESSION_LIMITS.nodes = 5;
+  EXPRESSION_LIMITS.everyOperation = true;
   const generation = expressionGeneration();
   const { table } = assertRenderable(document(), '/pressure.json');
   console.info({ preparations: bindingPreparationMetrics(), generations: expressionGeneration() - generation });
@@ -112,8 +134,15 @@ it('discards negative facts between document meanings and operations, even when 
   b.bindings![0].expression = 'profileOverlap(0, 0, 0, 0, 0, 0, 0, 0)';
   expect(() => assertRenderable(b, '/b.json')).toThrow(/outside a numeric Bound/);
   EXPRESSION_LIMITS.nodes = 1;
+  const generation = expressionGeneration();
   assertRenderable(a, '/a-again.json');
+  expect(expressionGeneration()).toBeGreaterThan(generation);
+  // Loads reclaim under both modes (design Decision 5): the refused load
+  // empties a's graph at its start and its own partial graph at its end,
+  // so each of the three validations reuses node ids from zero.
+  const beforeB = expressionGeneration();
   expect(() => assertRenderable(b, '/b-again.json')).toThrow(/outside a numeric Bound/);
+  expect(expressionGeneration()).toBeGreaterThanOrEqual(beforeB + 2);
   const { table } = assertRenderable(a, '/last-good.json');
   expect(withExpressions(() => evalExpr('_b79', { time: 0, drivers: { x: 2 }, bindings: table.roots() })))
     .toBe(3164);
@@ -126,9 +155,15 @@ it('refuses an invalid unreferenced late entry in an oversized table and release
   for (const expression of ['missing + 1', '_bad + 1', '(x => x + 1)']) {
     const bad = document();
     bad.bindings!.push({ name: '_bad', expression });
-    expect(() => assertRenderable(bad, '/late.json')).toThrow(/missing|names itself|Func/);
+    // The refused partial graph is reclaimed at the refused load's own
+    // end, which can only run once its scope has closed (design
+    // Decision 5).
     const generation = expressionGeneration();
-    assertRenderable(document(), '/recovery.json');
+    expect(() => assertRenderable(bad, '/late.json')).toThrow(/missing|names itself|Func/);
     expect(expressionGeneration()).toBeGreaterThan(generation);
+    const { table } = assertRenderable(document(), '/recovery.json');
+    expect(withExpressions(() => evalExpr('_b79', {
+      time: 0, drivers: { x: 2 }, bindings: table.roots(),
+    }))).toBe(3164);
   }
 });

@@ -439,32 +439,122 @@ export function prepare(expression: string): NodeId {
 // building fifty thousand nodes to reach it.
 // ---------------------------------------------------------------------
 
-// ADR-043's finite headroom now covers the measured live Curta graph union
-// (102,690 nodes) without reparsing it between every tick.
-export const EXPRESSION_LIMITS = { nodes: 125_000 };
+// ADR-043's finite headroom for OBSOLETE expression state, never a limit
+// on the working set of what is loaded (OpenSpec
+// `keep-a-live-model-parsed`, design Decision 1). The store is reclaimed
+// when it holds `nodes` or more, and only where obsolete state is
+// created: at the start of an outermost document load
+// (`withDocumentLoad`), at the end of a refused load, when a validated
+// document is settled installed or abandoned (`DocumentSettlement`), and
+// at every viewer's disposal (`releaseExpressions`), the last one
+// emptying the store whatever it holds. Ordinary operations -- poses,
+// drawn frames, clocked requests, run ticks, tree updates -- never
+// reclaim, so a loaded graph of any size is reused from one operation to
+// the next. `everyOperation` is a source-only switch for the widget's
+// own tests: when true, every outermost operation also empties the store
+// at its start once it holds `nodes` or more, as before this change.
+export const EXPRESSION_LIMITS = { nodes: 125_000, everyOperation: false };
 
 let mountCount = 0;
 let scopeDepth = 0;
 let disposalPending = false;
+// The lowest store size at which a reclamation requested inside an open
+// scope empties the store when the outermost scope ends; `Infinity` when
+// none is pending. Several requests produce at most one reset.
+let pendingThreshold = Infinity;
 
-/** One synchronous preparation AND use of node references. Reclamation
- * happens before the outermost operation acquires roots, never between
- * acquisitions or while walking them. The threshold is headroom for
- * obsolete work, not a limit on one live document's working set.
- * Raw IDs/maps must not survive this scope without source + generation.
- * Never wrap an async callback: a scope cannot span an await. */
-export function withExpressions<T>(action: () => T): T {
-  if (scopeDepth === 0 && nodes.length >= EXPRESSION_LIMITS.nodes) resetStore();
+/** Honoured at once with no scope open, or at the end of the outermost
+ * open scope: never between two acquisitions or during a walk. */
+function requestReclamation(threshold: number): void {
+  if (scopeDepth > 0) {
+    pendingThreshold = Math.min(pendingThreshold, threshold);
+  } else if (nodes.length >= threshold) {
+    resetStore();
+  }
+}
+
+function scoped<T>(action: () => T): T {
   scopeDepth += 1;
   try {
     return action();
   } finally {
     scopeDepth -= 1;
-    if (scopeDepth === 0 && disposalPending) {
+    if (scopeDepth === 0) {
+      const reclaim = (disposalPending && mountCount === 0)
+        || nodes.length >= pendingThreshold;
       disposalPending = false;
-      if (mountCount === 0) resetStore();
+      pendingThreshold = Infinity;
+      if (reclaim) resetStore();
     }
   }
+}
+
+/** One synchronous preparation AND use of node references. An ordinary
+ * operation never reclaims the store (see `EXPRESSION_LIMITS`), unless
+ * the suite's `everyOperation` switch is on; a protected operation may
+ * exceed the headroom while it runs. Raw IDs/maps must not survive this
+ * scope without source + generation. Never wrap an async callback: a
+ * scope cannot span an await. */
+export function withExpressions<T>(action: () => T): T {
+  if (scopeDepth === 0 && EXPRESSION_LIMITS.everyOperation
+      && nodes.length >= EXPRESSION_LIMITS.nodes) resetStore();
+  return scoped(action);
+}
+
+/** What the viewer tells the store about a validated document: it was
+ * installed, replacing what it displaced, or abandoned without being
+ * installed. The first call wins; later calls do nothing. Holds a
+ * generation and a count, never a node id. */
+export interface DocumentSettlement {
+  installed(): void;
+  abandoned(): void;
+}
+
+/** One synchronous document load: a `withExpressions` scope that, when
+ * outermost, first empties the store if it holds `EXPRESSION_LIMITS.nodes`
+ * or more, so the obsolete state of whatever it replaces is gone before
+ * the incoming document is prepared. A refused load requests a
+ * reclamation at that threshold at its end. A successful one returns
+ * its value with the document's settlement: `installed()` requests a
+ * reclamation at the threshold plus the nodes this load added while the
+ * generation is the one it ended in, so an installation keeps its own
+ * incoming graph and reclaims only what other operations prepared while
+ * it waited, and at the threshold once the generation has moved;
+ * `abandoned()` requests one at the threshold. */
+export function withDocumentLoad<T>(action: () => T):
+    { value: T; settlement: DocumentSettlement } {
+  if (scopeDepth === 0 && nodes.length >= EXPRESSION_LIMITS.nodes) resetStore();
+  const start = nodes.length;
+  let added = 0;
+  let generation = 0;
+  const value = scoped(() => {
+    try {
+      const result = action();
+      added = nodes.length - start;
+      generation = storeGeneration;
+      return result;
+    } catch (error) {
+      requestReclamation(EXPRESSION_LIMITS.nodes);
+      throw error;
+    }
+  });
+  let settled = false;
+  return {
+    value,
+    settlement: {
+      installed() {
+        if (settled) return;
+        settled = true;
+        requestReclamation(EXPRESSION_LIMITS.nodes
+          + (storeGeneration === generation ? added : 0));
+      },
+      abandoned() {
+        if (settled) return;
+        settled = true;
+        requestReclamation(EXPRESSION_LIMITS.nodes);
+      },
+    },
+  };
 }
 
 // D4: a `BindingTable` (bindings.ts) holds node ids OUTSIDE this store,
@@ -507,15 +597,22 @@ export function retainExpressions(): void {
   mountCount += 1;
 }
 
-/** One mount is done with the shared table. Empties it once the last
- * holder releases; harmless if called without a matching retain. */
+/** One mount is done with the shared table: its graph is obsolete. Every
+ * release requests a reclamation at `EXPRESSION_LIMITS.nodes`, so a
+ * disposed viewer's graph is not kept beside the survivors' beyond that
+ * headroom; the last release empties the store whatever it holds. Both
+ * wait for the end of an open scope, where they make at most one reset,
+ * and the last release's is cancelled if a mount is retained before
+ * then. Harmless if called without a matching retain. */
 export function releaseExpressions(): void {
   if (mountCount === 0) return;
   mountCount -= 1;
-  if (mountCount === 0) {
-    if (scopeDepth > 0) disposalPending = true;
-    else resetStore();
+  if (mountCount === 0 && scopeDepth === 0) {
+    resetStore();
+    return;
   }
+  if (mountCount === 0) disposalPending = true;
+  requestReclamation(EXPRESSION_LIMITS.nodes);
 }
 
 // ---------------------------------------------------------------------

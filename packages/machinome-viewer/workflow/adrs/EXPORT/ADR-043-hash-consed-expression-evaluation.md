@@ -199,3 +199,71 @@ and [parent adversarial acceptance](../../../openspec/changes/archive/2026-10-05
 record the counts, refusals, full unchanged export and measured cleanup. A large
 live validation graph still consumes memory; this establishes correct lifetime,
 not a universal memory budget or cross-browser performance guarantee.
+
+## Reclamation-point amendment — 20 November 2026
+
+Amendment accepted after the repository agent's adversarial review of the plan
+and of the implementation, under the pilot's advance authority of 20 November
+2026; the preceding accepted decisions retain their status.
+
+`keep-a-live-model-parsed` moves where the store is reclaimed, and leaves the
+trigger at 125,000. Until this change every outermost operation emptied the
+store once it held that many nodes, which could not tell a loaded document's
+own graph from obsolete state. The Enigma I page mounts a document of 546,768
+nodes, so its 214,278 binding entries were prepared again before every pose,
+request and drawn frame, and an instruction showed its start and its end and
+nothing between. It was the third document to meet the line, after the Curta
+(the capacity amendment above) and the Voron-2 (the validation-boundary
+amendment above).
+
+Ordinary operations no longer reclaim, whatever the store holds. The trigger
+is headroom for obsolete state only, and the store is reclaimed at it where
+obsolete state is created:
+
+- at the start of an outermost document load (`withDocumentLoad`, entered by
+  `assertRenderable`);
+- at the end of a refused load;
+- when the viewer settles a validated document: abandoned (refused after its
+  validation, or its viewer disposed during the load) at the trigger, or
+  installed at the trigger plus the nodes that load added, so that an
+  installation keeps its incoming graph;
+- at every viewer's disposal, the last one still emptying the store whatever
+  it holds.
+
+A request made inside an open scope is honoured at the end of the outermost
+scope; no reset happens inside a scope, every reset is still `resetStore()`,
+and the generation still rises by exactly one per reset and only then. The
+holders that rebuild by generation are unchanged.
+
+The invariant this gives: at the start of every outermost operation that is
+not a document load, fewer than 125,000 resident nodes belong to no loaded
+document. Retention is bounded by the graphs of the loaded documents plus
+that headroom, not by past publications, refusals or disposals. It rests on
+one fact about the source, recorded so that a later change that breaks it is
+visible: after load, no operation prepares expression text the loaded
+document does not already hold.
+
+`EXPRESSION_LIMITS.everyOperation` is a source-only switch for the widget's
+own tests. When true, every outermost operation also reclaims at its start,
+as before this amendment. Every test that forces pressure asserts that the
+generation rose.
+
+Measured on the Enigma I page (`enigma-i` at `081f4e6`), script only, with
+draw calls skipped: the generation stayed 0 and the binding table was prepared
+once across the mount and nine instructions; press tasks fell from between
+2,398 and 7,225 ms to between 47 and 775 ms; the flap and the hood showed 46
+and 124 distinct pictures instead of 2. The store is 115.6 MB resident on that
+page, which the previous policy also held between operations. A reload raised
+the generation once, at its start, and the first press after it took 66 ms.
+
+Stated limits. In a page with more than one viewer, one viewer's load,
+settlement or disposal empties the whole store at the trigger, and another
+viewer's large graph then rebuilds once; per-mount accounting of graph sizes
+is what a project that needs more would justify. The viewer's settlement
+calls are not exercised by the widget's suite, which mounts no viewer; one
+reload was measured on the page. No GPU's frame time was measured. The viewer
+API and the document versions are unchanged.
+
+[Design](../../../openspec/changes/archive/2026-11-20-keep-a-live-model-parsed/design.md)
+and [evidence](../../../openspec/changes/archive/2026-11-20-keep-a-live-model-parsed/evidence.md)
+record the cases, the tests and the measurements.

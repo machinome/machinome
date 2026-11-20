@@ -628,12 +628,15 @@ describe('the held node ids are generation-guarded (design D12)', () => {
 
     // Force a reset the way the ceiling would: lower it, then prepare
     // one more expression.
-    const ceiling = EXPRESSION_LIMITS.nodes;
+    // Forced reclamation before every outermost operation (OpenSpec
+    // `keep-a-live-model-parsed`, design Decision 5).
+    const ceiling = { ...EXPRESSION_LIMITS };
     try {
       EXPRESSION_LIMITS.nodes = 1;
+      EXPRESSION_LIMITS.everyOperation = true;
       prepare('(1 + 2)');
     } finally {
-      EXPRESSION_LIMITS.nodes = ceiling;
+      Object.assign(EXPRESSION_LIMITS, ceiling);
     }
     expect(expressionGeneration()).toBeGreaterThan(generation);
 

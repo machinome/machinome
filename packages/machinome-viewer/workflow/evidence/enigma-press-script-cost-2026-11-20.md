@@ -79,6 +79,13 @@ An idle frame's script went from 42 ms to 34 ms. The page's JavaScript heap
 was 1,932 MB before and 1,961 MB after: holding the whole graph cost about
 30 MB on a page that already holds 1.9 GB. No page error in either run.
 
+Correction, the same day: that inference is wrong. Both readings were taken
+right after loading, with the store full in both runs, so their difference is
+not the store's size. Measured directly, by emptying the store on the page,
+it is 115.6 MB, and the viewer holds it between operations with or without
+the ceiling in the way
+(`openspec/changes/archive/2026-11-20-keep-a-live-model-parsed/evidence.md`).
+
 ## What remains with the ceiling out of the way
 
 - **Flexible parts.** On every changing frame of a Press, 86 flexible parts

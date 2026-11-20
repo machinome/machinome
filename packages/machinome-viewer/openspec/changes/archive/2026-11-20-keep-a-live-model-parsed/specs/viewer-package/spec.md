@@ -67,6 +67,14 @@ expression state.
   and produce the same values, banks and event records as evaluation under
   forced reclamation
 
+#### Scenario: Consecutive ticks reuse a fitting graph
+
+- **WHEN** a supported running document has a prepared graph within the
+  finite cache capacity and advances several consecutive ticks
+- **THEN** those ticks reuse the prepared graph without a cache generation
+  change between ticks and produce the same complete bank and event records
+  as evaluation under forced reclamation
+
 #### Scenario: A large document is installed without being prepared again
 
 - **WHEN** a document whose expression graph is larger than the

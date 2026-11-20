@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EXPRESSION_LIMITS, expressionGeneration, expressionMetrics, prepare,
   releaseExpressions, resetExpressionMetrics, retainExpressions, valueOf,
+  withDocumentLoad,
 } from './expressions';
 import { bindingTable } from './bindings';
 import { Manifest } from './types';
@@ -480,9 +481,12 @@ describe('retainExpressions / releaseExpressions (D8)', () => {
   });
 
   it('drops and rebuilds the table when the node ceiling is passed', () => {
-    const original = EXPRESSION_LIMITS.nodes;
+    const original = { ...EXPRESSION_LIMITS };
     // '(5300001 + 1)' interns exactly 3 nodes: two constants, one binary.
+    // Forced reclamation before every outermost operation (OpenSpec
+    // `keep-a-live-model-parsed`, design Decision 5).
     EXPRESSION_LIMITS.nodes = 3;
+    EXPRESSION_LIMITS.everyOperation = true;
     try {
       const first = prepare('(5300001 + 1)');
       expect(expressionMetrics().nodes).toBe(3);
@@ -490,11 +494,39 @@ describe('retainExpressions / releaseExpressions (D8)', () => {
 
       // The ceiling is checked at the start of the NEXT preparation
       // (D8): passing it drops the whole store before this one is built.
+      const generation = expressionGeneration();
       const second = prepare('(5300002 + 2)');
+      expect(expressionGeneration()).toBe(generation + 1);
       expect(expressionMetrics().nodes).toBe(3); // only the second expression's
       expect(valueOf(second, { time: 0 } as never)).toBe(5300004);
     } finally {
-      EXPRESSION_LIMITS.nodes = original;
+      Object.assign(EXPRESSION_LIMITS, original);
+    }
+  });
+
+  it('keeps the table past the node ceiling between operations, and drops it at a load', () => {
+    // The shipping policy (OpenSpec `keep-a-live-model-parsed`, design
+    // Decision 5): a plain preparation never reclaims; a load does.
+    const original = { ...EXPRESSION_LIMITS };
+    retainExpressions(); releaseExpressions(); // start from an empty store
+    EXPRESSION_LIMITS.nodes = 3;
+    EXPRESSION_LIMITS.everyOperation = false;
+    try {
+      const generation = expressionGeneration();
+      const first = prepare('(5300011 + 1)');
+      expect(expressionMetrics().nodes).toBe(3);
+      const second = prepare('(5300012 + 2)');
+      expect(expressionMetrics().nodes).toBe(6); // both expressions kept
+      expect(expressionGeneration()).toBe(generation);
+      expect(valueOf(first, { time: 0 } as never)).toBe(5300012);
+      expect(valueOf(second, { time: 0 } as never)).toBe(5300014);
+
+      const loaded = withDocumentLoad(() => prepare('(5300013 + 3)'));
+      expect(expressionGeneration()).toBe(generation + 1);
+      expect(expressionMetrics().nodes).toBe(3); // only the load's own
+      expect(valueOf(loaded.value, { time: 0 } as never)).toBe(5300016);
+    } finally {
+      Object.assign(EXPRESSION_LIMITS, original);
     }
   });
 });
@@ -690,7 +722,7 @@ describe('expressionGeneration and the reset guard (D4)', () => {
   });
 
   it('a held BindingTable re-prepares its roots after a reset, and evaluates correctly', () => {
-    const original = EXPRESSION_LIMITS.nodes;
+    const original = { ...EXPRESSION_LIMITS };
     const manifest: Manifest = {
       format: 'machinome-export', version: 4, animation: { fps: 30, frames: 360 },
       bindings: [{ name: '_b0', expression: '(9900101 + 1)' }],
@@ -705,7 +737,11 @@ describe('expressionGeneration and the reset guard (D4)', () => {
     // binary. Lower the ceiling to force a reset on the NEXT
     // preparation, between building the table above and reading it
     // again below.
+    // Forced reclamation before every outermost operation (OpenSpec
+    // `keep-a-live-model-parsed`, design Decision 5).
     EXPRESSION_LIMITS.nodes = 3;
+    EXPRESSION_LIMITS.everyOperation = true;
+    const generation = expressionGeneration();
     try {
       prepare('(9900201 + 1)'); // trips the ceiling; resetStore() runs
 
@@ -713,6 +749,7 @@ describe('expressionGeneration and the reset guard (D4)', () => {
       // reset now names whatever the store handed that id out to next,
       // which is no longer "_b0"'s expression.
       expect(expressionGeneration()).toBeGreaterThan(0);
+      expect(expressionGeneration()).toBeGreaterThan(generation);
       expect(valueOf(beforeReset, { time: 0 } as never)).not.toBe(9900102);
 
       // `roots()` notices the generation moved and re-prepares: the
@@ -720,7 +757,7 @@ describe('expressionGeneration and the reset guard (D4)', () => {
       const afterReset = table.roots()!.get('_b0')!;
       expect(valueOf(afterReset, { time: 0 } as never)).toBe(9900102);
     } finally {
-      EXPRESSION_LIMITS.nodes = original;
+      Object.assign(EXPRESSION_LIMITS, original);
     }
   });
 });

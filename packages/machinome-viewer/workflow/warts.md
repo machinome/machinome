@@ -689,9 +689,10 @@ script with every draw call skipped, because the measuring host has no GPU
 and the pilot's browser has one: nothing below is a statement about how long
 a GPU takes to draw the scene.
 
-**Status: recorded.** The first finding is taken up as the change
-`keep-a-live-model-parsed`. The other three are open; the pilot has accepted
-them as later steps, one at a time.
+**Status: recorded.** The first finding is closed by the change
+`keep-a-live-model-parsed`, archived 20 November 2026; what closed it is
+noted under it. The other three are open; the pilot has accepted them as
+later steps, one at a time.
 
 ## A model larger than the store's ceiling is parsed again at every pose
 
@@ -713,6 +714,21 @@ them as later steps, one at a time.
   nothing else changed, the same presses took 65 to 900 ms and the flap and
   hood drew 29 and 80 pictures instead of 2. The heap grew by about 30 MB of
   1.9 GB.
+
+- **Correction to the line above.** The 30 MB is not the store's size: both
+  heap readings were taken with the store full. Measured directly on this
+  page, by emptying it, the store is 115.6 MB, and the viewer held it between
+  operations before the change as well.
+
+- **Closed by `keep-a-live-model-parsed`.** Ordinary operations no longer
+  reclaim the store; it is reclaimed where obsolete state is created (a load,
+  a refusal, the settlement of a replacement, a disposal), and the 125,000
+  stays as headroom for that state only (ADR-043, amendment of 20 November
+  2026). On this page the table is now prepared once across the mount and
+  nine instructions, press tasks are 47 to 775 ms, and the flap and the hood
+  show 46 and 124 pictures. The change's
+  `openspec/changes/archive/2026-11-20-keep-a-live-model-parsed/evidence.md`
+  has the measurement and its limits.
 
 - **Third meeting.** `retain-large-expression-working-set` (22 September)
   raised the ceiling from 50,000 to 125,000 for the Curta's 102,690 and
@@ -737,6 +753,11 @@ them as later steps, one at a time.
 
 - **Limit of the evidence.** That the other parts received identical vertex
   data was reasoned from the model and not compared.
+
+- **Seen without any motion.** Measured with the first finding closed:
+  selecting a different key (`Key B`, an instruction of no duration) moves no
+  mesh and refills the same 86 parts, in a press task of 0.37 to 0.44 s;
+  selecting the key already selected refills nothing and takes 0.05 s.
 
 ## A press draws the scene twice before its first frame, and its own time is taken from the motion
 
@@ -771,3 +792,9 @@ them as later steps, one at a time.
   declaration: 28.3 of the 44.8 million are flexible parts, 19.1 million of
   them in 104 springs declared as 24-sided sweeps through 960 points. That
   is recorded in the project and is being lightened there.
+
+- **Correction to the line above.** It is not being lightened there. The
+  model's own checks measure on those meshes, and a part has one mesh
+  density for its checks, its printed piece and its picture alike, so the
+  model cannot simply declare less. What to do about that is with the pilot
+  and is not a recorded finding yet.

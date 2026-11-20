@@ -14,6 +14,14 @@ it carries release together and share one version.
   published; a clocked request keeps its standing bank and events as well.
   Version-14 posed, clocked and running documents retain their execution
   kind by their existing payloads. Earlier documents keep their behavior.
+- A loaded document's expressions are no longer parsed again between
+  operations, however large the document: a pose, a drawn frame, a clocked
+  request or a run tick reuses the graph its load prepared, where a
+  document of more than 125,000 expression nodes was prepared again at
+  every one. Obsolete expression state is reclaimed where it is created:
+  when a document is loaded, refused or replaced, and when a viewer is
+  disposed. Viewer API 30 and document versions 1 through 14 are
+  unchanged.
 
 ## 0.9.0 — 31 October 2026
 
