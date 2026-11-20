@@ -61,8 +61,8 @@ import { clockedMachine } from './clocked/machine';
 import type {
   ClockedMachine, ClockedRequest, ClockedSnapshot,
 } from './clocked/machine';
-import { drawing } from './clocked/drawing';
-import type { Drawing, DrawnFrame } from './clocked/drawing';
+import { drawing, drawingClock } from './clocked/drawing';
+import type { Drawing, DrawingClock, DrawnFrame } from './clocked/drawing';
 import {
   clockedControlLayer, clockedFollowing, clockStepAmount,
   DEFAULT_CLOCK_STEP, formatClockedOutcome, gestureSeconds,
@@ -548,9 +548,19 @@ export async function mount(
   // BUTTON carries `aria-busy` because nothing else on it moves, while a
   // handle's gesture passes `null` and indicates by the thing the maker
   // is watching -- its own reading and thumb sweeping under `follow`.
+  //
+  // `clock` starts at the drawing's FIRST DRAWN FRAME (OpenSpec
+  // `draw-a-press-from-its-first-frame`, design D3): the wall delta that
+  // frame carries spans the press, and is not taken from the motion.
   let clockedDrawing: { name: string | null; drawn: Drawing;
-                        elapsed: number } | null = null;
+                        clock: DrawingClock } | null = null;
   let drawnBank: Record<string, number> | null = null;
+  // True only while a request the viewer will DRAW is being made
+  // (`draw-a-press-from-its-first-frame`, design D1): the machine's pose
+  // hook then JUDGES the request's final pose and shows none of it. Set
+  // and cleared in a `try`/`finally` around that one request, so it is
+  // false on every exit of every door.
+  let judging = false;
   // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
   // maker has typed into the amount and rate fields is a REQUEST
   // setting, not a coordinate: it survives a republish and moves
@@ -1249,7 +1259,11 @@ export async function mount(
    * The `pose` hook is what makes a request ATOMIC on this side: the
    * machine calls it with the bank it is ABOUT to commit, so a tree that
    * refuses the new bank leaves the machine's own bank standing
-   * (ADR-125's atomicity, design §7). */
+   * (ADR-125's atomicity, design §7). For a request the viewer will DRAW
+   * the hook JUDGES that bank instead of posing it (`judging`, OpenSpec
+   * `draw-a-press-from-its-first-frame`, design D1): the same refusals,
+   * and nothing shown -- the drawing shows the transition from where the
+   * scene stands. */
   const startMachine = (loaded: LoadedMachine | null) => {
     loadedMachine = loaded;
     clockedOutcomes = {};
@@ -1279,6 +1293,15 @@ export async function mount(
         const standing = machine === undefined ? {} : machine.state();
         const moved = Object.keys(next).filter(
           (id) => next[id] !== standing[id]);
+        if (judging) {
+          // A request the viewer will DRAW: its final pose is JUDGED --
+          // every refusal a pose would make, with the same message --
+          // and not shown. The scene stays at the bank the request
+          // started from, which is where the drawing begins, and nothing
+          // is rendered: the drawing's first frame is the next picture.
+          tree?.admit(clockedScope(next, time, bindingsTable), posed(moved));
+          return;
+        }
         tree?.update(clockedScope(next, time, bindingsTable), posed(moved));
         // A request is a gesture, and a gesture that changed the pose
         // must reach the screen -- whether it came from the panel or
@@ -1293,11 +1316,15 @@ export async function mount(
    *
    * What a frame costs is this: `tree.update` over the ids the frame
    * moved, and one narrow write per field that changed. The machine is
-   * not called, and the panel is not rebuilt. */
+   * not called, and the panel is not rebuilt. A frame that moves no id
+   * poses nothing (`draw-a-press-from-its-first-frame`, design D4): it
+   * sets `drawnBank` and the tree is left as it stands. */
   const drawFrame = (frame: DrawnFrame) => {
     drawnBank = frame.bank;
-    tree?.update(clockedScope(frame.bank, time, bindingsTable),
-                 posed(frame.moved));
+    if (frame.moved.length > 0) {
+      tree?.update(clockedScope(frame.bank, time, bindingsTable),
+                   posed(frame.moved));
+    }
     if (loadedMachine !== null && clockedChrome !== undefined) {
       clockedChrome.follow(clockedFollowing(loadedMachine, frame.bank,
                                             frame.moved));
@@ -1326,10 +1353,17 @@ export async function mount(
    * it reports where `draw` says so (OpenSpec `draw-every-request`,
    * design D3). A gesture an interlock holds is REPORTED, not swallowed.
    *
-   * ONE DOOR with `clockedPlay`, in the same order for the same reason:
-   * the panel is rebuilt ONCE, carrying the report, and the drawing's
-   * frame 0 is posed in this same task, so the readings are corrected to
-   * the transition's ORIGIN before the browser paints.
+   * ONE DOOR with `clockedPlay`, in the same order for the same reason
+   * (OpenSpec `draw-a-press-from-its-first-frame`, design D1, D2): land,
+   * take the bank, make the request, write the outcome, start the
+   * drawing, rebuild the panel ONCE, and render only if nothing is drawn.
+   * A request that will be drawn is JUDGED (`judging`), so its end is
+   * never shown and the scene stands at the transition's ORIGIN; the
+   * panel is rebuilt after the drawing's state is set, so it reads that
+   * origin at the first paint; and the press renders nothing, the
+   * drawing's first frame being the next picture. A judged request that
+   * starts no drawing but moved something -- a gesture whose tempo is
+   * zero -- is published here with one `tree.update`, and rendered.
    *
    * `draw` is WHETHER, not how long: how long is `gestureSeconds`, and
    * it cannot be known before the request is made because it scales with
@@ -1356,7 +1390,14 @@ export async function mount(
     let report: ClockedOutcome;
     let answered: ClockedRequest | null = null;
     try {
-      answered = started.move(id, request);
+      // A drawn request is JUDGED, not posed: its end is shown by the
+      // drawing's landing.
+      judging = draw;
+      try {
+        answered = started.move(id, request);
+      } finally {
+        judging = false;
+      }
       report = {
         status: 'completed',
         admitted: answered.admitted,
@@ -1374,18 +1415,33 @@ export async function mount(
       };
     }
     clockedOutcomes[id] = report;
-    rebuildClockedChrome();
+    let drawingStarted = false;
     if (answered !== null && before !== null) {
       // THE TEMPO its own input's declared instruction states, in the
       // proportion the ADMITTED travel bears to the declared one, or the
       // viewer's own short duration where the document declares no
       // travel on this input.
-      startDrawing(null, answered, before,
-                   gestureSeconds(id, answered.admitted,
-                                  loadedMachine?.instructions ?? {}), id);
+      drawingStarted = startDrawing(
+        null, answered, before,
+        gestureSeconds(id, answered.admitted,
+                       loadedMachine?.instructions ?? {}), id);
+      if (!drawingStarted) publishJudged(before, started.state());
     }
-    renderer.render(scene, camera);
+    rebuildClockedChrome();
+    if (!drawingStarted) renderer.render(scene, camera);
     return report;
+  };
+
+  /** PUBLISH the bank a JUDGED request committed when no drawing will show
+   * it (OpenSpec `draw-a-press-from-its-first-frame`, design D1): one
+   * `tree.update` over the ids that differ from `before`, nothing when
+   * none does. It repeats the evaluation the judgement accepted under
+   * the same scope, so it cannot refuse. */
+  const publishJudged = (before: Record<string, number>,
+                         after: Record<string, number>): void => {
+    const moved = Object.keys(after).filter((id) => after[id] !== before[id]);
+    if (moved.length === 0) return;
+    tree?.update(clockedScope(after, time, bindingsTable), posed(moved));
   };
 
   /** PLAY a declared instruction: ONE request, made once and before the
@@ -1394,10 +1450,15 @@ export async function mount(
    *
    * One door for the panel's button and the host's own
    * `machine().trigger(name)`: identical semantics, and the panel
-   * follows whoever pressed. The request is made in THIS task and the
-   * drawing's frame 0 posed in it too, before the browser paints, so the
-   * end pose the request necessarily made (ADR-125's atomicity) is
-   * computed and never seen. */
+   * follows whoever pressed. The request is made in THIS task. Where the
+   * instruction declares a duration above zero its final pose is JUDGED
+   * and not shown (OpenSpec `draw-a-press-from-its-first-frame`, design
+   * D1, D2): the end pose ADR-125's atomicity requires is checked, every
+   * refusal it would make is made, and the scene stays at the
+   * transition's origin, where the drawing begins. The panel is rebuilt
+   * once, after the drawing's state is set, and nothing is rendered: the
+   * drawing's first frame is the next picture. An instruction of zero
+   * duration is posed and rendered by the machine's hook, as before. */
   const clockedPlay = (name: string): ClockedRequest => {
     const started = machine as ClockedMachine;
     landDrawing();
@@ -1411,9 +1472,18 @@ export async function mount(
     // The bank the machine stands at BEFORE the request: what the
     // drawing draws from. Taken here, because `trigger` moves it.
     const before = started.state();
+    const duration = declared?.duration ?? 0;
+    const drawn = duration > 0;
     let answered: ClockedRequest;
     try {
-      answered = started.trigger(name);
+      // A drawn instruction is JUDGED, not posed: its end is shown by the
+      // drawing's landing.
+      judging = drawn;
+      try {
+        answered = started.trigger(name);
+      } finally {
+        judging = false;
+      }
     } catch (error) {
       clockedOutcomes[name] = {
         status: 'refused',
@@ -1433,51 +1503,61 @@ export async function mount(
       message: null,
       stops: answered.stops,
     };
-    // The panel is rebuilt ONCE, here, carrying the report; the frames
-    // that follow only rewrite the fields they move.
+    const drawingStarted = startDrawing(name, answered, before, duration,
+                                        inputId);
+    if (drawn && !drawingStarted) publishJudged(before, started.state());
+    // The panel is rebuilt ONCE, here, after the drawing's state is set,
+    // carrying the report and reading the origin; the frames that follow
+    // only rewrite the fields they move.
     rebuildClockedChrome();
-    startDrawing(name, answered, before, declared?.duration ?? 0, inputId);
-    renderer.render(scene, camera);
+    if (drawingStarted) clockedChrome?.indicate(name, true);
+    else renderer.render(scene, camera);
     return answered;
   };
 
   /** Begin drawing `answered` from `before` over `duration` wall
-   * seconds, and pose its first frame at once.
+   * seconds, and say whether a drawing started.
    *
    * Nothing is drawn where there is nothing to draw: a request admitted
    * at zero travel that committed nothing has no transition, and a
-   * duration of zero lands the transition in the one pose the request
-   * already made. */
+   * duration of zero lands the transition in one pose. Frame 0 is set at
+   * once: it is the origin, where the scene already stands, so it poses
+   * nothing (OpenSpec `draw-a-press-from-its-first-frame`, design D2, D4)
+   * and only puts `drawnBank` at the origin for the panel the caller
+   * rebuilds next. The caller rebuilds the panel and indicates; this
+   * neither rebuilds nor indicates nor renders. */
   const startDrawing = (name: string | null, answered: ClockedRequest,
                         before: Record<string, number>, duration: number,
-                        inputId: string | null): void => {
-    if (!(duration > 0)) return;
+                        inputId: string | null): boolean => {
+    if (!(duration > 0)) return false;
     if (answered.origin === answered.end && answered.commits.length === 0) {
-      return;
+      return false;
     }
     // TWO AUTHORITIES OVER ONE POSE is the one conflict a maker cannot
     // read, so starting a drawing stops the clock's transport where the
-    // machine declares one -- as a reset already does.
-    if (clockPlaying) {
-      clockPlaying = false;
-      rebuildClockedChrome();
-    }
+    // machine declares one -- as a reset already does. The caller's one
+    // rebuild shows it stopped.
+    clockPlaying = false;
     const integer = inputId !== null
       && loadedMachine?.drivers[inputId]?.dtype === 'int';
     const drawn = drawing(answered, before, duration, integer);
-    clockedDrawing = { name, drawn, elapsed: 0 };
-    if (name !== null) clockedChrome?.indicate(name, true);
+    clockedDrawing = { name, drawn, clock: drawingClock() };
     drawFrame(drawn.advance(0));
+    return true;
   };
 
   /** ONE POSE per rendered frame while a drawing runs (design §3),
    * advanced on the wall seconds the loop already knows. The machine is
-   * not called at all. */
+   * not called at all. The drawing's clock starts at the first frame
+   * drawn here (OpenSpec `draw-a-press-from-its-first-frame`, design
+   * D3): that frame stands at the origin whatever wall time it carries,
+   * the declared duration is counted from it, and every later frame
+   * advances by its own wall delta. */
   const drawingFrame = (elapsedWallSeconds: number) => {
     const running = clockedDrawing;
     if (running === null) return;
-    running.elapsed += elapsedWallSeconds;
-    const frame = running.drawn.advance(running.elapsed);
+    const frame = running.drawn.advance(
+      running.clock.frame(elapsedWallSeconds));
     drawFrame(frame);
     if (frame.done) {
       clockedDrawing = null;

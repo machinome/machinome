@@ -727,6 +727,34 @@ export class WidgetTree {
     });
   }
 
+  /** JUDGE the pose `update` would make under `scope`, and show none of it
+   * (OpenSpec `draw-a-press-from-its-first-frame`, design D1).
+   *
+   * The same transforms `update` would prepare are prepared and checked
+   * -- a throwing, non-finite or non-composable one, or an invalid colour
+   * condition, refuses with `update`'s own message -- into a list that is
+   * then dropped; and every flexible part the change set reaches is
+   * judged by `FlexibleShape.admit`, in the order `update` evaluates
+   * them. No matrix is copied, no colour set, no buffer written and
+   * nothing remembered, so the scene stands exactly where it stood
+   * whether this returns or throws. A drawn request's final pose is
+   * judged here: the drawing shows it when it lands. */
+  admit(scope: EvalScope, changed: Changed = 'all'): void {
+    withExpressions(() => {
+      this.prepareTransforms(scope, changed, [], undefined, false, []);
+      this.admitShapes(scope, changed);
+    });
+  }
+
+  private admitShapes(scope: EvalScope, changed: Changed): void {
+    if (this.flexible && touchedBy(this.flexible.free, changed)) {
+      this.flexible.admit(scope);
+    }
+    for (const child of this.children) {
+      child.admitShapes(scope, changed);
+    }
+  }
+
   private prepareTransforms(
     scope: EvalScope, changed: Changed, path: string[],
     parent: (() => THREE.Matrix4) | undefined, ancestorChanged: boolean,

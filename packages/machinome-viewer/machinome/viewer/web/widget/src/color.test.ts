@@ -164,6 +164,38 @@ describe('version-14 model colors', () => {
     owner.setHighlight(null); expect(hex(tree.children[0])).toBe(ON.slice(1));
     tree.dispose();
   });
+  // OpenSpec `draw-a-press-from-its-first-frame` (design D1, D8 T6): a
+  // drawn request's final pose is judged and not shown, colours included.
+  it('judges a chosen color without showing it, and refuses an invalid one as an update would', async () => {
+    const lamp = document();
+    const lampTable = bindingTable(lamp, '/lamp.json');
+    const lit = new WidgetTree(lamp.root, '/', null, lampTable); await lit.loaded;
+    lit.update(clockedScope({ powered: 0 }, 0, lampTable));
+    const glass = mesh(lit.children[0]), material = glass.material;
+    expect(hex(lit.children[0])).toBe(OFF.slice(1));
+    lit.admit(clockedScope({ powered: 1 }, 0, lampTable), changed('powered'));
+    expect(hex(lit.children[0])).toBe(OFF.slice(1));
+    expect(glass.material).toBe(material);
+    expect(lit.assembly().children[0].color).toBe(OFF);
+    lit.dispose();
+
+    const body = document(null);
+    body.bindings = [{ name: '_shared', expression: '(powered * 10)' }];
+    body.root.children = [
+      leaf('earlier', choice('(_shared + independent)'), [['t', ['(_shared + independent)', '0', '0']]]),
+      leaf('later', choice('sqrt(2 - powered)')),
+    ];
+    const table = bindingTable(body, '/lamp.json');
+    const tree = new WidgetTree(body.root, '/', null, table); await tree.loaded;
+    const scope = (powered: number, independent = 0) => clockedScope({ powered, independent }, 0, table);
+    tree.update(scope(0));
+    const before = tree.children.map(n => [...n.group.matrix.elements]);
+    const colors = tree.children.map(hex);
+    expect(() => tree.admit(scope(3), changed('powered'))).toThrow(/later.*color/i);
+    expect(tree.children.map(n => [...n.group.matrix.elements])).toEqual(before);
+    expect(tree.children.map(hex)).toEqual(colors);
+    tree.dispose();
+  });
   it('keeps an inherited flexible color through geometry evaluation and reconciliation', async () => {
     const body = document();
     body.root.children = [{ name: 'spring', type: 'part', color: null, operations: [], flexible: {

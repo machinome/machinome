@@ -269,3 +269,16 @@ the design's open item 3 (a typed value committed with Enter keeps its
 focus) is false in this chrome, because a request rebuilds the panel; and
 the nudge amount's own staleness, found while writing the acceptance, is
 filed in `workflow/warts.md` rather than repaired inside this cycle.
+
+## Press-path pointer — 20 November 2026
+
+This record restates the order of a drawn request: make it, rebuild the panel,
+"start the drawing — whose frame 0 is posed in the same task — and render".
+ADR-064's press-path amendment of 20 November 2026
+(`draw-a-press-from-its-first-frame`) replaces that order for a pressed
+instruction and for a drawn gesture alike: the request's final pose is judged
+and not posed, the drawing starts where the scene stands so that frame 0 poses
+nothing, the panel is rebuilt once after the drawing has started, nothing is
+rendered when a drawing starts, and the duration is counted from the first
+drawn frame. What this record decided about which requests are drawn, and over
+what duration, is unchanged.

@@ -27,6 +27,14 @@ it carries release together and share one version.
   geometry, with no evaluation by molejo, no upload and no bounds pass,
   where it was rebuilt whenever an input its parameters read changed.
   Viewer API 30 and document versions 1 through 14 are unchanged.
+- A pressed instruction or a drawn gesture on a clocked machine's panel
+  now draws its transition over its declared duration from its first
+  frame, which stands at the transition's origin, where the time the press
+  itself took was taken from the motion and a slow press could jump to the
+  end. The press judges the transition's end without drawing it and
+  renders nothing itself, and a drawn request refused by a flexible part
+  leaves every part where it stood. Viewer API 30 and document versions 1
+  through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

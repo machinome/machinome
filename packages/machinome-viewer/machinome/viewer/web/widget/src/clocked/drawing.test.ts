@@ -20,7 +20,7 @@ import { loadClocked } from './document';
 import type { ClockedDocument } from './document';
 import { clockedMachine } from './machine';
 import type { ClockedRequest } from './machine';
-import { drawing } from './drawing';
+import { drawing, drawingClock } from './drawing';
 
 const fixture = JSON.parse(readFileSync(
   new URL('../clocked-corpus.json', import.meta.url), 'utf8')) as {
@@ -113,10 +113,11 @@ describe('the drawn BANK applies every commit the fraction has reached',
            it('reports as MOVED exactly the ids the frame changed', () => {
              const drawn = drawing(TWO_COMMITS, START, 4, false);
              // Frame 0 is measured against where the TREE stands when the
-             // drawing begins -- the request's own end, which the machine
-             // posed as part of itself -- so frame 0 moves everything the
-             // transition will undo.
-             expect(drawn.advance(0).moved.sort()).toEqual(['m', 'n', 'x']);
+             // drawing begins -- the start, because the request judged its
+             // end without showing it (OpenSpec
+             // `draw-a-press-from-its-first-frame`, design D2) -- so frame 0,
+             // the origin, moves nothing.
+             expect(drawn.advance(0).moved).toEqual([]);
              expect(drawn.advance(0.5).moved).toEqual(['x']);
              expect(drawn.advance(1).moved.sort()).toEqual(['n', 'x']);
              expect(drawn.advance(3).moved.sort()).toEqual(['m', 'n', 'x']);
@@ -248,6 +249,52 @@ describe('the degenerate transitions', () => {
     expect(drawn.advance(2).done).toBe(true);
   });
 });
+
+describe('a drawing BEGINS where the scene stands (OpenSpec '
+         + '`draw-a-press-from-its-first-frame`, design §2)', () => {
+  it('a drawing begins where the scene stands', () => {
+    // The press judges the request's end and shows nothing, so the tree
+    // still stands at START when the drawing begins: frame 0, which is
+    // the origin, moves nothing.
+    const drawn = drawing(TWO_COMMITS, START, 4, false);
+    expect(drawn.advance(0).moved).toEqual([]);
+  });
+
+  it('landing a drawing that drew no frame moves the whole transition',
+     () => {
+       const drawn = drawing(TWO_COMMITS, START, 4, false);
+       expect(drawn.land().moved.sort()).toEqual(['m', 'n', 'x']);
+     });
+});
+
+describe('the drawing\'s CLOCK starts at its first drawn frame (design §3)',
+         () => {
+           it('reads 0 at its first frame, whatever wall time that frame '
+              + 'carries', () => {
+                const clock = drawingClock();
+                expect(clock.frame(0.3)).toBe(0);
+              });
+
+           it('sums the wall seconds of every later frame', () => {
+             const clock = drawingClock();
+             clock.frame(0.3);
+             expect(clock.frame(0.1)).toBe(0.1);
+             expect(clock.frame(0.2)).toBe(0.1 + 0.2);
+           });
+
+           it('adds a long later frame whole, so a drawing advanced by it '
+              + 'lands as before', () => {
+                const clock = drawingClock();
+                const drawn = drawing(TWO_COMMITS, START, 4, false);
+                expect(drawn.advance(clock.frame(0.3)).value).toBe(0);
+                expect(clock.frame(0.1)).toBe(0.1);
+                const total = clock.frame(5);
+                expect(total).toBe(0.1 + 5);
+                const last = drawn.advance(total);
+                expect(last.done).toBe(true);
+                expect(last.bank).toEqual({ x: 10, n: 2, m: 9 });
+              });
+         });
 
 describe('ONE SOLVE per press, structurally', () => {
   it('advances two hundred frames with no machine in scope at all', () => {

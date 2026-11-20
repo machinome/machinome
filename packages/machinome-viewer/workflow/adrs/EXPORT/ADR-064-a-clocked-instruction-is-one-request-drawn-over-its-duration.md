@@ -471,3 +471,62 @@ tree stands when a drawing begins and a start-bank diff would leave frame 0
 posing nothing; a panel REBUILD during a drawing follows the drawing; and the
 drawing takes the fourth argument `integer` that design §3's own signature
 already carries.
+
+## Press-path amendment — 20 November 2026
+
+Amendment accepted after the repository agent's adversarial review of the plan
+and of the implementation, under the pilot's advance authority of 20 November
+2026; the preceding decision and its review retain their status.
+
+`draw-a-press-from-its-first-frame` replaces what this record decided under
+"One solve per press, and the end pose that is computed but never seen", and
+the first-frame diff its review accepted. It leaves the rest standing: one
+request per press, solved once, before the first frame; the transition drawn
+over the declared duration; the machine never called by a frame.
+
+**The end pose is judged, not posed.** The request's final pose is still part
+of its admission and may still refuse it, before the bank is assigned and with
+the same message. It is no longer written to the scene. While a drawn request
+runs, the viewer's pose hook calls `WidgetTree.admit`, which prepares the
+transforms `update` would prepare and drops them, and has every flexible part
+the change reaches judged by `FlexibleShape.admit`: its parameters are
+evaluated, and where they differ from the ones its geometry was built from,
+molejo evaluates them into buffers of its own that are discarded. Nothing is
+rendered inside a drawn press. A drawn request that a flexible part refuses
+therefore leaves every part where it stood, which the posed end pose did not.
+
+**The drawing starts where the scene stands.** Because nothing was shown, the
+scene stands at the bank the machine stood at before the request, and frame 0
+is diffed against that START bank, not the request's END bank as the review of
+17 September accepted. Frame 0 moves nothing, and a frame that moves nothing
+poses nothing.
+
+**The declared duration is counted from the first drawn frame.** A drawing's
+clock returns zero for its first frame, whatever wall time the loop measured
+since the frame before, which spans the press, and sums the wall deltas of
+every later frame. The first frame after a press shows the origin; a press
+that was slow, or a frame that came late, shows as a pause before the motion
+and not as travel skipped. A drawing started while the page draws no frames
+plays from its origin when frames resume, where it used to land at once.
+Every drawing takes one more frame from click to landing.
+
+The doors that publish their pose are as they were: an instruction of no
+duration, a clock frame, the panel's step and reset, and the host's `move`,
+`restore` and `reset` still pose through the hook and render. A judged request
+that starts no drawing and moved something is published with one update.
+
+Measured on the Enigma I page (`enigma-i` at `081f4e6`), script only, with
+draw calls skipped: a drawn instruction's click makes no tree update, one
+judgement and no draw call, where it made two updates and two renders; a key
+press's click fell from 381 to 192 ms, a wheel step's from 249 to 109 ms, the
+flap's from 48 to 7 ms; a key press shows 10 or 11 pictures in its two seconds
+instead of 9, the first of them one frame after the click.
+
+What it did not change, and cannot: an instruction on a whole-number input
+still jumps. This record draws such an input truncated, so a step of one has
+no value between its origin and its end; the Enigma's wheel steps are of that
+kind and still show their start and their end only.
+
+[Design](../../../openspec/changes/archive/2026-11-20-draw-a-press-from-its-first-frame/design.md)
+and [evidence](../../../openspec/changes/archive/2026-11-20-draw-a-press-from-its-first-frame/evidence.md)
+record the cases, the tests and the measurements.

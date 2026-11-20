@@ -571,3 +571,154 @@ describe('a reached part is rebuilt only when a value moved', () => {
     expect(evaluations()).toBe(2);
   });
 });
+
+// OpenSpec `draw-a-press-from-its-first-frame` (design D1, D7, D8 T1-T5).
+// A request the viewer will DRAW has its final pose JUDGED and not shown:
+// `admit` refuses exactly what `update` would refuse, with the same
+// message, and writes nothing -- no matrix, no vertex, no remembered
+// value, no bounds. What is watched is what a picture would read: the
+// group's matrix, the position array and its `version`, and the two
+// bounds methods; and molejo's calls, through the spy.
+describe('judging a pose shows nothing', () => {
+  const lifted = () => ({ time: false, drivers: new Set(['valvetrain.lift']) });
+
+  // A rigid node translated by twice the lift, beside a spring whose
+  // height is `sqrt(10 - lift)`: finite at lift 3, NaN at lift 12, which
+  // molejo refuses.
+  const rigid = (): ManifestNode => ({
+    name: 'rigid', type: 'AssemblyNode', color: null,
+    operations: [['t', ['(2 * valvetrain.lift)', '0', '0']]], children: [],
+  });
+  const rooted = () => spring({ params: { height: 'sqrt((10 - valvetrain.lift))' } });
+
+  const standing = (tree: WidgetTree, mesh: THREE.Mesh) => ({
+    translation: tree.children.map((child) => child.group.matrix.elements[12]),
+    positions: Array.from(positionsOf(mesh).array),
+    version: positionsOf(mesh).version,
+  });
+
+  const bounds = (mesh: THREE.Mesh) => ({
+    box: vi.spyOn(mesh.geometry, 'computeBoundingBox'),
+    sphere: vi.spyOn(mesh.geometry, 'computeBoundingSphere'),
+  });
+
+  it('judges a moving candidate without showing it', async () => {
+    const tree = await mounted(engine([rigid(), rooted()]));
+    const mesh = meshOf(tree.children[1]);
+    const attribute = positionsOf(mesh);
+    const array = attribute.array;
+    const before = standing(tree, mesh);
+    const { box, sphere } = bounds(mesh);
+    expect(before.translation).toEqual([0, 0]);
+    const count = evaluations();
+
+    tree.admit(scope(3), lifted());
+
+    // Molejo was asked once -- the values moved -- and nothing it
+    // answered reached the part.
+    expect(evaluations()).toBe(count + 1);
+    expect(standing(tree, mesh)).toEqual(before);
+    expect(positionsOf(mesh)).toBe(attribute);
+    expect(positionsOf(mesh).array).toBe(array);
+    expect(box).not.toHaveBeenCalled();
+    expect(sphere).not.toHaveBeenCalled();
+
+    // The judgement remembered nothing either: publishing the same
+    // candidate rebuilds once and moves the rigid node.
+    tree.update(scope(3), lifted());
+
+    expect(evaluations()).toBe(count + 2);
+    expect(tree.children[0].group.matrix.elements[12]).toBe(6);
+    expect(attribute.version).toBeGreaterThan(before.version);
+    expect(Array.from(attribute.array)).not.toEqual(before.positions);
+  });
+
+  it('asks molejo nothing for a reached part whose values stand', async () => {
+    const tree = await mounted(engine([spring(
+      { params: { height: 'min(46.8, (66.8 - valvetrain.lift))' } })]));
+    const mesh = meshOf(tree.children[0]);
+    const before = standing(tree, mesh);
+    const count = evaluations();
+
+    tree.admit(scope(3), lifted());
+
+    expect(evaluations()).toBe(count);
+    expect(standing(tree, mesh)).toEqual(before);
+  });
+
+  it('refuses with molejo\'s own message and leaves every part standing',
+     async () => {
+       const tree = await mounted(engine([rigid(), rooted()]));
+       const mesh = meshOf(tree.children[1]);
+       const before = standing(tree, mesh);
+       const { box, sphere } = bounds(mesh);
+
+       expect(() => tree.admit(scope(12), lifted()))
+         .toThrow(/must be a finite number/);
+
+       expect(standing(tree, mesh)).toEqual(before);
+       expect(box).not.toHaveBeenCalled();
+       expect(sphere).not.toHaveBeenCalled();
+
+       // The part's memory stands: a candidate it accepts rebuilds once.
+       const count = evaluations();
+       tree.update(scope(3), lifted());
+       expect(evaluations()).toBe(count + 1);
+     });
+
+  it('refuses a transform before asking molejo anything', async () => {
+    const tree = await mounted(engine([
+      rigid(),
+      spring(),
+      { name: 'later', type: 'AssemblyNode', color: null,
+        operations: [['t', ['sqrt(1 - valvetrain.lift)', '0', '0']]], children: [] },
+    ]));
+    const mesh = meshOf(tree.children[1]);
+    const before = standing(tree, mesh);
+    const count = evaluations();
+
+    expect(() => tree.admit(scope(12), lifted())).toThrow(/later.*operation 0/);
+
+    expect(evaluations()).toBe(count);
+    expect(standing(tree, mesh)).toEqual(before);
+    tree.dispose();
+  });
+
+  it('propagates a throwing parameter expression as `update` would, and '
+     + 'writes nothing', async () => {
+       const gated = (lift: number, on: number) =>
+         ({ time: 0, drivers: { valvetrain: { lift }, gate: { on } } });
+       const both = () =>
+         ({ time: false, drivers: new Set(['valvetrain.lift', 'gate.on.x']) });
+       const gate = () => engine([spring({
+         params: { height: '(46.8 - valvetrain.lift)', z: '(1 + gate.on.x)' },
+       })]);
+       // A twin, published, for the message `update` gives.
+       const twin = new WidgetTree(gate(), '/build/');
+       await twin.loaded;
+       twin.update(gated(0, 0));
+       let published: unknown;
+       try { twin.update(gated(3, 1), both()); } catch (error) { published = error; }
+       expect(published).toBeInstanceOf(TypeError);
+
+       const tree = new WidgetTree(gate(), '/build/');
+       await tree.loaded;
+       (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+       tree.update(gated(0, 0));
+       const mesh = meshOf(tree.children[0]);
+       const before = standing(tree, mesh);
+       expect(evaluations()).toBe(1);
+
+       let judged: unknown;
+       try { tree.admit(gated(3, 1), both()); } catch (error) { judged = error; }
+
+       expect(judged).toBeInstanceOf(TypeError);
+       expect((judged as Error).message).toBe((published as Error).message);
+       expect(evaluations()).toBe(1);
+       expect(standing(tree, mesh)).toEqual(before);
+
+       tree.update(gated(0, 0), both());
+
+       expect(evaluations()).toBe(1);
+     });
+});

@@ -3644,7 +3644,11 @@ Executing a request SHALL, without posing anything until it is done:
   scaling to a committed value;
 - refuse the request when a law produces a value that is not finite.
 
-The request SHALL then pose the tree ONCE from the resulting bank, and
+The request SHALL then pose the tree ONCE from the resulting bank — or,
+where the viewer will DRAW the transition the request reports under the
+requirement "The viewer plays a clocked instruction as one drawn
+transition", SHALL JUDGE that pose ONCE, refusing exactly what posing it
+would refuse, without showing it, the drawing showing it when it lands — and
 SHALL report the travel it admitted, BOTH ENDS OF THE PATH IT TRAVELLED,
 the stops that truncated it, and the
 events it fired, each with the relations that fired it, the fraction of
@@ -4406,6 +4410,18 @@ readback taken while the drawing runs SHALL report the transition's END, and
 NO FURTHER REQUEST SHALL be made by the drawing. What a frame of a drawing
 costs SHALL be a POSE and nothing else.
 
+The pose the request ends at SHALL be JUDGED at the press, so that a request
+whose final pose the viewer would refuse is refused there, and SHALL NOT be
+shown. From the press until the drawing's first frame the model, every
+picture rendered and the panel's handles and readouts SHALL show the
+transition's ORIGIN. A press SHALL render no picture itself.
+
+The declared duration SHALL be counted from the drawing's FIRST FRAME, which
+SHALL stand at the transition's origin: the time the press itself took, and
+any time that passed before that first frame, SHALL NOT be taken from the
+transition. Each later frame SHALL advance the drawing by the wall seconds
+since the frame before it.
+
 At each frame the viewer SHALL pose the tree from the bank the machine stood
 at BEFORE the request, with
 
@@ -4427,7 +4443,10 @@ and the control SHALL report the stop as it does for any other request. A
 request that admitted ZERO travel SHALL draw nothing and SHALL report its
 stop. A duration of zero SHALL land at once, in one pose. An instruction the
 machine REFUSES SHALL draw nothing, SHALL leave the bank and the pose exactly
-as they stood, and SHALL report the refusal where it was pressed. Triggering
+as they stood, and SHALL report the refusal where it was pressed. This SHALL
+hold whatever refused the request's final pose, an evaluator of a flexible
+part included: every part, rigid or flexible, SHALL stand where it stood.
+Triggering
 a name the document does not declare SHALL be refused listing the declared
 names.
 
@@ -4536,6 +4555,36 @@ the two being two authorities over one pose.
 - **WHEN** a host moves an input through the mount handle
 - **THEN** the machine poses once at the resulting bank and nothing is drawn,
   whatever the panel would have done for the same request
+
+#### Scenario: Nothing shows the transition's end before the first frame
+
+- **WHEN** a maker presses an instruction that turns a crank one whole turn
+  over two seconds, and a picture is rendered or the panel is read before
+  the drawing's first frame
+- **THEN** the picture, the model's parts and the panel's reading all stand
+  at the transition's origin, while a readback of the bank reports the whole
+  turn
+
+#### Scenario: A press renders no picture itself
+
+- **WHEN** a maker presses an instruction of non-zero duration, or makes a
+  gesture on a handle whose transition is drawn
+- **THEN** nothing is rendered in the course of the press, and the first
+  frame of the drawing is the next picture the viewer renders for it
+
+#### Scenario: A slow press does not shorten the motion
+
+- **WHEN** a press takes longer than a frame, or longer than the transition
+  it plays
+- **THEN** the drawing's first frame stands at the transition's origin, and
+  the transition is drawn over its declared duration counted from that frame
+
+#### Scenario: A drawn request refused by a flexible part moves nothing
+
+- **WHEN** a drawn instruction's or gesture's request ends at a pose that the
+  evaluator of a flexible part refuses
+- **THEN** the refusal is reported where the request was made, the bank
+  stands, and every rigid and flexible part stands exactly where it stood
 
 ### Requirement: On-screen machine controls leave the machine visible
 

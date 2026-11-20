@@ -23,6 +23,14 @@
 // No DOM, no three.js, no machine. `viewer.ts` advances one of these in
 // the render loop beside the clock's transport and poses each frame
 // through the change set it already has.
+//
+// The drawing begins WHERE THE SCENE STANDS (OpenSpec
+// `draw-a-press-from-its-first-frame`, design D2, D3): the press judges
+// the request's final pose without showing it, so the tree still stands
+// at the bank the machine stood at before the request, and frame 0 --
+// the origin -- moves nothing. Its clock (`drawingClock`) starts at the
+// first frame the loop draws, so the time the press took, and any time
+// before that frame, is not taken from the transition.
 
 import type { ClockedRequest } from './machine';
 
@@ -39,9 +47,11 @@ export interface DrawnFrame {
   bank: Record<string, number>;
   /** The ids whose value differs from the frame before this one, so a
    * pose re-evaluates only what moved. The FIRST frame is measured
-   * against the request's own END bank, because that is where the tree
-   * stands when the drawing begins: the request posed it as part of
-   * itself (ADR-125's atomicity). */
+   * against the START bank, because that is where the tree stands when
+   * the drawing begins: the request JUDGED its final pose and showed
+   * none of it (OpenSpec `draw-a-press-from-its-first-frame`, design
+   * D2). Frame 0 is the origin, so it moves nothing; `land()` from a
+   * drawing that drew no frame moves every id the transition moves. */
   moved: string[];
   /** True at and past the declared duration. */
   done: boolean;
@@ -122,11 +132,11 @@ export function drawing(request: ClockedRequest,
     return bank;
   };
 
-  // Where the TREE stands as this drawing begins: the request's own end,
-  // with every commit applied, which the request posed as part of
-  // itself. The first frame's `moved` is measured against it, so frame 0
-  // un-poses exactly what the transition is about to re-play.
-  let previous = bankAt(1, end);
+  // Where the TREE stands as this drawing begins: the bank the machine
+  // stood at before the request, because the request judged its end
+  // without showing it (design D2). The first frame's `moved` is
+  // measured against it, so frame 0 -- the origin -- moves nothing.
+  let previous: Record<string, number> = { ...start };
 
   const frameAt = (fraction: number): DrawnFrame => {
     const value = valueAt(fraction);
@@ -141,5 +151,34 @@ export function drawing(request: ClockedRequest,
     input,
     advance: (elapsedSeconds: number) => frameAt(fractionAt(elapsedSeconds)),
     land: () => frameAt(1),
+  };
+}
+
+/** The clock a drawing is advanced by (OpenSpec
+ * `draw-a-press-from-its-first-frame`, design D3). */
+export interface DrawingClock {
+  /** The drawing's TOTAL elapsed seconds at this frame, given the wall
+   * seconds the loop measured since its previous frame: 0 at the first
+   * call whatever it is given -- that delta spans the press and whatever
+   * came before the first drawn frame -- and, from then on, the sum of
+   * the wall seconds given to every later call. */
+  frame(wallSeconds: number): number;
+}
+
+/** A clock that starts at the drawing's FIRST DRAWN FRAME: the declared
+ * duration is counted from that frame's timestamp, and every later frame
+ * advances the drawing by its own wall delta, a long one included. */
+export function drawingClock(): DrawingClock {
+  let started = false;
+  let elapsed = 0;
+  return {
+    frame(wallSeconds: number): number {
+      if (!started) {
+        started = true;
+        return elapsed;
+      }
+      elapsed += wallSeconds;
+      return elapsed;
+    },
   };
 }

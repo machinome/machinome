@@ -1502,3 +1502,263 @@ class GestureDrawnInABrowserTest(TestCase):
         self.assertTrue((SHOTS / 'clocked-gesture-at-tempo.png').is_file())
         self.assertTrue((SHOTS / 'clocked-gesture-landed.png').is_file())
         self.assertEqual(result['apiVersion'], 30)
+
+
+#: A drawn PRESS, counted (OpenSpec `draw-a-press-from-its-first-frame`,
+#: design D8, B1 to B4). The page's WebGL draw calls are counted the way
+#: `test_widget_e2e.py`'s `test_reading_positions_draws_no_frame` counts
+#: them, and every sample is taken after the RAW `requestAnimationFrame`,
+#: so it follows the viewer's own frame. Nothing here reads a clock: what
+#: is asserted is what the click's own task drew, and what the first
+#: frame after it shows.
+FIRST_FRAME = """async () => {
+  const host = document.getElementById('host');
+  const raw = window.requestAnimationFrame.bind(window);
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
+  const machine = viewer.machine();
+  const panel = () => host.querySelector('.clocked-controls');
+  const at = (selector) => panel().querySelector(selector);
+  const field = (id) => Number(at(`.clocked-value[data-input="${id}"]`).value);
+  const instruction = (name) => at(
+    `.clocked-instruction[data-instruction="${name}"]`);
+  const plus = (id) => at(`.clocked-plus[data-input="${id}"]`);
+  const frame = () => new Promise((resolve) => raw(() => resolve()));
+  const frames = async (count) => {
+    for (let n = 0; n < count; n += 1) await frame();
+  };
+  const setAmount = (id, amount) => {
+    const amountBox = at(`.clocked-nudge[data-input="${id}"]`);
+    amountBox.value = String(amount);
+    amountBox.dispatchEvent(new Event('change'));
+  };
+  const canvas = host.querySelector('canvas');
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  let draws = 0;
+  for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced',
+                      'drawElementsInstanced', 'drawRangeElements']) {
+    if (typeof gl[name] !== 'function') continue;
+    const original = gl[name].bind(gl);
+    gl[name] = (...args) => { draws += 1; return original(...args); };
+  }
+  // The part B4 watches: the crank's own dial, which the stroke turns.
+  const PART = ['crank_dial'];
+  const onScreen = () => JSON.stringify(viewer.partOnScreen(PART));
+  const busy = (ms) => {
+    const until = performance.now() + ms;
+    while (performance.now() < until) { /* the press's own cost */ }
+  };
+  // Every frame until the reading reaches the bank's value.
+  const follow = async (id) => {
+    const end = machine.state()[id];
+    const samples = [];
+    for (let n = 0; n < 900; n += 1) {
+      await frame();
+      samples.push({ value: field(id), bank: machine.state() });
+      if (samples[samples.length - 1].value === end) break;
+    }
+    return samples;
+  };
+
+  await frames(5);
+
+  // ---- The chosen part moves with the crank ------------------------
+  const atZero = onScreen();
+  await frame();
+  const idleStable = onScreen() === atZero;
+  machine.move('crank', { to: 180 });
+  const atHalf = onScreen();
+  machine.reset();
+  await frames(3);
+  const backAtZero = onScreen();
+
+  // ---- B1's guard: a publishing door draws in its own task ---------
+  draws = 0;
+  machine.move('feed', { by: 1 });
+  const hostMoveDraws = draws;
+  machine.reset();
+  await frames(3);
+
+  // ---- 'Stroke': by crank 360 over 2 s -----------------------------
+  const strokeBefore = onScreen();
+  draws = 0;
+  instruction('Stroke').click();
+  const strokeDraws = draws;
+  const strokeAtOnce = { crank: field('crank'), screen: onScreen(),
+                         bank: machine.state() };
+  await frame();
+  const strokeFirst = { crank: field('crank'), screen: onScreen(),
+                        bank: machine.state() };
+  const stroke = await follow('crank');
+  machine.reset();
+  await frames(3);
+
+  // ---- 'Set four': targets operand 4 over 0.5 s --------------------
+  draws = 0;
+  instruction('Set four').click();
+  const setFourDraws = draws;
+  const setFourAtOnce = field('operand');
+  await frame();
+  const setFourFirst = field('operand');
+  const setFour = await follow('operand');
+  machine.reset();
+  await frames(3);
+
+  // ---- A whole-turn nudge of the crank ------------------------------
+  // The amount reaches the button at the next rebuild; the panel's
+  // reset is that rebuild.
+  setAmount('crank', 360);
+  at('.clocked-reset').click();
+  await frames(3);
+  draws = 0;
+  plus('crank').click();
+  const nudgeDraws = draws;
+  const nudgeAtOnce = field('crank');
+  await frame();
+  const nudgeFirst = field('crank');
+  const nudge = await follow('crank');
+  machine.reset();
+  await frames(3);
+
+  // ---- A SLOW press: the click and 300 ms more in its own task ------
+  const slowBefore = onScreen();
+  instruction('Stroke').click();
+  busy(300);
+  const slowAtOnce = { crank: field('crank'), screen: onScreen() };
+  await frame();
+  const slowFirst = { crank: field('crank'), screen: onScreen() };
+  const slow = await follow('crank');
+  machine.reset();
+
+  return {
+    atZero, idleStable, atHalf, backAtZero, hostMoveDraws,
+    strokeBefore, strokeDraws, strokeAtOnce, strokeFirst, stroke,
+    setFourDraws, setFourAtOnce, setFourFirst, setFour,
+    nudgeDraws, nudgeAtOnce, nudgeFirst, nudge,
+    slowBefore, slowAtOnce, slowFirst, slow,
+  };
+}"""
+
+
+@needs_bundle
+@needs_playwright
+class PressDrawnFromItsFirstFrameInABrowserTest(TestCase):
+    """A drawn press renders nothing in its own task, and its first frame
+    stands at the transition's ORIGIN however long the press took
+    (OpenSpec `draw-a-press-from-its-first-frame`, design D8).
+
+    The page is driven ONCE for the class; each test reads one claim off
+    that run, so each claim fails or holds on its own.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        tempdir = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(tempdir.cleanup)
+        out_dir = Path(tempdir.name) / 'calculator'
+        shutil.copytree(CALCULATOR, out_dir)
+        shutil.copy2(bundle_path(), out_dir / 'machinome-viewer.js')
+        (out_dir / 'harness.html').write_text(HARNESS_PAGE)
+        server = serve_directory(out_dir)
+        base = server.__enter__()
+        cls.addClassCleanup(server.__exit__, None, None, None)
+        cls.errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                page.set_default_timeout(300_000)
+                page.on('pageerror',
+                        lambda error: cls.errors.append(str(error)))
+                page.on('console', lambda message: cls.errors.append(
+                    message.text) if message.type == 'error' else None)
+                page.goto(f'{base}/harness.html')
+                page.wait_for_function(
+                    'typeof MachinomeViewer !== "undefined"')
+                cls.result = page.evaluate(FIRST_FRAME)
+            finally:
+                browser.close()
+        result = cls.result
+        print(f'\n  draws in the task: host move {result["hostMoveDraws"]}, '
+              f'Stroke {result["strokeDraws"]}, Set four '
+              f'{result["setFourDraws"]}, nudge {result["nudgeDraws"]}')
+        print(f'  crank at the first frame: Stroke '
+              f'{result["strokeFirst"]["crank"]}, nudge '
+              f'{result["nudgeFirst"]}, slow Stroke '
+              f'{result["slowFirst"]["crank"]}; operand at Set four\'s '
+              f'first frame {result["setFourFirst"]}')
+        print(f'  drawn frames: Stroke {len(result["stroke"])}, Set four '
+              f'{len(result["setFour"])}, nudge {len(result["nudge"])}, '
+              f'slow Stroke {len(result["slow"])}')
+
+    def test_the_page_logged_no_errors(self):
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def test_the_watched_part_moves_with_the_crank(self):
+        # B4's precondition: the part's place on screen is a reading of
+        # the crank, and nothing else moves it between frames.
+        result = self.result
+        self.assertTrue(result['idleStable'])
+        self.assertNotEqual(result['atHalf'], result['atZero'])
+        self.assertEqual(result['backAtZero'], result['atZero'])
+
+    def test_a_publishing_door_draws_in_its_own_task(self):
+        # B1's guard: the probe counts.
+        self.assertGreater(self.result['hostMoveDraws'], 0,
+                           'the draw-call probe saw nothing')
+
+    def test_a_drawn_press_draws_nothing_in_its_own_task(self):
+        # B1.
+        result = self.result
+        self.assertEqual(result['strokeDraws'], 0, "'Stroke' drew")
+        self.assertEqual(result['setFourDraws'], 0, "'Set four' drew")
+        self.assertEqual(result['nudgeDraws'], 0, 'the nudge drew')
+
+    def test_the_first_frame_after_a_press_reads_the_origin(self):
+        # B2: the panel reads the origin in the press's task and at the
+        # first frame after it, and then rises to the end on one bank.
+        result = self.result
+        self.assertEqual(result['strokeAtOnce']['crank'], 0)
+        self.assertEqual(result['strokeFirst']['crank'], 0)
+        self.assertEqual(result['nudgeAtOnce'], 0)
+        self.assertEqual(result['nudgeFirst'], 0)
+        bank = result['strokeAtOnce']['bank']
+        self.assertEqual(bank['crank'], 360)
+        self.assertEqual(result['strokeFirst']['bank'], bank)
+        for name in ('stroke', 'nudge'):
+            readings = [one['value'] for one in result[name]]
+            self.assertEqual(readings, sorted(readings), name)
+            self.assertGreater(len(set(readings)), 5, name)
+            self.assertEqual(readings[-1], 360, name)
+        for one in result['stroke']:
+            self.assertEqual(one['bank'], bank)
+        self.assertEqual([one['value'] for one in result['setFour']][-1], 4)
+
+    def test_a_slow_press_still_begins_at_the_origin(self):
+        # B3: 300 ms of the press's own task are not taken from the
+        # motion.
+        result = self.result
+        self.assertEqual(result['slowAtOnce']['crank'], 0)
+        self.assertEqual(result['slowFirst']['crank'], 0)
+        readings = [one['value'] for one in result['slow']]
+        self.assertEqual(readings, sorted(readings))
+        self.assertEqual(readings[-1], 360)
+
+    def test_the_part_stands_where_it_stood_in_the_press_task(self):
+        # B4, the half that holds on the base too.
+        result = self.result
+        self.assertEqual(result['strokeAtOnce']['screen'],
+                         result['strokeBefore'])
+        self.assertEqual(result['slowAtOnce']['screen'],
+                         result['slowBefore'])
+
+    def test_the_part_stands_where_it_stood_at_the_first_frame(self):
+        # B4, the first frame.
+        result = self.result
+        self.assertEqual(result['strokeFirst']['screen'],
+                         result['strokeBefore'])
+        self.assertEqual(result['slowFirst']['screen'],
+                         result['slowBefore'])

@@ -237,6 +237,36 @@ export class FlexibleShape {
     this.built = next;
   }
 
+  /** JUDGE the parameters in `scope` without showing them (OpenSpec
+   * `draw-a-press-from-its-first-frame`, design D1): refuse exactly what
+   * `evaluate` would refuse, with the same error, and write nothing.
+   *
+   * Every parameter is evaluated as `evaluate` does, so a throwing
+   * expression throws here first. When the part has buffers and the
+   * values are the ones they were built from (`Object.is`), molejo has
+   * already accepted exactly these values and is not asked again.
+   * Otherwise molejo evaluates them into buffers of its own, which are
+   * dropped: the part's buffers, its geometry, its bounds and what it
+   * remembers having built from are all left as they stood, so a later
+   * `evaluate` of the same values still rebuilds. */
+  admit(scope: EvalScope): void {
+    const next: number[] = this.params.map(
+      ([, expression]) => evalExpr(expression, scope));
+
+    const built = this.built;
+    if (this.buffers !== undefined && built !== undefined
+        && next.length === built.length
+        && next.every((value, i) => Object.is(value, built[i]))) {
+      return;
+    }
+
+    const values: Record<string, number> = {};
+    this.params.forEach(([name], i) => {
+      values[name] = next[i];
+    });
+    evaluate(this.spec, values);
+  }
+
   dispose(): void {
     this.geometry.dispose();
     const materials = Array.isArray(this.mesh.material)

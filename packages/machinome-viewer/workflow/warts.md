@@ -690,10 +690,10 @@ and the pilot's browser has one: nothing below is a statement about how long
 a GPU takes to draw the scene.
 
 **Status: recorded.** The first finding is closed by the change
-`keep-a-live-model-parsed` and the second by
-`rebuild-only-changed-flexible-parts`, both archived 20 November 2026; what
-closed each is noted under it. The other two are open; the pilot has
-accepted them as later steps, one at a time.
+`keep-a-live-model-parsed`, the second by
+`rebuild-only-changed-flexible-parts` and the third by
+`draw-a-press-from-its-first-frame`, all archived 20 November 2026; what
+closed each is noted under it. The fourth is open.
 
 ## A model larger than the store's ceiling is parsed again at every pose
 
@@ -797,6 +797,25 @@ accepted them as later steps, one at a time.
   transition's end and then at its origin, 320 of a Press's 381 ms and 202
   of a wheel step's 249 ms; the wheel step's first frame begins 0.25 s into
   its 0.4 s. Taken up as the change `draw-a-press-from-its-first-frame`.
+
+- **Closed by `draw-a-press-from-its-first-frame`**, archived 20 November
+  2026, for what the viewer can do. A drawn request's final pose is now
+  judged without being shown, the drawing starts where the scene stands,
+  nothing is rendered inside the press, and the declared duration is counted
+  from the first drawn frame (ADR-064, amendment of 20 November 2026). On
+  this page a Press's click fell from 381 to 192 ms and a wheel step's from
+  249 to 109 ms, with no tree update and no draw call in either. The
+  change's
+  `openspec/changes/archive/2026-11-20-draw-a-press-from-its-first-frame/evidence.md`
+  has the measurement.
+
+- **The wheel step still jumps, and not for this reason.** The Enigma
+  declares each wheel input a whole number and a step moves it by 1; the
+  viewer draws a whole-number input truncated (ADR-064), so the step has no
+  picture between its start and its end. Showing a wheel between two
+  positions takes a model whose wheel input is not a whole number, or a
+  different rule for drawing one. Neither is a viewer finding yet; it is
+  with the pilot.
 
 - **Measured with the first two findings closed.** A right-wheel step's
   press task is 0.30 s against a motion declared at 0.4 s: the first
