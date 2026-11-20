@@ -1,0 +1,559 @@
+--- a/src/expressions.ts	2026-11-20 19:31:36.589529572 +0000
++++ b/src/expressions.ts	2026-11-20 22:50:04.072120441 +0000
+@@ -589,6 +589,10 @@
+   nodeStamp = [];
+   passCounter = 0;
+   lastScope = undefined;
++  passBindings = undefined; passDrivers = undefined; depFor = undefined;
++  depLo = []; depHi = [];
++  unionLo.fill(-1); unionHi.fill(-1);
++  flatFor = undefined; flatValid = false;
+   storeGeneration += 1;
+ }
+ 
+@@ -703,7 +707,9 @@
+   } else if (first === 'profileOverlap' && scope.profiles !== undefined) {
+     value = (...args: number[]) => profileOverlap(scope.profiles!, ...args as [number, number,
+       number, number, number, number, number, number]);
+-  } else if (scope.bindings !== undefined && scope.bindings.has(first)) {
++  } else if (PROTO.cacheBindings && passBindings !== undefined && passBindings.has(first)) {
++    value = valueOf(passBindings.get(first)!, scope);
++  } else if (!PROTO.cacheBindings && scope.bindings !== undefined && scope.bindings.has(first)) {
+     // A binding resolves BEFORE a driver id (D1, the framework's own
+     // rule): a name that is both is a binding, never reported as an
+     // undeclared driver. Its root is a node like any other -- this
+@@ -846,10 +852,470 @@
+   if (scope === lastScope) return;
+   if (lastScope !== undefined && scopesEqual(scope, lastScope)) {
+     lastScope = scope;
++    if (PROTO.cacheBindings) passBindings = scope.bindings;
+     return;
+   }
++  // PROTOTYPE: which inputs differ from the previous pass's scope.
++  const next = PROTO.cacheBindings || PROTO.incremental ? scope.bindings : undefined;
++  let lo = -1; let hi = -1;
++  if (PROTO.incremental && lastScope !== undefined) {
++    if (next !== depFor) {
++      // Another binding table: every dependency set is another document's.
++      depLo = []; depHi = []; depFor = next;
++    } else {
++      [lo, hi] = changedMask(lastScope, scope);
++    }
++  } else if (PROTO.incremental) {
++    depFor = next;
++  }
+   passCounter += 1;
++  flatValid = false;
+   lastScope = scope;
++  passBindings = next;
++  passDrivers = scope.drivers as Record<string, unknown> | undefined;
++  // unionLo[k] = everything that changed in the last k passes.
++  for (let k = HISTORY; k > 1; k -= 1) {
++    unionLo[k] = unionLo[k - 1] | lo; unionHi[k] = unionHi[k - 1] | hi;
++  }
++  unionLo[1] = lo; unionHi[1] = hi;
++  STATS.passes += 1;
++}
++
++// ---------------------------------------------------------------------
++// PROTOTYPE (not for the repository): a node's value survives a new pass
++// when none of the inputs it depends on, through bindings, changed.
++// ---------------------------------------------------------------------
++const PROTO = {
++  incremental: (globalThis as any).__incremental === true,
++  cacheBindings: (globalThis as any).__cacheBindings !== false,
++  verify: (globalThis as any).__verifyIncremental === true,
++};
++const STATS = (globalThis as any).__incrementalStats = {
++  passes: 0, samePass: 0, kept: 0, computed: 0, mismatches: 0, firstMismatch: null as unknown,
++  names: 0, overflow: 0,
++};
++const HISTORY = 8;
++const unionLo: number[] = new Array(HISTORY + 1).fill(-1);
++const unionHi: number[] = new Array(HISTORY + 1).fill(-1);
++let passBindings: ReadonlyMap<string, NodeId> | undefined;
++let passDrivers: Record<string, unknown> | undefined;
++let depFor: ReadonlyMap<string, NodeId> | undefined;
++let depLo: number[] = [];
++let depHi: number[] = [];
++let nameBit = new Map<string, number>();
++const TIME_BIT = 0;
++const PROFILE_BIT = 1;
++let nextBit = 2;
++
++function bitOf(name: string): number {
++  let bit = nameBit.get(name);
++  if (bit === undefined) {
++    bit = nextBit; nextBit += 1; nameBit.set(name, bit); STATS.names = nameBit.size;
++    if (bit >= 64) STATS.overflow += 1;
++  }
++  return bit;
++}
++
++function flatten(map: Record<string, unknown> | undefined, prefix: string,
++                 out: Map<string, unknown>): void {
++  if (map === undefined) return;
++  for (const key of Object.keys(map)) {
++    const value = map[key];
++    if (isPlainObject(value)) flatten(value, `${prefix}${key}.`, out);
++    else out.set(`${prefix}${key}`, value);
++  }
++}
++
++/** The inputs whose values differ between two scopes, as a bit mask; all
++ * bits when the scopes differ in a way no single input accounts for. */
++function changedMask(a: EvalScope, b: EvalScope): [number, number] {
++  let lo = 0; let hi = 0;
++  const set = (bit: number): void => {
++    if (bit < 32) lo |= (1 << bit); else if (bit < 64) hi |= (1 << (bit - 32)); else { lo = -1; hi = -1; }
++  };
++  if (!Object.is(a.time, b.time)) set(TIME_BIT);
++  if (a.profiles !== b.profiles) set(PROFILE_BIT);
++  const before = new Map<string, unknown>(); const after = new Map<string, unknown>();
++  flatten(a.drivers as Record<string, unknown> | undefined, '', before);
++  flatten(b.drivers as Record<string, unknown> | undefined, '', after);
++  if (before.size !== after.size) return [-1, -1];
++  for (const [id, value] of after) {
++    if (!before.has(id)) return [-1, -1];
++    if (!Object.is(before.get(id), value)) {
++      // Every input has its bit BEFORE any dependency set is computed: a
++      // value can be memoized (stamped) long before its dependencies are
++      // first asked for, so a changed input must always be in the mask.
++      set(bitOf(id));
++    }
++  }
++  return [lo, hi];
++}
++
++/** Compute and memoize the inputs node `id` depends on (through bindings). */
++function dependencies(id: NodeId): void {
++  if (depLo[id] !== undefined) return;
++  const node = nodes[id];
++  let lo = 0; let hi = 0;
++  const add = (child: NodeId): void => {
++    dependencies(child); lo |= depLo[child]; hi |= depHi[child];
++  };
++  const set = (bit: number): void => {
++    if (bit < 32) lo |= (1 << bit); else if (bit < 64) hi |= (1 << (bit - 32)); else { lo = -1; hi = -1; }
++  };
++  switch (node.kind) {
++    case 'const': break;
++    case 'name': {
++      const first = node.parts[0];
++      if (first === TIME_ID) set(TIME_BIT);
++      else if (first === 'profileOverlap') set(PROFILE_BIT);
++      else if (passBindings !== undefined && passBindings.has(first)) add(passBindings.get(first)!);
++      else if (passDrivers !== undefined && first in passDrivers) {
++        let value: unknown = passDrivers[first];
++        for (let i = 1; i < node.parts.length; i += 1) value = readMember(value, node.parts[i]);
++        // An owner map, not one input: depends on everything.
++        if (typeof value === 'object' && value !== null) { lo = -1; hi = -1; }
++        else set(bitOf(node.name));
++      } else if (!(first in context)) { lo = -1; hi = -1; }
++      break;
++    }
++    case 'unary': add(node.target); break;
++    case 'binary': add(node.left); add(node.right); break;
++    case 'call': add(node.callee); node.args.forEach(add); break;
++    case 'member': add(node.owner); break;
++    case 'index': add(node.owner); add(node.key); break;
++    case 'ternary': add(node.predicate); add(node.whenTrue); add(node.whenFalse); break;
++    case 'array': node.items.forEach(add); break;
++    case 'object': node.values.forEach(add); break;
++    default: lo = -1; hi = -1;
++  }
++  depLo[id] = lo; depHi[id] = hi;
++}
++
++(globalThis as any).__dependencyHistogram = () => {
++  const names = [...nameBit.entries()];
++  const counts: Record<string, number> = {};
++  let known = 0; let none = 0; let all = 0;
++  for (let id = 0; id < nodes.length; id += 1) {
++    if (depLo[id] === undefined) continue;
++    known += 1;
++    if (depLo[id] === -1 && depHi[id] === -1) { all += 1; continue; }
++    if (depLo[id] === 0 && depHi[id] === 0) { none += 1; continue; }
++    for (const [name, bit] of names) {
++      const has = bit < 32 ? (depLo[id] & (1 << bit)) !== 0 : (depHi[id] & (1 << (bit - 32))) !== 0;
++      if (has) counts[name] = (counts[name] ?? 0) + 1;
++    }
++  }
++  return { nodes: nodes.length, withDependenciesComputed: known, dependOnNothing: none, dependOnEverything: all, dependOn: counts };
++};
++
++// ---------------------------------------------------------------------
++// PROTOTYPE 2 (not for the repository): ONE FLAT PASS. The graph the
++// document's bindings reach is compiled once into a program in dependency
++// order over typed arrays; a pose runs the program in one loop, skipping
++// what no changed input feeds, and `valueOf` then reads the result.
++// Anything the program cannot express stays with the recursive walk.
++// ---------------------------------------------------------------------
++const FLAT = {
++  on: (globalThis as any).__flat !== false,
++  verify: (globalThis as any).__verifyFlat === true,
++};
++const FSTATS = (globalThis as any).__flatStats = {
++  compiles: 0, compileMs: 0, programLength: 0, flatNodes: 0, slowNodes: 0, inputs: 0,
++  runs: 0, aborted: 0, recomputed: 0, runMs: 0, compared: 0, mismatches: 0,
++  firstMismatch: null as unknown, slowKinds: {} as Record<string, number>,
++};
++const OP_CONST = 0, OP_INPUT = 1, OP_ALIAS = 2, OP_NEG = 3, OP_POS = 4, OP_NOT = 5,
++  OP_ADD = 10, OP_SUB = 11, OP_MUL = 12, OP_DIV = 13, OP_MOD = 14,
++  OP_LE = 15, OP_GE = 16, OP_LT = 17, OP_GT = 18, OP_EQ = 19, OP_NE = 20,
++  OP_AND = 21, OP_OR = 22, OP_MAX2 = 30, OP_MIN2 = 31, OP_ABS = 32, OP_SQRT = 33,
++  OP_CALL1 = 40, OP_CALL2 = 41, OP_CALL3 = 42, OP_CALLN = 43;
++const BINARY_OPS: Record<string, number> = {
++  '+': OP_ADD, '-': OP_SUB, '*': OP_MUL, '/': OP_DIV, '%': OP_MOD,
++  '<=': OP_LE, '>=': OP_GE, '<': OP_LT, '>': OP_GT, '==': OP_EQ, '!=': OP_NE,
++  '&&': OP_AND, '||': OP_OR,
++};
++let flatFor: ReadonlyMap<string, NodeId> | undefined;
++let flatGeneration = -1;
++let flatValid = false;
++let flatFirstRun = true;
++let flatKind = new Uint8Array(0);
++let num = new Float64Array(0);
++let progLen = 0;
++let progOp = new Uint8Array(0);
++let progDst = new Int32Array(0);
++let progA = new Int32Array(0);
++let progB = new Int32Array(0);
++let progC = new Int32Array(0);
++let progLo = new Int32Array(0);
++let progHi = new Int32Array(0);
++let progFn: (((...args: number[]) => number) | null)[] = [];
++let progArgs: (Int32Array | null)[] = [];
++let inputIds: number[] = [];
++let inputParts: (readonly string[])[] = [];
++let inputBit: number[] = [];
++let timeIds: number[] = [];
++
++function compileFlat(scope: EvalScope, bindings: ReadonlyMap<string, NodeId>): void {
++  const began = performance.now();
++  const count = nodes.length;
++  flatKind = new Uint8Array(count);
++  num = new Float64Array(count);
++  const lo = new Int32Array(count); const hi = new Int32Array(count);
++  const opOf = new Uint8Array(count);
++  const aOf = new Int32Array(count); const bOf = new Int32Array(count); const cOf = new Int32Array(count);
++  const fnOf = new Map<number, (...args: number[]) => number>();
++  const argsOf = new Map<number, Int32Array>();
++  const order: number[] = [];
++  inputIds = []; inputParts = []; inputBit = []; timeIds = [];
++  const drivers = scope.drivers as Record<string, unknown> | undefined;
++  const bits = new Map<string, number>(); let nextInputBit = 1;
++  const slowKinds: Record<string, number> = {};
++  let slow = 0;
++
++  const childrenOf = (id: number): readonly number[] => {
++    const node = nodes[id];
++    switch (node.kind) {
++      case 'name': {
++        const root = node.parts.length === 1 ? bindings.get(node.parts[0]) : undefined;
++        return root === undefined ? [] : [root];
++      }
++      case 'unary': return [node.target];
++      case 'binary': return [node.left, node.right];
++      case 'call': return node.args;
++      case 'member': return [node.owner];
++      case 'index': return [node.owner, node.key];
++      case 'ternary': return [node.predicate, node.whenTrue, node.whenFalse];
++      case 'array': return node.items;
++      case 'object': return node.values;
++      default: return [];
++    }
++  };
++
++  const finish = (id: number): void => {
++    const node = nodes[id];
++    let ok = true; let op = OP_CONST; let mlo = 0; let mhi = 0;
++    const use = (child: number): void => {
++      if (flatKind[child] !== 1) ok = false;
++      mlo |= lo[child]; mhi |= hi[child];
++    };
++    const setBit = (bit: number): void => {
++      if (bit < 32) mlo |= (1 << bit); else if (bit < 64) mhi |= (1 << (bit - 32)); else { mlo = -1; mhi = -1; }
++    };
++    switch (node.kind) {
++      case 'const':
++        if (typeof node.value === 'number') num[id] = node.value; else ok = false;
++        break;
++      case 'name': {
++        const first = node.parts[0];
++        if (first === TIME_ID) {
++          if (node.parts.length === 1) { op = OP_INPUT; timeIds.push(id); setBit(0); } else ok = false;
++        } else if (first === 'profileOverlap') {
++          ok = false;
++        } else if (bindings.has(first)) {
++          if (node.parts.length === 1) { const root = bindings.get(first)!; use(root); op = OP_ALIAS; aOf[id] = root; }
++          else ok = false;
++        } else if (drivers !== undefined && first in drivers) {
++          let value: unknown = drivers[first];
++          for (let i = 1; i < node.parts.length && ok; i += 1) {
++            if (typeof value !== 'object' || value === null) ok = false;
++            else value = (value as Record<string, unknown>)[node.parts[i]];
++          }
++          if (ok && typeof value === 'number') {
++            let bit = bits.get(node.name);
++            if (bit === undefined) { bit = nextInputBit; nextInputBit += 1; bits.set(node.name, bit); }
++            op = OP_INPUT; inputIds.push(id); inputParts.push(node.parts); inputBit.push(bit); setBit(bit);
++          } else ok = false;
++        } else ok = false;
++        break;
++      }
++      case 'unary':
++        use(node.target); aOf[id] = node.target;
++        if (node.op === '-') op = OP_NEG; else if (node.op === '+') op = OP_POS;
++        else if (node.op === '!') op = OP_NOT; else ok = false;
++        break;
++      case 'binary': {
++        use(node.left); use(node.right); aOf[id] = node.left; bOf[id] = node.right;
++        const code = BINARY_OPS[node.op];
++        if (code === undefined) ok = false; else op = code;
++        break;
++      }
++      case 'call': {
++        const callee = nodes[node.callee];
++        if (callee.kind !== 'name' || callee.parts.length !== 1 || callee.name === 'profileOverlap'
++            || callee.name === TIME_ID || bindings.has(callee.name)
++            || (drivers !== undefined && callee.name in drivers) || !(callee.name in context)
++            || typeof context[callee.name] !== 'function') { ok = false; break; }
++        node.args.forEach(use);
++        const fn = context[callee.name] as (...args: number[]) => number;
++        const args = node.args;
++        if (fn === Math.max && args.length === 2) { op = OP_MAX2; aOf[id] = args[0]; bOf[id] = args[1]; }
++        else if (fn === Math.min && args.length === 2) { op = OP_MIN2; aOf[id] = args[0]; bOf[id] = args[1]; }
++        else if (fn === Math.abs && args.length === 1) { op = OP_ABS; aOf[id] = args[0]; }
++        else if (fn === Math.sqrt && args.length === 1) { op = OP_SQRT; aOf[id] = args[0]; }
++        else if (args.length === 1) { op = OP_CALL1; aOf[id] = args[0]; fnOf.set(id, fn); }
++        else if (args.length === 2) { op = OP_CALL2; aOf[id] = args[0]; bOf[id] = args[1]; fnOf.set(id, fn); }
++        else if (args.length === 3) { op = OP_CALL3; aOf[id] = args[0]; bOf[id] = args[1]; cOf[id] = args[2]; fnOf.set(id, fn); }
++        else { op = OP_CALLN; fnOf.set(id, fn); argsOf.set(id, Int32Array.from(args)); }
++        break;
++      }
++      default:
++        ok = false;
++    }
++    if (!ok) { slow += 1; slowKinds[node.kind] = (slowKinds[node.kind] ?? 0) + 1; return; }
++    flatKind[id] = 1; opOf[id] = op; lo[id] = mlo; hi[id] = mhi;
++    if (op !== OP_CONST && op !== OP_INPUT) order.push(id);
++  };
++
++  // Iterative postorder from every binding root: a child, and the root a
++  // binding name stands for, is always finished before what reads it.
++  const state = new Uint8Array(count);
++  const stackId: number[] = []; const stackAt: number[] = [];
++  for (const root of bindings.values()) {
++    if (state[root] !== 0) continue;
++    stackId.push(root); stackAt.push(0); state[root] = 1;
++    while (stackId.length > 0) {
++      const top = stackId.length - 1;
++      const id = stackId[top];
++      const children = childrenOf(id);
++      const at = stackAt[top];
++      if (at < children.length) {
++        stackAt[top] = at + 1;
++        const child = children[at];
++        if (state[child] === 0) { state[child] = 1; stackId.push(child); stackAt.push(0); }
++      } else {
++        stackId.pop(); stackAt.pop(); state[id] = 2; finish(id);
++      }
++    }
++  }
++
++  progLen = order.length;
++  progOp = new Uint8Array(progLen); progDst = new Int32Array(progLen);
++  progA = new Int32Array(progLen); progB = new Int32Array(progLen); progC = new Int32Array(progLen);
++  progLo = new Int32Array(progLen); progHi = new Int32Array(progLen);
++  progFn = new Array(progLen).fill(null); progArgs = new Array(progLen).fill(null);
++  for (let i = 0; i < progLen; i += 1) {
++    const id = order[i];
++    progDst[i] = id; progOp[i] = opOf[id]; progA[i] = aOf[id]; progB[i] = bOf[id]; progC[i] = cOf[id];
++    progLo[i] = lo[id]; progHi[i] = hi[id];
++    progFn[i] = fnOf.get(id) ?? null; progArgs[i] = argsOf.get(id) ?? null;
++  }
++  flatFor = bindings; flatGeneration = storeGeneration; flatFirstRun = true;
++  let flat = 0; for (let id = 0; id < count; id += 1) flat += flatKind[id];
++  FSTATS.compiles += 1; FSTATS.compileMs += performance.now() - began;
++  FSTATS.programLength = progLen; FSTATS.flatNodes = flat; FSTATS.slowNodes = slow;
++  FSTATS.inputs = inputIds.length; FSTATS.slowKinds = slowKinds;
++}
++
++function runFlat(scope: EvalScope): boolean {
++  const drivers = scope.drivers as Record<string, unknown> | undefined;
++  let clo = 0; let chi = 0;
++  for (let i = 0; i < inputIds.length; i += 1) {
++    const parts = inputParts[i];
++    let value: unknown = drivers === undefined ? undefined : drivers[parts[0]];
++    for (let k = 1; k < parts.length; k += 1) {
++      if (typeof value !== 'object' || value === null) { value = undefined; break; }
++      value = (value as Record<string, unknown>)[parts[k]];
++    }
++    if (typeof value !== 'number') return false;   // another shape of scope: not this program's
++    const id = inputIds[i];
++    if (flatFirstRun || !Object.is(value, num[id])) {
++      num[id] = value;
++      const bit = inputBit[i];
++      if (bit < 32) clo |= (1 << bit); else if (bit < 64) chi |= (1 << (bit - 32)); else { clo = -1; chi = -1; }
++    }
++  }
++  for (const id of timeIds) {
++    if (flatFirstRun || !Object.is(scope.time, num[id])) { num[id] = scope.time; clo |= 1; }
++  }
++  if (flatFirstRun) { clo = -1; chi = -1; }
++  let recomputed = 0;
++  if ((clo | chi) !== 0) {
++    for (let i = 0; i < progLen; i += 1) {
++      if (((progLo[i] & clo) | (progHi[i] & chi)) === 0 && !flatFirstRun) continue;
++      const d = progDst[i]; const a = progA[i];
++      switch (progOp[i]) {
++        case OP_ALIAS: num[d] = num[a]; break;
++        case OP_NEG: num[d] = -1 * num[a]; break;
++        case OP_POS: num[d] = +num[a]; break;
++        case OP_NOT: num[d] = num[a] ? 0 : 1; break;
++        case OP_ADD: num[d] = num[a] + num[progB[i]]; break;
++        case OP_SUB: num[d] = num[a] - num[progB[i]]; break;
++        case OP_MUL: num[d] = num[a] * num[progB[i]]; break;
++        case OP_DIV: num[d] = num[a] / num[progB[i]]; break;
++        case OP_MOD: num[d] = num[a] % num[progB[i]]; break;
++        case OP_LE: num[d] = num[a] <= num[progB[i]] ? 1 : 0; break;
++        case OP_GE: num[d] = num[a] >= num[progB[i]] ? 1 : 0; break;
++        case OP_LT: num[d] = num[a] < num[progB[i]] ? 1 : 0; break;
++        case OP_GT: num[d] = num[a] > num[progB[i]] ? 1 : 0; break;
++        // eslint-disable-next-line eqeqeq
++        case OP_EQ: num[d] = num[a] == num[progB[i]] ? 1 : 0; break;
++        // eslint-disable-next-line eqeqeq
++        case OP_NE: num[d] = num[a] != num[progB[i]] ? 1 : 0; break;
++        case OP_AND: { const x = num[a]; num[d] = x ? num[progB[i]] : x; break; }
++        case OP_OR: { const x = num[a]; num[d] = x ? x : num[progB[i]]; break; }
++        case OP_MAX2: num[d] = Math.max(num[a], num[progB[i]]); break;
++        case OP_MIN2: num[d] = Math.min(num[a], num[progB[i]]); break;
++        case OP_ABS: num[d] = Math.abs(num[a]); break;
++        case OP_SQRT: num[d] = Math.sqrt(num[a]); break;
++        case OP_CALL1: num[d] = progFn[i]!(num[a]); break;
++        case OP_CALL2: num[d] = progFn[i]!(num[a], num[progB[i]]); break;
++        case OP_CALL3: num[d] = progFn[i]!(num[a], num[progB[i]], num[progC[i]]); break;
++        case OP_CALLN: { const ids = progArgs[i]!; const args: number[] = [];
++          for (let k = 0; k < ids.length; k += 1) args.push(num[ids[k]]);
++          num[d] = progFn[i]!(...args); break; }
++        default: break;
++      }
++      recomputed += 1;
++    }
++  }
++  flatFirstRun = false;
++  FSTATS.recomputed += recomputed;
++  return true;
++}
++
++/** Called by a pose (`WidgetTree.update`, `admit`) before it evaluates
++ * anything: run the flat program for this pass's scope. */
++export function preparePose(scope: EvalScope): void {
++  if (!FLAT.on) return;
++  ensurePass(scope);
++  if (flatValid) return;
++  const bindings = passBindings;
++  if (bindings === undefined || bindings.size === 0) return;
++  if (flatFor !== bindings || flatGeneration !== storeGeneration) compileFlat(scope, bindings);
++  const began = performance.now();
++  flatValid = runFlat(scope);
++  FSTATS.runs += 1; FSTATS.runMs += performance.now() - began;
++  if (!flatValid) { FSTATS.aborted += 1; return; }
++  if (FLAT.verify) {
++    // Every value the program holds, against the recursive walk's.
++    flatValid = false;
++    for (let i = 0; i < progLen; i += 1) {
++      const id = progDst[i];
++      const walked = valueOf(id, scope);
++      const want = typeof walked === 'number' ? walked : Number(walked);
++      FSTATS.compared += 1;
++      if (!Object.is(want, num[id])) {
++        FSTATS.mismatches += 1;
++        if (FSTATS.firstMismatch === null) {
++          FSTATS.firstMismatch = { id, kind: nodes[id].kind, op: progOp[i], walked: String(walked), flat: String(num[id]) };
++        }
++      }
++    }
++    flatValid = true;
++  }
++}
++
++function sameValue(a: unknown, b: unknown): boolean {
++  if (Object.is(a, b)) return true;
++  if (typeof a === 'function' && typeof b === 'function') return true;
++  if (Array.isArray(a) && Array.isArray(b)) {
++    return a.length === b.length && a.every((item, i) => sameValue(item, b[i]));
++  }
++  if (isPlainObject(a) && isPlainObject(b)) {
++    const keys = Object.keys(a);
++    return keys.length === Object.keys(b).length && keys.every((key) => sameValue(a[key], b[key]));
++  }
++  return false;
+ }
+ 
+ function compute(id: NodeId, scope: EvalScope): unknown {
+@@ -909,11 +1375,35 @@
+  * `undefined` or `NaN` memoizes correctly. */
+ export function valueOf(id: NodeId, scope: EvalScope): unknown {
+   ensurePass(scope);
+-  if (nodeStamp[id] === passCounter) return nodeValue[id];
++  if (flatValid && id < flatKind.length && flatKind[id] === 1) return num[id];
++  const stamp = nodeStamp[id];
++  if (stamp === passCounter) { STATS.samePass += 1; return nodeValue[id]; }
++  if (PROTO.incremental && stamp !== undefined) {
++    const age = passCounter - stamp;
++    if (age <= HISTORY) {
++      dependencies(id);
++      if (((depLo[id] & unionLo[age]) | (depHi[id] & unionHi[age])) === 0) {
++        if (PROTO.verify) {
++          const again = compute(id, scope);
++          if (!sameValue(again, nodeValue[id])) {
++            STATS.mismatches += 1;
++            if (STATS.firstMismatch === null) {
++              STATS.firstMismatch = { id, kind: nodes[id].kind, kept: String(nodeValue[id]), fresh: String(again), age };
++            }
++            nodeValue[id] = again;
++          }
++        }
++        nodeStamp[id] = passCounter;
++        STATS.kept += 1;
++        return nodeValue[id];
++      }
++    }
++  }
+   const result = compute(id, scope);
+   nodeValue[id] = result;
+   nodeStamp[id] = passCounter;
+   resolutions += 1;
++  STATS.computed += 1;
+   return result;
+ }
+ 
+--- a/src/tree.ts	2026-11-20 22:22:55.381040046 +0000
++++ b/src/tree.ts	2026-11-20 22:50:16.092523317 +0000
+@@ -16,7 +16,7 @@
+ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+ import { ManifestColor, ManifestMarking, ManifestNode, RawOperation } from './types';
+ import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
+-import { bindingRootsEqual, withExpressions } from './expressions';
++import { bindingRootsEqual, preparePose, withExpressions } from './expressions';
+ import { BindingTable, EMPTY_BINDINGS } from './bindings';
+ import { FlexibleShape } from './flexible';
+ import { admitGeometry, GeometryBatch, GeometryOwner } from './geometry-admission';
+@@ -714,6 +714,7 @@
+   // free variables none of it touches keeps the matrix it has.
+   update(scope: EvalScope, changed: Changed = 'all'): void {
+     withExpressions(() => {
++      preparePose(scope);
+       // A clocked request poses BEFORE assigning its bank. Prepare every
+       // affected transform before touching the scene, so a later sibling's
+       // domain error cannot leave an earlier sibling at the refused bank.
+@@ -741,6 +742,7 @@
+    * judged here: the drawing shows it when it lands. */
+   admit(scope: EvalScope, changed: Changed = 'all'): void {
+     withExpressions(() => {
++      preparePose(scope);
+       this.prepareTransforms(scope, changed, [], undefined, false, []);
+       this.admitShapes(scope, changed);
+     });

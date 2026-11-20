@@ -693,7 +693,8 @@ a GPU takes to draw the scene.
 `keep-a-live-model-parsed`, the second by
 `rebuild-only-changed-flexible-parts` and the third by
 `draw-a-press-from-its-first-frame`, all archived 20 November 2026; what
-closed each is noted under it. The fourth is open.
+closed each is noted under it. The drawing load and the formula evaluation
+below are open.
 
 ## A model larger than the store's ceiling is parsed again at every pose
 
@@ -821,6 +822,38 @@ closed each is noted under it. The fourth is open.
   press task is 0.30 s against a motion declared at 0.4 s: the first
   animation frame begins 0.30 s after the click and the next one lands the
   step, so it still shows its start and its end.
+
+## A moved input recomputes the whole formula graph, node by node
+
+- **Symptom.** With the three findings above closed, a frame of a key press
+  is still about 0.2 s of script, about half of it in evaluating formulas:
+  about 540,000 node values a pass.
+
+- **Cause.** Of the document's 546,768 expression nodes, 518,888 depend on
+  `operation.press` and about 507,000 on the press, the selected key, the
+  stage and all three rotor positions at once; 16 to 21 depend on the flap,
+  the hood or the case. The bindings are 214,278 small arithmetic steps with
+  no construct that skips a case (32,568 `max`, 13,240 `abs`, 2,757
+  comparisons used as gates). `valueOf` computes them by a recursive,
+  memoized walk, one call and one stamp per node.
+
+- **Two prototypes** (`evidence/enigma-formula-evaluation-2026-11-20.md`,
+  with the patch beside it). Keeping a value whose inputs did not change is
+  correct and does not pay: there is almost nothing a moved input does not
+  feed. Compiling the graph once into a flat program over typed arrays, run
+  in one loop before a pose, does: a run costs about 4 ms where the walk
+  costs about 100, a key press frame went from 187 to 111 ms and showed 19
+  pictures in its two seconds instead of 11, and 30.6 million values
+  compared with the walk's showed no mismatch.
+
+- **Taken up** as the change `evaluate-a-pose-in-one-flat-pass`, on the
+  pilot's "yes, go" of 20 November 2026.
+
+- **Not the viewer's.** That the graph is this large, and that every case of
+  a piecewise law is computed and gated, is how the framework writes the
+  model's laws. A construct that selects one case would shrink the graph,
+  the document and the load; it is a framework matter and is not recorded
+  as a finding there.
 
 ## Every part has its own geometry and material, and an idle page draws all of it every frame
 
