@@ -754,6 +754,13 @@ later steps, one at a time.
 - **Limit of the evidence.** That the other parts received identical vertex
   data was reasoned from the model and not compared.
 
+- **Compared.** With the first finding closed, the refilled parts' vertex
+  data was compared from frame to frame
+  (`evidence/enigma-flexible-refills-2026-11-20.md`). A Press refills 86
+  parts of which 9 change, 2.33 of 8.47 million triangles; a wheel step and
+  the selection of a different key refill the same 86 of which none
+  changes. Taken up as the change `rebuild-only-changed-flexible-parts`.
+
 - **Seen without any motion.** Measured with the first finding closed:
   selecting a different key (`Key B`, an instruction of no duration) moves no
   mesh and refills the same 86 parts, in a press task of 0.37 to 0.44 s;
@@ -788,6 +795,12 @@ later steps, one at a time.
   script share is separated out; the GPU share on the pilot's hardware is
   not known.
 
+- **On the pilot's hardware, 20 November 2026.** With the first finding
+  closed, the pilot reports from a browser with a GPU that "the case, flap
+  and hood go smooth now". At this scene's size the GPU is therefore not
+  what limits those instructions there. No frame time was measured on that
+  machine, and nothing is known about a weaker one.
+
 - **Not the viewer's.** How many triangles a part has is the model's
   declaration: 28.3 of the 44.8 million are flexible parts, 19.1 million of
   them in 104 springs declared as 24-sided sweeps through 960 points. That
@@ -798,3 +811,8 @@ later steps, one at a time.
   density for its checks, its printed piece and its picture alike, so the
   model cannot simply declare less. What to do about that is with the pilot
   and is not a recorded finding yet.
+
+- **Deferred by the pilot, 20 November 2026.** "I want to defer anything
+  that reduces the resolution of the pieces." Nothing that lowers a part's
+  mesh density or a flexible part's sampling, for the picture or otherwise,
+  is to be proposed from this section until the pilot reopens it.

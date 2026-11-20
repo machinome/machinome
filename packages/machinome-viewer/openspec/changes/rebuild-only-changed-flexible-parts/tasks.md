@@ -1,0 +1,33 @@
+## 1. Establish the cycle
+
+- [x] 1.1 (Reviewer) Review proposal, design and delta adversarially against the six recorded attack points, record the outcome in `proposal.md`, run `openspec validate rebuild-only-changed-flexible-parts --strict`, and make the planning-only commit on `rebuild-only-changed-flexible-parts` above `69cf7a3f9d002c65429c9de064bc61a38af4d9ef`, carrying `workflow/warts.md` and `workflow/evidence/enigma-flexible-refills-2026-11-20.md` with the change.
+- [ ] 1.2 (Applier) Verify the worktree is clean, exactly one commit above the recorded base, and that the change validates strictly. Work from `packages/machinome-viewer/machinome/viewer/web/widget/`; the bench's `node_modules` at the worktree root resolves the widget's imports. Run a single test file as `/home/asa/devel/machinome/machinome/node_modules/.bin/vitest run <file>`, one at a time, never in parallel; never run `npm ci`, `npm install` or `scripts/check-dist`.
+
+## 2. Prove the skip red
+
+- [ ] 2.1 Before relying on them, check with `evalExpr` the values design Decision 5 states for each test expression (A's `min` form, D's throwing and `NaN` member reads, E's `NaN`, H's `-0`); replace any expression that does not give its stated value with one that does, and record the replacement in `evidence.md`.
+- [ ] 2.2 In `flexible.test.ts`, add design tests A (a changed name that leaves every value as it was, then a change of value), B (two parts reached by one name, one of which changes), C (an update of everything at unchanged values), D (a parameter expression that throws part-way through the list, then the standing values) and E (`NaN` stays `NaN`). Count molejo calls with the existing spy, read the position attribute's `version`, and count bounds passes with `vi.spyOn` on the part's `geometry.computeBoundingBox` and `computeBoundingSphere`. Run the file on the base source and keep the failing output: each of A to E must fail on a molejo-call count (or, for B, also a version), not on a fixture, parse or setup error. A's second half (the change of value rebuilds) must pass on the base.
+
+## 3. Remember what the buffers were built from
+
+- [ ] 3.1 In `flexible.ts`, implement design Decision 1: a private `built: number[] | undefined` with a comment stating the invariant; `evaluate` evaluates every parameter into a fresh array, returns without writing when the buffers exist and `built` has the same length and is equal by `Object.is` at every position, and otherwise sets `built = undefined`, builds the `{name: value}` record, calls molejo, attaches the buffers on the first call, sets `needsUpdate`, computes the bounds and sets `built` last; `rebind` sets `built = undefined`. Update the module comment and the `evaluate` docstring to say a reached part is rebuilt only when a value moved. Do not change `tree.ts`. Run `flexible.test.ts` green.
+
+## 4. Prove the rebuilds the skip must not swallow
+
+- [ ] 4.1 Add design tests F (a refused molejo evaluation, simulated by one spy call that writes `NaN` into the given `positions` and throws, followed by the standing values: one molejo call and the mount's positions again), G (a reconcile to the same spec with different expression text of equal value, then an update reaching the part: one molejo call) and H (`-0` against `0` in an unreferenced parameter: one molejo call). They pass on the base. Show each red against the implementation with its own guard removed (F: the `built = undefined` before the molejo call; G: the forgetting in `rebind`; H: `Object.is` replaced by `===`), restore the guard, and keep the failing output.
+- [ ] 4.2 Confirm that every existing test listed in design Decision 6 passes unmodified. If one cannot hold as written, stop and report it instead of rewriting it.
+
+## 5. Gate and build
+
+- [ ] 5.1 Run, one at a time, from the widget directory: `flexible.test.ts`, `parity-fixture.test.ts` and `color.test.ts` singly, then the whole widget suite (`vitest run`) and the typecheck (`tsc --noEmit`). Report every failure and skip with its reason.
+- [ ] 5.2 Build the bundle with `npm run build` in the widget directory, record its SHA256, then run the viewer's Python suite (`packages/machinome-viewer/tests`) on the bench's own venv. Report every failure and every skip with its stated reason; a browser test skipped for a missing Chromium or Playwright is reported as skipped, not as passed.
+
+## 6. Record the evidence
+
+- [ ] 6.1 (Applier) Write `evidence.md` in the change: the red outputs of 2.2 and 4.1, any expression replaced under 2.1, the per-test counts of molejo calls, version changes and bounds passes, the bundle's SHA256, and the gate's results with skips and their reasons.
+- [ ] 6.2 (Reviewer, not the applier) Validate on the originating project, the Enigma I page (`enigma-i` at `081f4e6`, `_build-page/`, manifest SHA256 `a8769deec38e3fbf0dca2b826ef4b7779d29d2137ad7977e2f34ed9d58326fc0`), with a build of the bench's source, by `workflow/evidence/enigma-flexible-refills-2026-11-20.md`'s method (position-attribute versions and sampled position sums between animation frames, draw calls counted and not executed, each instruction pressed by `element.click()`). Expectations, stated as expectations and not as promises: selecting a different key, and stepping the left or middle wheel, refills no flexible part; a right-wheel step refills no part except possibly `Enigma/stepping/detent_returns/right`, whose parameter values move by rounding while its data does not (design Decision 2); a key press refills only parts whose parameter values change, which the sampled comparison may count as unchanged where the change is below its resolution. Record the refills per frame, the triangles refilled, the script per frame and the press tasks in `evidence.md`, with their limits. The applier does not open this page.
+
+## 7. Record and archive
+
+- [ ] 7.1 Add one CHANGELOG bullet under "Unreleased" in `packages/machinome-viewer/CHANGELOG.md`: a flexible part reached by a changed input is rebuilt only when one of its parameter values moved, so a part whose values stand keeps its geometry with no evaluation, upload or bounds pass; viewer API 30 and document versions 1 through 14 are unchanged.
+- [ ] 7.2 Sync the delta to `openspec/specs/viewer-package/spec.md`, archive the change with the supported OpenSpec command, validate, and make the single implementation commit containing source, tests, CHANGELOG, evidence and the archived record; verify two-commit ancestry above the recorded base. No decision record is added unless the reviewer's review of the implementation asks for an ADR-043 amendment (design, "Decision record"). Integration into `main`, pushing and publication remain the pilot's.

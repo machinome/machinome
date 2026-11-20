@@ -1,0 +1,33 @@
+## Why
+
+The viewer rebuilds a flexible part on every frame in which a name its parameter expressions read has changed, whether or not any parameter took a new value: `tree.ts`'s `updateShapes` calls `FlexibleShape.evaluate` when `touchedBy(this.flexible.free, changed)`, and `evaluate` runs the molejo evaluator over the whole part, marks the position attribute for upload and recomputes the bounding box and sphere. On the Enigma I page (`enigma-i` at `081f4e6`, a clocked machine with 426 flexible parts), measured script-only, a wheel step and the selection of a different key each rebuild 86 flexible parts, 8.47 million triangles, of which none changes; a key press rebuilds the same 86, of which 9 change over the instruction. A wheel step's frames cost 175 to 183 ms of script, so a 0.4 s step shows its start and its end; an instruction that rebuilds nothing costs about 30 ms a frame on the same page (`workflow/warts.md`, "A flexible part is rebuilt when a changed name reaches it, whatever its values"; `workflow/evidence/enigma-flexible-refills-2026-11-20.md`).
+
+## What Changes
+
+- A flexible part remembers the parameter values its present vertex data was built from. When a changed name reaches it, its parameters are evaluated as today; if every value is the same as the remembered one, by `Object.is`, the part keeps its buffers: no molejo evaluation, no upload, no bounds pass. Any difference, a first evaluation, or a part with nothing remembered rebuilds it as today.
+- The remembered values are forgotten before the molejo evaluator is called and recorded only after the buffers and bounds are written, and they are forgotten when `rebind` points the part at new expressions or a new bindings table. They therefore never describe anything but the vertex data on the part.
+- Which parts are reached is unchanged: the dependency rule (`touchedBy` over the closed free-variable set) still decides which parts have their parameters evaluated, and a driver no parameter reads still costs a part nothing.
+- New red-first tests in `flexible.test.ts` count the work that is skipped and the work that is done (molejo calls, position-attribute versions, bounds passes) for a changed name that leaves the values as they were, two parts reached by one name of which one changes, an update of everything at unchanged values, and a parameter expression that throws part-way through the list; further tests pin the rebuild after a refused molejo evaluation, after a `rebind`, and for `-0` against `0`.
+- Evaluation, refusals, the dependency sets, the buffers' allocation and reuse, the parity seam and everything a rebuilt part draws are unchanged.
+
+## Capabilities
+
+### New Capabilities
+
+None.
+
+### Modified Capabilities
+
+- `viewer-package`: "The viewer evaluates flexible geometry per frame" adds to its bound on re-evaluation that a part reached by a changed input is rebuilt only when a parameter value differs from the one its present geometry was built from, and adds scenarios for a changed input that leaves every value as it was and for two parts reached by one input of which one changes. Its existing scenarios are restated unchanged.
+
+## Impact
+
+- Source: `packages/machinome-viewer/machinome/viewer/web/widget/src/flexible.ts` (`FlexibleShape.evaluate` and `rebind`, one private field) and its tests in `flexible.test.ts`. `tree.ts` is not expected to change.
+- Interfaces: viewer API stays 30 (`machinomeViewerApi` in the widget's `package.json`) and the document versions read stay 1 to 14 (`machinomeDocumentVersions`). No dependency, document field, host option, published name or exported widget function changes.
+- Cost left behind: a part reached by a changed name still has its parameters evaluated. On the Enigma's 86 parts that is 36,415 parameter expressions a frame, measured in Node at a median of 7.6 ms against 324 ms for the same parts' full rebuild (design, Decision 4). The design accepts it.
+- Records: a CHANGELOG bullet under "Unreleased". No decision record is expected (design, "Decision record").
+- What the originating project does with the result: the Enigma page is measured again with the bench's source by the evidence file's method, by the reviewer. Expected, not promised: selecting a different key and stepping the left or middle wheel rebuild no flexible part; a right-wheel step may rebuild one part, `Enigma/stepping/detent_returns/right`, whose parameter values change by rounding while its vertex data does not (design, Decision 2); a key press rebuilds only parts whose parameter values change. The finding's other neighbours in the same warts section (the press path's two draws, the idle drawing load) and anything that lowers resolution or sampling are not addressed here.
+
+Standalone viewer cycle in the registered framework worktree `machinome/WTs/rebuild-only-changed-flexible-parts`, branch `rebuild-only-changed-flexible-parts`, based on framework `main` at `69cf7a3f9d002c65429c9de064bc61a38af4d9ef`. On 20 November 2026 the pilot accepted five steps for the Enigma's rendering, of which this is the second, and, shown the measurement above and told this was the next improvement, answered: "go". The division of work is the pilot's from the first step: "use Opus 5.5 to propose, to apply, do adversarial review yourself." That is advance authorization for proposal and implementation of this change, with the repository agent's adversarial review as the gate. It is agent review under advance authority, not a human review of the finished artifacts. It does not authorize integration into `main`, a push, publication or contact; those remain the pilot's.
+
+Review, 20 November 2026. The repository agent reviewed the proposal, the design and the delta against six recorded attack points and against the source of `flexible.ts` and `tree.ts`, and approved proceeding to implementation without a revision. It accepts three things the design states as costs: a part whose parameter values move only by rounding is rebuilt although its data would not change, because anything looser than exact equality of inputs could draw a shape the expressions do not describe; the parameters of a reached part are still evaluated on every such frame; and a refusal that comes from a flexible part still leaves the rigid parts posed at the refused candidate, a gap that existed before this change and that the applier records as found and out of scope. The originating measurement counted parts as changed by sampling their vertex data, so its "none changes" for a wheel step is a statement about the two poses that were drawn, the start and the end; the frames between them, which this change is expected to make visible, may move parts that really flex.
