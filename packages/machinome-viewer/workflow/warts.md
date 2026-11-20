@@ -677,3 +677,97 @@ omits it, and that is recorded in Videomaker's log instead.
   Either the mount should wrap its own relatively placed element instead
   of restyling the host, or the manual should state that a host is
   positioned by the mount; which is the pilot's.
+
+# Enigma I (2026-11-20, pressing a button on the machine's page)
+
+Found while answering the pilot's "I'd like to press a button and see things
+moving, but everything freezes during movement and I only see a change from
+initial to final", on the project's own page (`enigma-i` at `081f4e6`,
+`_build-page/`, viewer `3d1fdfa8`). The measurements, their method and their
+limits are in `evidence/enigma-press-script-cost-2026-11-20.md`. They time
+script with every draw call skipped, because the measuring host has no GPU
+and the pilot's browser has one: nothing below is a statement about how long
+a GPU takes to draw the scene.
+
+**Status: recorded.** The first finding is taken up as the change
+`keep-a-live-model-parsed`. The other three are open; the pilot has accepted
+them as later steps, one at a time.
+
+## A model larger than the store's ceiling is parsed again at every pose
+
+- **Symptom.** A press takes 4.6 to 7.2 s of script before the first frame
+  and 1.7 to 3.6 s for each frame after it, so an instruction declared at
+  0.4 to 4 s shows its start and its end and nothing between. An instruction
+  that moves nothing (`Key A`) still takes 2.4 s.
+
+- **Cause.** `expressions.ts`'s `withExpressions` empties the store whenever
+  it holds `EXPRESSION_LIMITS.nodes` (125,000) or more at the start of an
+  outermost operation. The Enigma's document holds 546,768 nodes, so the
+  store is emptied before every pose and every request, and `bindings.ts`'s
+  `roots()` prepares all 214,278 entries again, about 2.3 s each time. The
+  comment on `withExpressions` says the threshold "is headroom for obsolete
+  work, not a limit on one live document's working set"; the test it applies
+  cannot tell the two apart.
+
+- **Confirmed by removing it.** With the ceiling set above the document, and
+  nothing else changed, the same presses took 65 to 900 ms and the flap and
+  hood drew 29 and 80 pictures instead of 2. The heap grew by about 30 MB of
+  1.9 GB.
+
+- **Third meeting.** `retain-large-expression-working-set` (22 September)
+  raised the ceiling from 50,000 to 125,000 for the Curta's 102,690 and
+  wrote that "a later concrete project may justify a different policy".
+  `mount-voron-export` (5 October) met 483,728 nodes, protected validation
+  instead, and wrote that raising the trigger "would fit this printer by
+  accident and conceal the same failure for the next larger supported
+  document". By this cause every pose of the mounted Voron pays the same
+  re-parse; that was not timed here.
+
+## A flexible part is rebuilt when a changed name reaches it, whatever its values
+
+- **Symptom.** With the first cause removed, a frame of a key press is still
+  about 420 ms of script, against 44 ms for a frame of the flap.
+
+- **Cause.** `tree.ts`'s `updateShapes` evaluates a flexible part when
+  `touchedBy(this.flexible.free, changed)`: a name its parameters read is in
+  the change set. `flexible.ts`'s `evaluate` then refills the part's buffers
+  and recomputes its bounds, without asking whether a parameter took a new
+  value. On each frame of a Press, 86 parts are refilled, 8.47 million
+  triangles, where the instruction travels one key.
+
+- **Limit of the evidence.** That the other parts received identical vertex
+  data was reasoned from the model and not compared.
+
+## A press draws the scene twice before its first frame, and its own time is taken from the motion
+
+- **Symptom.** Every press calls `renderer.render` twice inside the click's
+  own task. With the first cause removed, a 0.4 s wheel step still shows its
+  start and its end only.
+
+- **Cause.** `viewer.ts`'s `clockedPlay` makes the request, whose pose hook
+  poses and draws the END state that the comment above it calls "computed and
+  never seen"; then `startDrawing` poses frame 0 and `clockedPlay` draws
+  again. `drawingFrame` advances the transition by the loop's wall delta
+  since the previous frame, which contains the press's own task, so a press
+  that took longer than its instruction lands on its first frame.
+
+## Every part has its own geometry and material, and an idle page draws all of it every frame
+
+- **Symptom.** A frame in which nothing moves is 34 ms of script before any
+  draw call is executed: 3,347 meshes, as many draw calls, geometries and
+  materials, 44.8 million triangles, 1,681 MB of vertex attributes.
+
+- **Cause.** `tree.ts` gives each leaf its own `MeshStandardMaterial` and
+  its own parsed geometry, the 26 identical lamp caps included, and the
+  `continuous` render mode draws the whole scene on every animation frame
+  whether or not anything changed.
+
+- **Related.** "The Curta's clocked page renders at 3 fps IDLE on this host"
+  above is the same idle cost seen through a software rasteriser. Here the
+  script share is separated out; the GPU share on the pilot's hardware is
+  not known.
+
+- **Not the viewer's.** How many triangles a part has is the model's
+  declaration: 28.3 of the 44.8 million are flexible parts, 19.1 million of
+  them in 104 springs declared as 24-sided sweeps through 960 points. That
+  is recorded in the project and is being lightened there.
