@@ -792,6 +792,12 @@ accepted them as later steps, one at a time.
   since the previous frame, which contains the press's own task, so a press
   that took longer than its instruction lands on its first frame.
 
+- **Sized.** `evidence/enigma-press-path-2026-11-20.md`: a drawn
+  instruction updates the whole tree twice inside the click, at the
+  transition's end and then at its origin, 320 of a Press's 381 ms and 202
+  of a wheel step's 249 ms; the wheel step's first frame begins 0.25 s into
+  its 0.4 s. Taken up as the change `draw-a-press-from-its-first-frame`.
+
 - **Measured with the first two findings closed.** A right-wheel step's
   press task is 0.30 s against a motion declared at 0.4 s: the first
   animation frame begins 0.30 s after the click and the next one lands the
