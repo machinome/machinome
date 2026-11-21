@@ -906,6 +906,51 @@ load is open.
   mesh density or a flexible part's sampling, for the picture or otherwise,
   is to be proposed from this section until the pilot reopens it.
 
+- **The materials, measured 21 November 2026**
+  (`evidence/enigma-material-per-part-cost-2026-11-21.md`). The 3,347
+  materials have 79 distinct appearances. With every mesh of one appearance
+  pointed at one material, a frame in which nothing moves went from 22 to
+  30 ms of script to 17 to 21; the calls into WebGL hardly change, so the
+  time is three.js refreshing a material's uniforms at every change of
+  material. Sharing also changes the order the opaque parts are drawn in,
+  which today follows the materials' numbers in document order: grouped by
+  material, one pixel differed in four of ten pictures; with the shipped
+  order kept, none did, and the frame was 19 to 22 ms. 754 parts take
+  their colour from a choice, and a highlight that dims or ghosts the
+  others reaches every part.
+
+- **Taken up, the materials only,** as the change
+  `share-one-material-per-appearance`, on the pilot's "yes" of 21 November
+  2026. One geometry per part and the redraw of an idle page stay open.
+
+## After an in-place update, the order new parts are drawn in can follow which fetch finished first
+
+- **Symptom.** None seen in a project. Found on 21 November 2026 while
+  the order of drawing was read for `share-one-material-per-appearance`.
+
+- **Cause.** The opaque parts are drawn in the order their materials were
+  made. A fresh mount makes every mesh and material before any model can
+  arrive, in document order, which is what "Fresh mounts draw loaded rigid
+  assets independently of fetch completion order" rests on. A republish
+  does not: `tree.ts`'s `prepareReconcile` awaits a node's replacement
+  model before it makes that node's new flexible part and its stale
+  markings, while the node's siblings prepare theirs meanwhile. Two
+  siblings whose models and markings are both replaced therefore get
+  their new markings in the order their models arrived (the proposing
+  agent saw it on `e72d1ae7` with a mocked loader; the reviewer read it
+  in the source). Where two such surfaces lie at the
+  same depth, which one shows can differ from one republish to the next.
+
+- **Related.** A part that receives a new material after load (a flexible
+  part or a marking changing colour, a part gaining or losing its colour)
+  moves to the end of the order. That is deterministic, but it means the
+  order after an update is not the document's.
+
+- **Status.** Open. The baseline promises the order for fresh mounts only.
+  `share-one-material-per-appearance` reproduces both behaviours exactly
+  and changes neither: deciding which of two coincident surfaces shows
+  after an update is a choice about pictures.
+
 ## A flexible part reads every parameter by its text and walks its vertices three times for its bounds
 
 - **Symptom.** With the four findings above closed, a frame of a key press
