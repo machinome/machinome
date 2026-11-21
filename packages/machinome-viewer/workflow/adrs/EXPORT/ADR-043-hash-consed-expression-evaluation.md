@@ -354,3 +354,49 @@ versions are unchanged.
 [Design](../../../openspec/changes/archive/2026-11-21-evaluate-a-pose-in-one-flat-pass/design.md)
 and [evidence](../../../openspec/changes/archive/2026-11-21-evaluate-a-pose-in-one-flat-pass/evidence.md)
 record the cases, the tests and the measurements.
+
+## Flexible-part roots amendment — 21 November 2026
+
+`rebuild-a-flexible-part-for-less` adds a holder of node ids across
+operations. The lifetime amendment says raw `NodeId` is operation-local and
+names the holders that keep source and generation; the binding table (D4)
+already kept ids with a generation. A flexible part now keeps the root of
+each of its parameter expressions, in the order of their names, with the
+store generation they were prepared in.
+
+**Read.** A part's parameters are read in one `withExpressions` scope, for a
+pose that is shown and for one that is judged alike. The generation is read
+inside that scope, so no reset can fall between the check and the last
+evaluation. When it is the held generation, each parameter is evaluated by
+its root with no lookup of its text. Otherwise each text is prepared just
+before its own evaluation and the roots are kept only after the whole read:
+a refusal is the one evaluating the texts one by one gives, of the first
+parameter in name order that refuses, and leaves the held roots as they
+stood.
+
+**Dropped** by a rebind to new expressions or a new table, and superseded at
+the first read after any reclamation. The ids are numbers and keep nothing
+of the store alive. The part adds no expression state the document does not
+already hold, so the reclamation-point amendment's rule stands.
+
+**Unchanged.** `expressions.ts`, the flat pass, and what
+`expressionMetrics()` and `flatPassMetrics()` count: a read by root makes
+the `valueOf` calls a read by text made, at the same point of the walk,
+without the lookup.
+
+**Proof.** Tests that count text lookups and scopes on a warm read, shown
+and judged, red before the change; values and refusals compared with
+`evalExpr`'s, a reclamation between two reads and pressure switched on over
+a warm part included. Eight designed mutations and seventeen faults planted
+in review turn named tests red or are shown equivalent.
+
+**Measured** on the Enigma I page (`enigma-i` at `081f4e6`), script only,
+with draw calls skipped: 36,415 parameters read on each frame of a key
+press, 13 to 19 ms before and 8 to 10 after; 6,154,135 values compared with
+`evalExpr`'s with no difference. Not measured: any GPU's frame time, another
+browser. The viewer API and the document versions are unchanged.
+
+[Design](../../../openspec/changes/archive/2026-11-21-rebuild-a-flexible-part-for-less/design.md)
+and [evidence](../../../openspec/changes/archive/2026-11-21-rebuild-a-flexible-part-for-less/evidence.md)
+record the cases, the tests and the measurements.
+

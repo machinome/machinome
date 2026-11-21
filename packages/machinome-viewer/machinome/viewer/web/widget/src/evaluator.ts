@@ -31,16 +31,24 @@
 // module's imports are unchanged.
 
 import { freeNames, prepare, valueOf, withExpressions } from './expressions';
-import type { DriverScope, EvalScope } from './expressions';
+import type { DriverScope, EvalScope, NodeId } from './expressions';
 
 export type { DriverScope, EvalScope };
 export { TIME_ID } from './expressions';
 
 export function evalExpr(expression: string, scope: EvalScope): number {
-  return withExpressions(() => {
-    const value = valueOf(prepare(expression), scope);
-    return typeof value === 'number' ? value : Number(value);
-  });
+  return withExpressions(() => evalPrepared(prepare(expression), scope));
+}
+
+/** The number a prepared expression gives in `scope`: its value, a
+ * value that is not a number converted by `Number`. The one conversion
+ * `evalExpr` and a flexible part's parameter reader share (OpenSpec
+ * `rebuild-a-flexible-part-for-less`, design Decision 1), so the two
+ * cannot convert differently. Call it inside the `withExpressions` scope
+ * in which `root` was prepared, or one in which it is still valid. */
+export function evalPrepared(root: NodeId, scope: EvalScope): number {
+  const value = valueOf(root, scope);
+  return typeof value === 'number' ? value : Number(value);
 }
 
 /** Every input `expression` reads: `$t` and qualified driver ids.

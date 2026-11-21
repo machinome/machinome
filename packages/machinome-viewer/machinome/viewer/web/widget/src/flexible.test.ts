@@ -85,6 +85,39 @@ const meshOf = (tree: WidgetTree): THREE.Mesh => {
 const positionsOf = (mesh: THREE.Mesh): THREE.BufferAttribute =>
   mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
 
+// OpenSpec `rebuild-a-flexible-part-for-less`: a rebuild no longer calls
+// the geometry's two bounds methods, so whether a bounds pass ran is read
+// off the bounds themselves. A sentinel written into the box and the
+// sphere stands when no pass ran and is gone when one did.
+const SENTINEL = -123456.75;
+
+const mark = (mesh: THREE.Mesh): void => {
+  mesh.geometry.boundingBox!.min.x = SENTINEL;
+  mesh.geometry.boundingSphere!.radius = SENTINEL;
+};
+
+const marked = (mesh: THREE.Mesh) => ({
+  box: mesh.geometry.boundingBox!.min.x, sphere: mesh.geometry.boundingSphere!.radius,
+});
+
+/** The ten numbers of a geometry's bounds, `-0` told from `0`. */
+const tenOf = (geometry: THREE.BufferGeometry): string[] => {
+  const box = geometry.boundingBox!;
+  const sphere = geometry.boundingSphere!;
+  return [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z,
+          sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius]
+    .map((value) => (Object.is(value, -0) ? '-0' : String(value)));
+};
+
+/** three.js's own bounds of a copy of `array`. */
+const threeBoundsOf = (array: ArrayLike<number>): string[] => {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(array), 3));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return tenOf(geometry);
+};
+
 // The count is cleared before the mount's own update, so `evaluations()`
 // on a freshly mounted tree is what THAT tree cost and nothing carried
 // over from the test before it.
@@ -413,6 +446,7 @@ describe('a reached part is rebuilt only when a value moved', () => {
     const before = Array.from(attribute.array);
     const version = attribute.version;
     const { box, sphere } = bounds(mesh);
+    mark(mesh);
     expect(evaluations()).toBe(1);
 
     tree.update(scope(3), lifted());
@@ -421,6 +455,7 @@ describe('a reached part is rebuilt only when a value moved', () => {
     expect(attribute.version).toBe(version);
     expect(box).not.toHaveBeenCalled();
     expect(sphere).not.toHaveBeenCalled();
+    expect(marked(mesh)).toEqual({ box: SENTINEL, sphere: SENTINEL });
     expect(Array.from(attribute.array)).toEqual(before);
   });
 
@@ -432,14 +467,15 @@ describe('a reached part is rebuilt only when a value moved', () => {
     const before = Array.from(attribute.array);
     const version = attribute.version;
     const count = evaluations();
-    const { box, sphere } = bounds(mesh);
+    mark(mesh);
 
     tree.update(scope(30), lifted());
 
     expect(evaluations()).toBe(count + 1);
     expect(attribute.version).toBeGreaterThan(version);
-    expect(box).toHaveBeenCalledTimes(1);
-    expect(sphere).toHaveBeenCalledTimes(1);
+    expect(marked(mesh).box).not.toBe(SENTINEL);
+    expect(marked(mesh).sphere).not.toBe(SENTINEL);
+    expect(tenOf(mesh.geometry)).toEqual(threeBoundsOf(attribute.array));
     expect(Array.from(attribute.array)).not.toEqual(before);
   });
 
@@ -467,6 +503,7 @@ describe('a reached part is rebuilt only when a value moved', () => {
     const attribute = positionsOf(mesh);
     const version = attribute.version;
     const { box, sphere } = bounds(mesh);
+    mark(mesh);
     expect(evaluations()).toBe(1);
 
     tree.update(scope(0));
@@ -475,6 +512,7 @@ describe('a reached part is rebuilt only when a value moved', () => {
     expect(attribute.version).toBe(version);
     expect(box).not.toHaveBeenCalled();
     expect(sphere).not.toHaveBeenCalled();
+    expect(marked(mesh)).toEqual({ box: SENTINEL, sphere: SENTINEL });
   });
 
   it('keeps what it remembers when a parameter expression throws part-way', async () => {
@@ -609,6 +647,7 @@ describe('judging a pose shows nothing', () => {
     const array = attribute.array;
     const before = standing(tree, mesh);
     const { box, sphere } = bounds(mesh);
+    mark(mesh);
     expect(before.translation).toEqual([0, 0]);
     const count = evaluations();
 
@@ -622,6 +661,7 @@ describe('judging a pose shows nothing', () => {
     expect(positionsOf(mesh).array).toBe(array);
     expect(box).not.toHaveBeenCalled();
     expect(sphere).not.toHaveBeenCalled();
+    expect(marked(mesh)).toEqual({ box: SENTINEL, sphere: SENTINEL });
 
     // The judgement remembered nothing either: publishing the same
     // candidate rebuilds once and moves the rigid node.
@@ -652,6 +692,7 @@ describe('judging a pose shows nothing', () => {
        const mesh = meshOf(tree.children[1]);
        const before = standing(tree, mesh);
        const { box, sphere } = bounds(mesh);
+       mark(mesh);
 
        expect(() => tree.admit(scope(12), lifted()))
          .toThrow(/must be a finite number/);
@@ -659,6 +700,7 @@ describe('judging a pose shows nothing', () => {
        expect(standing(tree, mesh)).toEqual(before);
        expect(box).not.toHaveBeenCalled();
        expect(sphere).not.toHaveBeenCalled();
+       expect(marked(mesh)).toEqual({ box: SENTINEL, sphere: SENTINEL });
 
        // The part's memory stands: a candidate it accepts rebuilds once.
        const count = evaluations();

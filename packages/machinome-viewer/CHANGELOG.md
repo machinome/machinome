@@ -41,6 +41,11 @@ it carries release together and share one version.
   input fed was walked again node by node. A document with a small table
   or none is evaluated as before. Viewer API 30 and document versions 1
   through 14 are unchanged.
+- A flexible part reads its parameters by the expressions it prepared,
+  without looking each text up again, and computes a rebuilt part's bounds
+  in two passes over its vertices, where three.js's functions made three
+  through accessors, with the same values, refusals and bounds as before.
+  Viewer API 30 and document versions 1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

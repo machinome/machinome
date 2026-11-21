@@ -936,3 +936,22 @@ load is open.
 
 - **Taken up** as the change `rebuild-a-flexible-part-for-less`, on the
   pilot's "go on" of 21 November 2026.
+
+- **Closed by `rebuild-a-flexible-part-for-less`**, archived 21 November
+  2026. A part now reads its parameters by the roots it prepared, in one
+  scope, and bounds a rebuilt geometry in two passes over its array, with
+  three.js's own numbers (ADR-043, amendment of 21 November 2026). On this
+  page reading the parameters went from 13 to 19 ms a frame to 8 to 10,
+  and the bounds from 15 to 23 ms to 4 to 5. A key press frame went from
+  105 to 126 ms to 83 to 97 with the published molejo, and from 80 to 93
+  to 60 to 65 with molejo's `main`, which then shows 30 or 31 pictures in
+  the two seconds. 6.2 million parameter values and 990 rebuilds' bounds
+  were compared with the shipped computation, with no difference. The
+  change's
+  `openspec/changes/archive/2026-11-21-rebuild-a-flexible-part-for-less/evidence.md`
+  has the measurement.
+
+- **Left in that frame.** The 36,415 reads themselves, which every visited
+  part still pays to learn that it need not be rebuilt; molejo's evaluator
+  until a molejo release reaches the viewer; the rest of the tree update;
+  the renderer's bookkeeping.

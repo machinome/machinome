@@ -28,8 +28,9 @@
 
 import * as THREE from 'three';
 import { evaluate, validate, MolejoBuffers } from 'molejo';
-import { EvalScope, evalExpr, freeVariables } from './evaluator';
+import { EvalScope, evalPrepared, freeVariables } from './evaluator';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
+import { expressionGeneration, NodeId, prepare, withExpressions } from './expressions';
 import { ManifestFlexible } from './types';
 
 /** Every `tech` this package can evaluate. A document naming another one
@@ -96,6 +97,16 @@ export class FlexibleShape {
   // write and by `rebind`. A writer of the position array that does not
   // go through `evaluate` must forget it too.
   private built: number[] | undefined;
+  // The root node of each parameter expression, in the order of `params`,
+  // with the expression store's generation they were prepared in (OpenSpec
+  // `rebuild-a-flexible-part-for-less`, design Decision 1). A cache of the
+  // store, keyed by text and generation; it holds no value. Read only
+  // inside `readParameters`'s own scope, and only while the store's
+  // generation is still this one: a reclamation raises the generation and
+  // the next read prepares every text again. Dropped by `rebind`, since
+  // the texts may have changed; set only after a read that prepared every
+  // text completed, so a refusal leaves it as it stood.
+  private roots: { generation: number; ids: NodeId[] } | undefined;
 
   constructor(name: string, flexible: ManifestFlexible,
               color: string | null, bindings: BindingTable = EMPTY_BINDINGS) {
@@ -180,6 +191,8 @@ export class FlexibleShape {
     // is no longer comparable position by position, so the next
     // evaluation rebuilds.
     this.built = undefined;
+    // And the next read prepares the new texts.
+    this.roots = undefined;
   }
 
   setColor(color: string | null): void {
@@ -199,16 +212,16 @@ export class FlexibleShape {
    * and `0` differ, and `NaN` is the same as `NaN`. When none differs
    * the part keeps its vertex data, its bounds and its buffers: the
    * evaluator is not called, nothing is uploaded and no bounds pass runs.
-   * A parameter expression that throws does so before anything is
-   * written or forgotten. */
+   *
+   * The parameters are read by their prepared roots (`readParameters`):
+   * each value, and each refusal, is the one `evalExpr` of its text gives,
+   * in the order of their names, the first refusal winning. A parameter
+   * expression that throws does so before anything is written or
+   * forgotten. */
   evaluate(scope: EvalScope): void {
-    const next: number[] = this.params.map(
-      ([, expression]) => evalExpr(expression, scope));
+    const next = this.readParameters(scope);
 
-    const built = this.built;
-    if (this.buffers !== undefined && built !== undefined
-        && next.length === built.length
-        && next.every((value, i) => Object.is(value, built[i]))) {
+    if (this.holdsBuiltFrom(next)) {
       return;
     }
 
@@ -231,9 +244,9 @@ export class FlexibleShape {
     const positions = this.geometry.getAttribute('position');
     positions.needsUpdate = true;
     // The camera frames on these, and a spring that changed length has
-    // changed both.
-    this.geometry.computeBoundingBox();
-    this.geometry.computeBoundingSphere();
+    // changed both: three.js's two bounds, number for number, in two
+    // passes over the array.
+    computeFlexibleBounds(this.geometry);
     this.built = next;
   }
 
@@ -241,22 +254,21 @@ export class FlexibleShape {
    * `draw-a-press-from-its-first-frame`, design D1): refuse exactly what
    * `evaluate` would refuse, with the same error, and write nothing.
    *
-   * Every parameter is evaluated as `evaluate` does, so a throwing
-   * expression throws here first. When the part has buffers and the
-   * values are the ones they were built from (`Object.is`), molejo has
-   * already accepted exactly these values and is not asked again.
+   * Every parameter is read as `evaluate` reads it, by the same reader
+   * (`readParameters`: its prepared root, the value and the refusal
+   * `evalExpr` of its text gives, in the order of the names), so a
+   * throwing expression throws here first, with the same error. When the
+   * part has buffers and the values are the ones they were built from
+   * (`Object.is`), molejo has already accepted exactly these values and
+   * is not asked again.
    * Otherwise molejo evaluates them into buffers of its own, which are
    * dropped: the part's buffers, its geometry, its bounds and what it
    * remembers having built from are all left as they stood, so a later
    * `evaluate` of the same values still rebuilds. */
   admit(scope: EvalScope): void {
-    const next: number[] = this.params.map(
-      ([, expression]) => evalExpr(expression, scope));
+    const next = this.readParameters(scope);
 
-    const built = this.built;
-    if (this.buffers !== undefined && built !== undefined
-        && next.length === built.length
-        && next.every((value, i) => Object.is(value, built[i]))) {
+    if (this.holdsBuiltFrom(next)) {
       return;
     }
 
@@ -267,11 +279,142 @@ export class FlexibleShape {
     evaluate(this.spec, values);
   }
 
+  /** The parameter values in `scope`, in the order of `params`: for each,
+   * `evalExpr`'s call, `evalPrepared(prepare(text), scope)`, without the
+   * lookup when the roots this part holds are of the store's present
+   * generation.
+   *
+   * One scope for the whole read, the generation read inside it: a reset
+   * never runs while a scope is open, so the roots cannot go stale
+   * between the check and the last evaluation. When the roots are not
+   * reused, each text is prepared just before its own evaluation, so a
+   * text that cannot be prepared refuses at its own place in name order,
+   * after every earlier parameter was evaluated, as `evalExpr` would. The
+   * roots are committed only after the loop. */
+  private readParameters(scope: EvalScope): number[] {
+    return withExpressions(() => {
+      const generation = expressionGeneration();
+      const held = this.roots;
+      const reuse = held !== undefined && held.generation === generation;
+      const params = this.params;
+      const ids: NodeId[] = reuse ? held.ids : new Array(params.length);
+      const values: number[] = new Array(params.length);
+      for (let i = 0; i < params.length; i += 1) {
+        const id = reuse ? ids[i] : (ids[i] = prepare(params[i][1]));
+        values[i] = evalPrepared(id, scope);
+      }
+      if (!reuse) this.roots = { generation, ids };
+      return values;
+    });
+  }
+
+  /** Whether `next` are the values the buffers were built from: the part
+   * has buffers, remembers what they were built from, and every value is
+   * the same under `Object.is`. The one test `evaluate` and `admit` skip
+   * by. */
+  private holdsBuiltFrom(next: number[]): boolean {
+    const built = this.built;
+    return this.buffers !== undefined && built !== undefined
+      && next.length === built.length
+      && next.every((value, i) => Object.is(value, built[i]));
+  }
+
   dispose(): void {
     this.geometry.dispose();
     const materials = Array.isArray(this.mesh.material)
       ? this.mesh.material : [this.mesh.material];
     materials.forEach((material) => material.dispose());
+  }
+}
+
+/** A rebuilt flexible part's bounding box and bounding sphere: the
+ * numbers three.js 0.156.1's `BufferGeometry.computeBoundingBox` and
+ * `computeBoundingSphere` write, in two passes over the position array
+ * where those make three through the attribute's accessors (OpenSpec
+ * `rebuild-a-flexible-part-for-less`, design Decision 2).
+ *
+ * It performs three.js's operations in three.js's order. The box is
+ * `Box3.setFromBufferAttribute`: from `+Infinity` and `-Infinity`, per
+ * vertex `Math.min` of each coordinate and then `Math.max`. The sphere's
+ * centre is `Box3.getCenter`: `(0, 0, 0)` for an empty box, else
+ * `(min + max) * 0.5`; its radius is the square root of the largest
+ * `Math.max` of `dx * dx + dy * dy + dz * dz`, `dx` being centre minus
+ * vertex. The box three.js computes a second time for the sphere is not
+ * computed again: it is the same six numbers from the same array. Like
+ * three.js it writes into the geometry's `Box3` and `Sphere` and
+ * allocates them only when they are null.
+ *
+ * The guard: the fast path runs only on a position attribute whose
+ * `getX`, `getY` and `getZ` are `THREE.BufferAttribute.prototype`'s own,
+ * with item size 3 over a `Float32Array` (whose denormalization is the
+ * identity, so `normalized` needs no check), and no morph positions.
+ * Anything else -- no position attribute, an interleaved, half-float or
+ * GL attribute, another item size, an accessor of its own, a morph
+ * target -- is bounded by three.js's two functions. When a bound comes
+ * out not a number (the box's `min` or the radius, three.js's two
+ * conditions) three.js's two functions are called afterwards, so the
+ * console receives exactly what three.js reports.
+ *
+ * `flexible-rebuild.test.ts` (B1 to B3) runs three.js's own functions
+ * beside this one on every suite run, with the installed three.js. */
+export function computeFlexibleBounds(geometry: THREE.BufferGeometry): void {
+  const attribute = geometry.attributes.position as THREE.BufferAttribute | undefined;
+  const accessors = THREE.BufferAttribute.prototype;
+  if (attribute === undefined
+      || geometry.morphAttributes.position
+      || attribute.getX !== accessors.getX
+      || attribute.getY !== accessors.getY
+      || attribute.getZ !== accessors.getZ
+      || attribute.itemSize !== 3
+      || !(attribute.array instanceof Float32Array)) {
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return;
+  }
+  const array = attribute.array;
+  const count = attribute.count;
+
+  let minX = +Infinity;
+  let minY = +Infinity;
+  let minZ = +Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+  for (let i = 0; i < count; i += 1) {
+    const x = array[i * 3];
+    const y = array[i * 3 + 1];
+    const z = array[i * 3 + 2];
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    minZ = Math.min(minZ, z);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+    maxZ = Math.max(maxZ, z);
+  }
+  if (geometry.boundingBox === null) geometry.boundingBox = new THREE.Box3();
+  geometry.boundingBox.min.set(minX, minY, minZ);
+  geometry.boundingBox.max.set(maxX, maxY, maxZ);
+
+  if (geometry.boundingSphere === null) geometry.boundingSphere = new THREE.Sphere();
+  const empty = maxX < minX || maxY < minY || maxZ < minZ;
+  const cx = empty ? 0 : (minX + maxX) * 0.5;
+  const cy = empty ? 0 : (minY + maxY) * 0.5;
+  const cz = empty ? 0 : (minZ + maxZ) * 0.5;
+  let most = 0;
+  for (let i = 0; i < count; i += 1) {
+    const dx = cx - array[i * 3];
+    const dy = cy - array[i * 3 + 1];
+    const dz = cz - array[i * 3 + 2];
+    most = Math.max(most, dx * dx + dy * dy + dz * dz);
+  }
+  const radius = Math.sqrt(most);
+  geometry.boundingSphere.center.set(cx, cy, cz);
+  geometry.boundingSphere.radius = radius;
+
+  if (Number.isNaN(minX) || Number.isNaN(minY) || Number.isNaN(minZ)
+      || Number.isNaN(radius)) {
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
   }
 }
 
