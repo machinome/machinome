@@ -942,6 +942,22 @@ load is open.
   changed, with a tree update that changes nothing (about 3 ms of that
   frame here).
 
+- **The idle frame, measured 21 November 2026**
+  (`evidence/enigma-idle-frame-cost-2026-11-21.md`). With the materials
+  shared, a frame in which nothing changes is 20 to 23 ms of script: 16 to
+  19 the draw, 3 to 4 a tree update whose change set names nothing. With
+  both skipped from outside the viewer the loop costs 0.1 ms. In the eight
+  seconds after a key press 281 to 338 frames are drawn and 33 to 38 of
+  them change anything. Each drawn frame asks the graphics card for 3,347
+  draw calls and 44.8 million triangles; what that costs a real one was
+  not measured. A turn of the model, a resize, a hover and a reload,
+  among others, reach the screen today only because the loop draws the
+  next frame anyway.
+
+- **Taken up, the idle frame,** as the change
+  `draw-only-when-the-picture-changes`, on the pilot's "yes" of 21
+  November 2026. One parsed geometry per part stays open.
+
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 
 - **Symptom.** None seen in a project. Found on 21 November 2026 while
