@@ -905,3 +905,34 @@ load is open.
   that reduces the resolution of the pieces." Nothing that lowers a part's
   mesh density or a flexible part's sampling, for the picture or otherwise,
   is to be proposed from this section until the pilot reopens it.
+
+## A flexible part reads every parameter by its text and walks its vertices three times for its bounds
+
+- **Symptom.** With the four findings above closed, a frame of a key press
+  is 111 ms of script. About 64 to 77 ms of it is the flexible parts: 30 to
+  40 in molejo's evaluator, 16 to 17 reading parameters, 16 to 19 computing
+  bounds.
+
+- **Cause, the parameters.** `flexible.ts`'s `evaluate` reads each
+  parameter with `evalExpr`, which looks the expression's text up and opens
+  a scope of the expression store for it alone. A frame of a Press reads
+  36,415 parameters over the 86 parts it visits, to rebuild six or seven.
+
+- **Cause, the bounds.** After a rebuild it calls three.js's
+  `computeBoundingBox` and `computeBoundingSphere`, which pass over the
+  position attribute three times through its accessors: about a million
+  vertices a frame here.
+
+- **Two prototypes** (`evidence/enigma-flexible-rebuild-cost-2026-11-21.md`,
+  with the patch beside it). The bounds in two passes over the array:
+  16 to 19 ms down to 5. The parameters read by a node prepared once, in
+  one scope for the part: 16 to 17 ms down to 10. Compared with the shipped
+  path on the page: 349 rebuilds' bounds and 2.1 million parameter values,
+  no difference.
+
+- **Not the viewer's.** The evaluator's own share is molejo's. It was taken
+  up there as `refill-without-allocating` and is on molejo's `main`,
+  unreleased; the viewer receives it with a molejo release.
+
+- **Taken up** as the change `rebuild-a-flexible-part-for-less`, on the
+  pilot's "go on" of 21 November 2026.

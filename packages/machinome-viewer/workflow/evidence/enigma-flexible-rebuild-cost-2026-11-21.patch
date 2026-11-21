@@ -1,0 +1,134 @@
+--- a/src/flexible.ts	2026-11-21 16:49:01.313845532 +0000
++++ b/src/flexible.ts	2026-11-21 16:49:01.451850750 +0000
+@@ -29,6 +29,7 @@
+ import * as THREE from 'three';
+ import { evaluate, validate, MolejoBuffers } from 'molejo';
+ import { EvalScope, evalExpr, freeVariables } from './evaluator';
++import { prepare, valueOf, withExpressions, expressionGeneration } from './expressions';
+ import { BindingTable, EMPTY_BINDINGS } from './bindings';
+ import { ManifestFlexible } from './types';
+ 
+@@ -37,6 +38,36 @@
+  * already takes toward an undeclared driver id. */
+ export const FLEXIBLE_TECHNOLOGIES: readonly string[] = ['molejo'];
+ 
++// PROTOTYPE (scratch, 21 November 2026): the box in one pass over the
++// position array and the sphere in a second, written where three.js's
++// `computeBoundingBox` and `computeBoundingSphere` write, in place of
++// their three passes through the attribute's accessors.
++function tightBounds(geometry: THREE.BufferGeometry, a: Float32Array): void {
++  let minX = +Infinity, minY = +Infinity, minZ = +Infinity;
++  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
++  const n = a.length;
++  for (let i = 0; i < n; i += 3) {
++    const x = a[i], y = a[i + 1], z = a[i + 2];
++    minX = Math.min(minX, x); minY = Math.min(minY, y); minZ = Math.min(minZ, z);
++    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z);
++  }
++  if (geometry.boundingBox === null) geometry.boundingBox = new THREE.Box3();
++  geometry.boundingBox.min.set(minX, minY, minZ);
++  geometry.boundingBox.max.set(maxX, maxY, maxZ);
++  if (geometry.boundingSphere === null) geometry.boundingSphere = new THREE.Sphere();
++  const empty = maxX < minX || maxY < minY || maxZ < minZ;
++  const cx = empty ? 0 : (minX + maxX) * 0.5;
++  const cy = empty ? 0 : (minY + maxY) * 0.5;
++  const cz = empty ? 0 : (minZ + maxZ) * 0.5;
++  let most = 0;
++  for (let i = 0; i < n; i += 3) {
++    const dx = cx - a[i], dy = cy - a[i + 1], dz = cz - a[i + 2];
++    most = Math.max(most, dx * dx + dy * dy + dz * dz);
++  }
++  geometry.boundingSphere.center.set(cx, cy, cz);
++  geometry.boundingSphere.radius = Math.sqrt(most);
++}
++
+ export function evaluatesTech(tech: string): boolean {
+   return FLEXIBLE_TECHNOLOGIES.includes(tech);
+ }
+@@ -96,6 +127,11 @@
+   // write and by `rebind`. A writer of the position array that does not
+   // go through `evaluate` must forget it too.
+   private built: number[] | undefined;
++  // PROTOTYPE: the parameter expressions' nodes, prepared once for a
++  // generation of the expression store, and the values object handed to
++  // the evaluator, kept between rebuilds.
++  private ids: { generation: number; nodes: number[] } | undefined;
++  private held: Record<string, number> | undefined;
+ 
+   constructor(name: string, flexible: ManifestFlexible,
+               color: string | null, bindings: BindingTable = EMPTY_BINDINGS) {
+@@ -176,6 +212,8 @@
+     this.params = parameterList(flexible);
+     this.bindings = bindings;
+     this.freeVars = undefined;
++    this.ids = undefined;
++    this.held = undefined;
+     // New expressions or a new table: what the buffers were built from
+     // is no longer comparable position by position, so the next
+     // evaluation rebuilds.
+@@ -202,24 +240,45 @@
+    * A parameter expression that throws does so before anything is
+    * written or forgotten. */
+   evaluate(scope: EvalScope): void {
+-    const next: number[] = this.params.map(
+-      ([, expression]) => evalExpr(expression, scope));
++    // PROTOTYPE: one preparation per expression and store generation, and
++    // one scope of the store for the whole part, where `evalExpr` looks
++    // each text up and opens a scope per parameter.
++    const generation = expressionGeneration();
++    if (this.ids === undefined || this.ids.generation !== generation) {
++      this.ids = {
++        generation,
++        nodes: withExpressions(
++          () => this.params.map(([, expression]) => prepare(expression))),
++      };
++    }
++    const nodes = this.ids.nodes;
++    const next: number[] = withExpressions(() => {
++      const out: number[] = new Array(nodes.length);
++      for (let i = 0; i < nodes.length; i += 1) {
++        const value = valueOf(nodes[i], scope);
++        out[i] = typeof value === 'number' ? value : Number(value);
++      }
++      return out;
++    });
+ 
+     const built = this.built;
+-    if (this.buffers !== undefined && built !== undefined
+-        && next.length === built.length
+-        && next.every((value, i) => Object.is(value, built[i]))) {
+-      return;
++    let same = this.buffers !== undefined && built !== undefined
++      && next.length === built.length;
++    if (same) {
++      for (let i = 0; i < next.length; i += 1) {
++        if (!Object.is(next[i], built![i])) { same = false; break; }
++      }
+     }
++    if (same) return;
+ 
+     // Forgotten before the evaluator is asked: if it refuses, whatever
+     // the buffers hold afterwards is described by nothing, and the next
+     // evaluation rebuilds.
+     this.built = undefined;
+-    const values: Record<string, number> = {};
+-    this.params.forEach(([name], i) => {
+-      values[name] = next[i];
+-    });
++    if (this.held === undefined) this.held = {};
++    const values = this.held;
++    const params = this.params;
++    for (let i = 0; i < params.length; i += 1) values[params[i][0]] = next[i];
+ 
+     const buffers = evaluate(this.spec, values, this.buffers);
+     if (this.buffers === undefined) {
+@@ -232,8 +291,7 @@
+     positions.needsUpdate = true;
+     // The camera frames on these, and a spring that changed length has
+     // changed both.
+-    this.geometry.computeBoundingBox();
+-    this.geometry.computeBoundingSphere();
++    tightBounds(this.geometry, buffers.positions);
+     this.built = next;
+   }
+ 
