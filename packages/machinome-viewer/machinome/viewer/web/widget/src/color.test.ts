@@ -9,8 +9,8 @@ vi.mock('three/examples/jsm/loaders/STLLoader.js', () => ({
   STLLoader: class { loadAsync = loadAsync; },
 }));
 import { assertRenderable } from './viewer';
-import { WidgetTree } from './tree';
-import { MaterialPresentation, DIM_FACTOR } from './presentation';
+import { RIGID, WidgetTree } from './tree';
+import { MaterialPresentation, DIM_FACTOR, placeOf } from './presentation';
 import { bindingTable } from './bindings';
 import { clockedScope } from './run/pose';
 import type { Manifest, ManifestNode } from './types';
@@ -84,10 +84,18 @@ describe('version-14 model colors', () => {
     body.root.children!.push(leaf('fixed', '#112233'));
     body.root.children![0].markings = [{ name: 'label', model: 'label.stl', color: '#445566' }];
     const table = bindingTable(body, '/lamp.json');
-    const tree = new WidgetTree(body.root, '/', null, table);
+    const owner = new MaterialPresentation();
+    const tree = new WidgetTree(body.root, '/', null, table, undefined, owner);
     await tree.loaded;
     const glass = tree.children[0], fixed = tree.children[1];
-    const original = mesh(glass), geometry = original.geometry, material = original.material;
+    const original = mesh(glass), geometry = original.geometry, place = placeOf(original);
+    // The material the holder gives a part of `color`.
+    const holders = (color: string) => {
+      const probe = owner.mesh(new THREE.BufferGeometry(), RIGID, color);
+      const material = probe.material;
+      owner.release(probe);
+      return material;
+    };
     const count = loadAsync.mock.calls.length;
     for (const powered of [1, 0, -2, 0]) {
       tree.update(clockedScope({ powered }, 0, table), changed('powered'));
@@ -95,7 +103,8 @@ describe('version-14 model colors', () => {
       expect(tree.assembly().children[0].color).toBe(powered ? ON : OFF);
       expect(hex(fixed)).toBe('112233');
       expect((glass.markings[0].mesh.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('445566');
-      expect(mesh(glass)).toBe(original); expect(original.material).toBe(material);
+      expect(mesh(glass)).toBe(original); expect(placeOf(original)).toBe(place);
+      expect(original.material).toBe(holders(powered ? ON : OFF));
       expect(original.geometry).toBe(geometry);
     }
     expect(loadAsync.mock.calls.length).toBe(count);
@@ -126,23 +135,23 @@ describe('version-14 model colors', () => {
     expect(tree.children[0].group.matrix.elements[12]).toBe(14);
     tree.dispose();
   });
-  it('rebases every overlay from the current declared color, preserving material identity', () => {
+  it("rebases every overlay from the current declared color, keeping each mesh's place", () => {
     for (const mode of ['keep', 'dim', 'ghost'] as const) for (const hoverFirst of [false, true]) {
-      const target = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ color: OFF }));
-      const other = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ color: OFF }));
       const owner = new MaterialPresentation();
-      const material = target.material;
+      const target = owner.mesh(new THREE.BoxGeometry(), RIGID, OFF);
+      const other = owner.mesh(new THREE.BoxGeometry(), RIGID, OFF);
+      const place = placeOf(target);
       owner.setHover([target, other]);
       owner.setHighlight({ lit: [target], others: [other], color: '#00ff00', mode });
       owner.setBaseColor(target, ON); owner.setBaseColor(other, ON);
-      expect(target.material).toBe(material);
+      expect(placeOf(target)).toBe(place);
       if (mode === 'dim') expect(other.material.color.r).toBeCloseTo(new THREE.Color(ON).r * DIM_FACTOR);
       if (hoverFirst) { owner.setHover([]); owner.setHighlight(null); }
       else { owner.setHighlight(null); owner.setHover([]); }
       expect(target.material.color.getHexString()).toBe(ON.slice(1));
       expect(other.material.color.getHexString()).toBe(ON.slice(1));
       expect(target.material.emissive.getHex()).toBe(0);
-      target.geometry.dispose(); target.material.dispose(); other.geometry.dispose(); other.material.dispose();
+      target.geometry.dispose(); owner.release(target); other.geometry.dispose(); owner.release(other);
     }
   });
   it('refuses an invalid republished color before clearing overlays or changing the standing tree', async () => {
@@ -209,13 +218,15 @@ describe('version-14 model colors', () => {
     const tree = new WidgetTree(body.root, '/', null, table); await tree.loaded;
     const scope = (powered: number) => clockedScope({ powered }, 0, table);
     tree.update(scope(0));
-    const spring = mesh(tree.children[0]), material = spring.material, geometry = spring.geometry;
+    const spring = mesh(tree.children[0]), place = placeOf(spring), geometry = spring.geometry;
     tree.update(scope(1), changed('powered'));
     expect(hex(tree.children[0])).toBe(ON.slice(1));
-    expect(spring.material).toBe(material); expect(spring.geometry).toBe(geometry);
+    expect(placeOf(spring)).toBe(place); expect(hex(tree.children[0])).toBe(ON.slice(1));
+    expect(spring.geometry).toBe(geometry);
     await tree.reconcile(body.root, '/', null, table);
     tree.update(scope(1)); expect(hex(tree.children[0])).toBe(ON.slice(1));
-    expect(spring.material).toBe(material); expect(spring.geometry).toBe(geometry);
+    expect(placeOf(spring)).toBe(place); expect(hex(tree.children[0])).toBe(ON.slice(1));
+    expect(spring.geometry).toBe(geometry);
     tree.dispose();
   });
 });

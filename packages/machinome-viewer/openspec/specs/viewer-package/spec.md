@@ -5355,7 +5355,7 @@ direction.
 
 ### Requirement: Fresh mounts draw loaded rigid assets independently of fetch completion order
 
-For a fixed published document, viewer build, browser rendering environment, view and pose, the viewer SHALL produce the same fully loaded image on fresh mounts when rigid model or marking STL requests complete in different orders. It SHALL continue to request independent assets concurrently and SHALL preserve the document's geometry, model and marking colours, depth behavior and marking-surface bias. A failed load SHALL discard the mesh newly reserved by that load and dispose its material and any geometry returned to it before rejection, without attaching an unready mesh; a targeted update SHALL retain its existing prepare-before-mutation and failure-containment behavior.
+For a fixed published document, viewer build, browser rendering environment, view and pose, the viewer SHALL produce the same fully loaded image on fresh mounts when rigid model or marking STL requests complete in different orders. It SHALL continue to request independent assets concurrently and SHALL preserve the document's geometry, model and marking colours, depth behavior and marking-surface bias. A failed load SHALL discard the mesh newly reserved by that load, dispose any geometry returned to it and retain nothing made for that mesh alone before rejection, without attaching an unready mesh or changing any other part's geometry or look; a targeted update SHALL retain its existing prepare-before-mutation and failure-containment behavior.
 
 Complete supported assemblies SHALL load without exhausting the browser's pending geometry-request capacity through unrestricted viewer request fan-out, including when more than one viewer mounts or reloads in the same page. This SHALL retain independent overlapping loads and every required rigid model and marking, with no geometry omission or permanent substitution cache. A viewer's readiness SHALL wait for all its required assets; a failed required asset SHALL reject loading rather than yield a partially accepted assembly. A failed or disposed owner's outstanding loads SHALL NOT prevent other viewers from completing, attach late geometry to the discarded owner, or retain abandoned reserved meshes, materials or returned geometry.
 
@@ -5376,13 +5376,13 @@ Complete supported assemblies SHALL load without exhausting the browser's pendin
 
 #### Scenario: One newly reserved load fails
 
-- **WHEN** a rigid model or marking load fails to fetch or prepare its geometry after reserving its mesh and material
-- **THEN** that load rejects, its own reserved mesh is discarded, its material and any geometry returned to it are disposed, and no blank mesh from that load was attached
+- **WHEN** a rigid model or marking load fails to fetch or prepare its geometry after reserving its mesh
+- **THEN** that load rejects, its own reserved mesh is discarded, any geometry returned to it is disposed, nothing made for that mesh alone is retained, every other part is drawn as before, and no blank mesh from that load was attached
 
 #### Scenario: A targeted replacement fails
 
 - **WHEN** a model or marking replacement fails during `artifactChanged()` or `manifestChanged()`
-- **THEN** the previous visible model and camera remain usable, and that failed replacement discards its newly reserved mesh and disposes its material and any returned geometry
+- **THEN** the previous visible model and camera remain usable, and that failed replacement discards its newly reserved mesh, disposes any returned geometry and retains nothing made for that mesh alone
 
 #### Scenario: Two large viewers mount together
 
@@ -5407,7 +5407,12 @@ Complete supported assemblies SHALL load without exhausting the browser's pendin
 #### Scenario: Repeated paths retain separate part ownership
 
 - **WHEN** multiple parts name the same model URL and their overlapping loads share a network request
-- **THEN** each part still owns separate geometry and material, disposing or replacing one cannot change the other's geometry, and a later genuine artifact update reads the current resource
+- **THEN** each part still owns separate geometry, disposing or replacing one cannot change the other's geometry or look, and a later genuine artifact update reads the current resource
+
+#### Scenario: Parts of one colour stay independent
+
+- **WHEN** two parts declare the same colour and an in-place update removes one of them, replaces its model, or fails while preparing its replacement
+- **THEN** after each of those the other part is drawn exactly as it was before it, and nothing made for the two parts is retained once neither remains in the viewer or the viewer is disposed
 
 ### Requirement: An on-demand viewer poses and draws a clocked machine
 

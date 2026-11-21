@@ -35,6 +35,7 @@ import {
   WidgetTree,
 } from './tree';
 import { Manifest, ManifestNode } from './types';
+import { drawOrderSort, placeOf } from './presentation';
 import pascaline from '../../../../../tests/fixtures/pascaline/viewer.json';
 import regulator from '../../../../../tests/fixtures/regulator/viewer.json';
 import markedFixture from '../../../../../tests/fixtures/marked/manifest.json';
@@ -88,6 +89,12 @@ describe('WidgetTree fresh-load identity order', () => {
   const ownMesh = (tree: WidgetTree) => tree.group.children.find(
     (child): child is THREE.Mesh => child instanceof THREE.Mesh,
   )!;
+  // The order of drawing, read through the viewer's comparator: parts of
+  // one appearance share a material, so the material's number no longer
+  // carries it (OpenSpec `share-one-material-per-appearance`, E3).
+  const drawnOrder = (meshes: THREE.Mesh[]) => [...meshes].reverse().sort((a, b) => drawOrderSort(
+    { id: a.id, object: a, material: a.material as THREE.Material, groupOrder: 0, renderOrder: 0, z: 0 },
+    { id: b.id, object: b, material: b.material as THREE.Material, groupOrder: 0, renderOrder: 0, z: 0 }));
 
   it('reserves sibling mesh and material identities in document order before either STL completes', async () => {
     for (const reverse of [true, false]) {
@@ -116,6 +123,8 @@ describe('WidgetTree fresh-load identity order', () => {
       expect(first.id).toBeLessThan(sentinel.id);
       expect((first.material as THREE.Material).id).toBeLessThan((sentinel.material as THREE.Material).id);
       expect(first.geometry.getAttribute('normal')).toBeDefined();
+      expect(placeOf(first)!).toBeLessThan(placeOf(second)!);
+      expect(drawnOrder([first, second])).toEqual([first, second]);
       tree.dispose(); sentinel.geometry.dispose(); (sentinel.material as THREE.Material).dispose();
     }
   });
@@ -139,6 +148,7 @@ describe('WidgetTree fresh-load identity order', () => {
     expect(meshes.map((mesh) => mesh.id)).toEqual([...meshes.map((mesh) => mesh.id)].sort((a, b) => a - b));
     expect(meshes.map((mesh) => (mesh.material as THREE.Material).id))
       .toEqual([...meshes.map((mesh) => (mesh.material as THREE.Material).id)].sort((a, b) => a - b));
+    expect(drawnOrder(meshes)).toEqual(meshes);
     expect(dial.markings.map((m) => m.color)).toEqual(['#ffffff', '#c0c0c0']);
     const markings = dial.markings.map((m) => m.mesh.material as THREE.MeshStandardMaterial);
     expect(markings.map((m) => m.color.getHexString())).toEqual(['ffffff', 'c0c0c0']);

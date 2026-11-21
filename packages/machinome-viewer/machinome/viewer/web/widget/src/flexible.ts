@@ -32,6 +32,7 @@ import { EvalScope, evalPrepared, freeVariables } from './evaluator';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { expressionGeneration, NodeId, prepare, withExpressions } from './expressions';
 import { ManifestFlexible } from './types';
+import { MaterialKind, MaterialPresentation, releaseMaterial } from './presentation';
 
 /** Every `tech` this package can evaluate. A document naming another one
  * is refused rather than rendered wrong -- the posture the loader
@@ -109,7 +110,8 @@ export class FlexibleShape {
   private roots: { generation: number; ids: NodeId[] } | undefined;
 
   constructor(name: string, flexible: ManifestFlexible,
-              color: string | null, bindings: BindingTable = EMPTY_BINDINGS) {
+              color: string | null, bindings: BindingTable = EMPTY_BINDINGS,
+              private readonly presentation = new MaterialPresentation()) {
     if (!evaluatesTech(flexible.tech)) {
       throw new Error(
         `The node "${name}" is a flexible part evaluated by ` +
@@ -143,8 +145,7 @@ export class FlexibleShape {
     // round the rim off and disagree with the rigid part beside it.
     // Shading from the derivatives also spares an O(V) normal pass on
     // every frame a driver moves.
-    this.mesh = new THREE.Mesh(this.geometry,
-                               materialForFlexible(color));
+    this.mesh = presentation.mesh(this.geometry, FLEXIBLE, color);
   }
 
   /** Every input this node's parameter expressions read, `$t` included --
@@ -196,10 +197,7 @@ export class FlexibleShape {
   }
 
   setColor(color: string | null): void {
-    const previous = this.mesh.material;
-    this.mesh.material = materialForFlexible(color);
-    (Array.isArray(previous) ? previous : [previous])
-      .forEach((material) => material.dispose());
+    this.presentation.recolor(this.mesh, color);
   }
 
   /** Evaluate the parameters in `scope` and refill the buffers if a value
@@ -321,9 +319,7 @@ export class FlexibleShape {
 
   dispose(): void {
     this.geometry.dispose();
-    const materials = Array.isArray(this.mesh.material)
-      ? this.mesh.material : [this.mesh.material];
-    materials.forEach((material) => material.dispose());
+    releaseMaterial(this.mesh);
   }
 }
 
@@ -428,7 +424,7 @@ function parameterList(flexible: ManifestFlexible): [string, string][] {
 // Kept beside the shape rather than imported from `tree.ts`, which
 // imports this module: the same two materials, with the flat shading a
 // swept indexed surface needs to look like the rigid parts around it.
-function materialForFlexible(color: string | null): THREE.Material {
+function materialForFlexible(color: string | THREE.Color | null): THREE.Material {
   if (color === null) {
     return new THREE.MeshNormalMaterial({ flatShading: true });
   }
@@ -439,3 +435,7 @@ function materialForFlexible(color: string | null): THREE.Material {
     flatShading: true,
   });
 }
+
+/** A flexible part's kind of material (OpenSpec
+ * `share-one-material-per-appearance`, design Decision 1). */
+export const FLEXIBLE: MaterialKind = { name: 'flexible', make: materialForFlexible };

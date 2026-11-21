@@ -923,6 +923,25 @@ load is open.
   `share-one-material-per-appearance`, on the pilot's "yes" of 21 November
   2026. One geometry per part and the redraw of an idle page stay open.
 
+- **The materials closed by `share-one-material-per-appearance`**, archived
+  21 November 2026. The owner of a part's look holds the materials: parts
+  of one appearance are drawn with one, a hover, a highlight and a chosen
+  colour point parts at other shared materials and back, and each part
+  keeps its place in the order of drawing (ADR-076, amendment of 21
+  November 2026). On this page 3,347 meshes are drawn with 79 materials;
+  forty pictures drawn in software, highlights and a chosen colour among
+  them, have no pixel different from the base's. Script only: a frame in
+  which nothing moves went from 24 to 29 ms to 17.5 to 23, a frame of a key
+  press from 56 to 63 ms to 50 to 54 with molejo's `main` and from 81 to 92
+  to 72 to 80 with the published molejo. The change's
+  `openspec/changes/archive/2026-11-21-share-one-material-per-appearance/evidence.md`
+  has the measurement.
+
+- **Left open in this section.** One parsed geometry per part, and the
+  whole scene drawn on every animation frame whether or not anything
+  changed, with a tree update that changes nothing (about 3 ms of that
+  frame here).
+
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 
 - **Symptom.** None seen in a project. Found on 21 November 2026 while

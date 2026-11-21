@@ -414,3 +414,113 @@ class AssetLoadOrderTest(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
                 thread.join()
+
+    def test_coincident_plates_keep_the_shipped_order_through_overlays_and_a_chosen_colour(self):
+        """Three coincident plates, red, blue, red: the last drawn shows.
+
+        OpenSpec `share-one-material-per-appearance`, design Decision 7,
+        B1. The first and last plates share a colour, so a viewer that
+        let three.js group its opaque parts by material would draw the
+        blue plate last and show it; the shipped order draws them in
+        document order, and a highlight, a put-back and a colour chosen
+        by the model keep that order.
+        """
+        with tempfile.TemporaryDirectory(prefix='viewer-shared-order-') as temp:
+            stage = Path(temp)
+            shutil.copy2(bundle_path(), stage / 'viewer.js')
+            manifest = document()
+            plate = manifest['root']['children'][0]
+            manifest['version'] = 14
+            manifest['drivers'] = {'powered': {
+                'default': 0.0, 'range': [0.0, 1.0], 'unit': None,
+                'dtype': None, 'scale': None}}
+            colours = [{'when': 'powered', 'on': '#00ff00', 'off': '#ff0000'},
+                       '#0000ff', '#ff0000']
+            manifest['root']['children'] = [
+                {**plate, 'name': f'p{index}', 'color': colour,
+                 'model': f'p{index}.stl', 'piece': f'p{index}'}
+                for index, colour in enumerate(colours)]
+            manifest['pieces'] = [
+                {**manifest['pieces'][0], 'id': f'p{index}', 'name': f'p{index}',
+                 'models': [f'p{index}.stl']} for index in range(3)]
+            (stage / 'manifest.json').write_text(json.dumps(manifest))
+            for index in range(3):
+                (stage / f'p{index}.stl').write_bytes(plate_stl())
+            (stage / 'index.html').write_text(
+                '<!doctype html><html><head><meta charset="utf-8">'
+                '<style>html,body,#host{margin:0;width:100%;height:100%;'
+                'overflow:hidden}canvas{display:block}</style></head><body>'
+                '<div id="host"></div><script src="/viewer.js"></script>'
+                '</body></html>')
+            server = ThreadingHTTPServer(
+                ('127.0.0.1', 0), partial(QuietHandler, directory=str(stage)))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                url = f'http://127.0.0.1:{server.server_address[1]}/'
+                with sync_playwright() as playwright:
+                    browser = playwright.chromium.launch(args=[
+                        '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+                    try:
+                        context = browser.new_context(
+                            viewport={'width': 640, 'height': 480},
+                            device_scale_factor=1)
+                        try:
+                            page = context.new_page()
+                            errors = []
+                            page.on('pageerror', lambda error: errors.append(str(error)))
+                            page.goto(url, wait_until='load')
+                            page.evaluate('''async () => {
+                              window.viewer = await MachinomeViewer.mount(
+                                '#host', '/manifest.json', {
+                                  renderMode: 'on-demand', animation: 'external',
+                                  autoplay: false, driverControls: 'none',
+                                  partControls: 'none', time: 0.25,
+                                  up: [0, 1, 0], fov: 50,
+                                  view: {camera: [0, 0, 5], target: [0, 0, 0]}
+                                });
+                              window.viewer.setView({camera: [0, 0, 5],
+                                target: [0, 0, 0]});
+                              window.viewer.setTime(0.25);
+                            }''')
+
+                            def frame():
+                                page.evaluate('window.viewer.setTime(0.25)')
+                                shot = page.screenshot()
+                                centre = Image.open(io.BytesIO(shot)).convert('RGB').getpixel((320, 240))
+                                return shot, centre
+
+                            loaded, centre = frame()
+                            self.assertGreater(centre[0], 1.5 * max(centre[1], centre[2]),
+                                               f'the last red plate must show at load: {centre}')
+                            page.evaluate("() => { window.clear = viewer.highlight([['p1']], {others: 'keep'}); }")
+                            shot, seen = frame()
+                            self.assertEqual(shot, loaded, f'a kept highlight of the covered plate showed: {seen}')
+                            page.evaluate('window.clear()')
+                            shot, seen = frame()
+                            self.assertEqual(shot, loaded, f'the put-back changed the picture: {seen}')
+                            page.evaluate("viewer.setDriver('powered', 1)")
+                            self.assertEqual(page.evaluate('viewer.assembly().children[0].color'), '#00ff00')
+                            shot, seen = frame()
+                            self.assertEqual(shot, loaded, f'the chosen colour moved the first plate: {seen}')
+                            page.evaluate("viewer.setDriver('powered', 0)")
+                            self.assertEqual(page.evaluate('viewer.assembly().children[0].color'), '#ff0000')
+                            shot, seen = frame()
+                            self.assertEqual(shot, loaded, f'the colour chosen back changed the picture: {seen}')
+                            page.evaluate("() => { window.clear = viewer.highlight([['p1']], {others: 'dim'}); }")
+                            shot, seen = frame()
+                            self.assertGreater(seen[0], 1.5 * max(seen[1], seen[2]),
+                                               f'the dimmed last red plate must still show: {seen}')
+                            self.assertLess(seen[0], centre[0], f'the dimmed plate is not darker: {seen}')
+                            page.evaluate('window.clear()')
+                            shot, seen = frame()
+                            self.assertEqual(shot, loaded, f'the put-back of the dim changed the picture: {seen}')
+                            self.assertEqual(errors, [])
+                        finally:
+                            context.close()
+                    finally:
+                        browser.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join()

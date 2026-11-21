@@ -6,19 +6,43 @@
 
 // A part's presented look has one owner (OpenSpec `highlight-a-part`,
 // design D3, ADR-076). three.js materials are plain objects, so every
-// departure and every restore is tested here without WebGL.
+// departure and every restore is tested here without WebGL. The owner
+// makes the meshes (OpenSpec `share-one-material-per-appearance`, design
+// Decision 7, E1); a base the viewer's own kinds cannot make is made by a
+// kind declared here, since the look's formulas are relative to it.
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_HIGHLIGHT_COLOR, DIM_FACTOR, GHOST_OPACITY, HOVER_EMISSIVE,
-  highlightRequest, MaterialPresentation,
+  highlightRequest, MaterialKind, MaterialPresentation,
 } from './presentation';
+import { RIGID } from './tree';
 
-function coloured(hex: number): THREE.Mesh {
-  return new THREE.Mesh(new THREE.BufferGeometry(),
-    new THREE.MeshStandardMaterial({ color: hex, emissive: 0x000000 }));
+function coloured(owner: MaterialPresentation, hex: number,
+                  kind: MaterialKind = RIGID): THREE.Mesh {
+  return owner.mesh(new THREE.BufferGeometry(), kind, new THREE.Color(hex));
 }
+
+function colourless(owner: MaterialPresentation): THREE.Mesh {
+  return owner.mesh(new THREE.BufferGeometry(), RIGID, null);
+}
+
+/** A kind whose plain material has an emissive of its own. */
+function glowing(emissive: number): MaterialKind {
+  return {
+    name: `glowing ${emissive}`,
+    make: (color) => new THREE.MeshStandardMaterial({ color: color ?? undefined, emissive }),
+  };
+}
+
+/** A kind whose plain material is already transparent at opacity 0.5. */
+const GLASS: MaterialKind = {
+  name: 'glass',
+  make: (color) => new THREE.MeshStandardMaterial({
+    color: color ?? undefined, transparent: true, opacity: 0.5,
+  }),
+};
 
 function standard(mesh: THREE.Mesh): THREE.MeshStandardMaterial {
   return mesh.material as THREE.MeshStandardMaterial;
@@ -42,11 +66,10 @@ const TINT = new THREE.Color(DEFAULT_HIGHLIGHT_COLOR).getHex();
 
 describe('MaterialPresentation', () => {
   it("tints the highlighted meshes' emissive and restores it exactly", () => {
-    const hub = coloured(0xcc4444);
-    const blade = coloured(0x4477cc);
-    standard(hub).emissive.setHex(0x010203);
-    const before = [look(hub), look(blade)];
     const owner = new MaterialPresentation();
+    const hub = coloured(owner, 0xcc4444, glowing(0x010203));
+    const blade = coloured(owner, 0x4477cc);
+    const before = [look(hub), look(blade)];
     owner.setHighlight({ lit: [hub], others: [blade], color: '#00ff00', mode: 'keep' });
     expect(standard(hub).emissive.getHex()).toBe(0x00ff00);
     expect(look(blade)).toEqual(before[1]);
@@ -55,10 +78,10 @@ describe('MaterialPresentation', () => {
   });
 
   it("dims the others' colour and leaves the highlighted ones", () => {
-    const hub = coloured(0xcc4444);
-    const blade = coloured(0x4477cc);
-    const base = standard(blade).color.clone();
     const owner = new MaterialPresentation();
+    const hub = coloured(owner, 0xcc4444);
+    const blade = coloured(owner, 0x4477cc);
+    const base = standard(blade).color.clone();
     owner.setHighlight({ lit: [hub], others: [blade], color: DEFAULT_HIGHLIGHT_COLOR, mode: 'dim' });
     expect(standard(blade).color.r).toBeCloseTo(base.r * DIM_FACTOR);
     expect(standard(blade).color.g).toBeCloseTo(base.g * DIM_FACTOR);
@@ -73,16 +96,14 @@ describe('MaterialPresentation', () => {
   });
 
   it('ghosts the others, including a normal material, and restores transparent, opacity and depthWrite exactly', () => {
-    const hub = coloured(0xcc4444);
-    const blade = coloured(0x4477cc);
-    const glass = coloured(0x888888);
-    standard(glass).transparent = true;
-    standard(glass).opacity = 0.5;
-    const plain = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshNormalMaterial());
-    const before = [blade, glass, plain].map(look);
-    const versions = [blade, glass, plain].map(mesh =>
-      (mesh.material as THREE.Material).version);
     const owner = new MaterialPresentation();
+    const hub = coloured(owner, 0xcc4444);
+    const blade = coloured(owner, 0x4477cc);
+    const glass = coloured(owner, 0x888888, GLASS);
+    const plain = colourless(owner);
+    const before = [blade, glass, plain].map(look);
+    const plains = [blade, glass, plain].map(mesh => mesh.material as THREE.Material);
+    const versions = plains.map(material => material.version);
     owner.setHighlight({ lit: [hub], others: [blade, glass, plain], color: '#fff', mode: 'ghost' });
     for (const mesh of [blade, glass, plain]) {
       const material = mesh.material as THREE.Material;
@@ -90,21 +111,24 @@ describe('MaterialPresentation', () => {
       expect(material.depthWrite).toBe(false);
       expect(material.opacity).toBeCloseTo(GHOST_OPACITY);
     }
-    // Recompiled where `transparent` changed, and only there.
-    expect((blade.material as THREE.Material).version).toBeGreaterThan(versions[0]);
-    expect((plain.material as THREE.Material).version).toBeGreaterThan(versions[2]);
-    expect((glass.material as THREE.Material).version).toBe(versions[1]);
+    // Transparent variants where `transparent` changed, made with it, and
+    // the plain materials never written.
+    expect(blade.material).not.toBe(plains[0]);
+    expect(plain.material).not.toBe(plains[2]);
+    expect((glass.material as THREE.Material).transparent).toBe(plains[1].transparent);
+    expect(plains.map(material => material.version)).toEqual(versions);
     expect(owner.isGhosted(blade)).toBe(true);
     owner.setHighlight(null);
     expect([blade, glass, plain].map(look)).toEqual(before);
-    expect((blade.material as THREE.Material).version).toBeGreaterThan(versions[0] + 1);
+    [blade, glass, plain].forEach((mesh, i) => expect(mesh.material).toBe(plains[i]));
+    expect(plains.map(material => material.version)).toEqual(versions);
   });
 
   it('leaves a normal material untinted and undimmed without throwing', () => {
-    const plain = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshNormalMaterial());
-    const other = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshNormalMaterial());
-    const before = [look(plain), look(other)];
     const owner = new MaterialPresentation();
+    const plain = colourless(owner);
+    const other = colourless(owner);
+    const before = [look(plain), look(other)];
     owner.setHighlight({ lit: [plain], others: [other], color: '#ff0000', mode: 'dim' });
     owner.setHover([plain, other]);
     expect([look(plain), look(other)]).toEqual(before);
@@ -125,11 +149,10 @@ describe('MaterialPresentation', () => {
     ['highlight, restore, hover, unhover', ['highlight', 'restore', 'hover', 'unhover']],
   ];
   it.each(orders)('%s leaves the base exactly', (_name, events) => {
-    const dial = coloured(0x336699);
-    const lid = coloured(0x999999);
-    standard(dial).emissive.setHex(0x050505);
-    const before = [look(dial), look(lid)];
     const owner = new MaterialPresentation();
+    const dial = coloured(owner, 0x336699, glowing(0x050505));
+    const lid = coloured(owner, 0x999999);
+    const before = [look(dial), look(lid)];
     for (const event of events) {
       if (event === 'hover') owner.setHover([dial]);
       if (event === 'unhover') owner.setHover([]);
@@ -142,8 +165,8 @@ describe('MaterialPresentation', () => {
   });
 
   it('shows the highlight over a hover and the hover grey once the highlight goes', () => {
-    const dial = coloured(0x336699);
     const owner = new MaterialPresentation();
+    const dial = coloured(owner, 0x336699);
     owner.setHover([dial]);
     expect(standard(dial).emissive.getHex()).toBe(HOVER_EMISSIVE);
     owner.setHighlight({ lit: [dial], others: [], color: '#00ff00', mode: 'keep' });
@@ -155,10 +178,10 @@ describe('MaterialPresentation', () => {
   });
 
   it('forget writes every base back and a re-applied highlight reaches new meshes', () => {
-    const hub = coloured(0xcc4444);
-    const blade = coloured(0x4477cc);
-    const before = [look(hub), look(blade)];
     const owner = new MaterialPresentation();
+    const hub = coloured(owner, 0xcc4444);
+    const blade = coloured(owner, 0x4477cc);
+    const before = [look(hub), look(blade)];
     owner.setHover([blade]);
     owner.setHighlight({ lit: [hub], others: [blade], color: '#00ff00', mode: 'dim' });
     owner.forget();
@@ -167,18 +190,18 @@ describe('MaterialPresentation', () => {
     // A stale hover restore after forgetting touches nothing.
     owner.setHover([]);
     expect([look(hub), look(blade)]).toEqual(before);
-    const newHub = coloured(0xcc4444);
+    const newHub = coloured(owner, 0xcc4444);
     owner.setHighlight({ lit: [newHub], others: [blade], color: '#00ff00', mode: 'keep' });
     expect(standard(newHub).emissive.getHex()).toBe(0x00ff00);
     expect(look(hub)).toEqual(before[0]);
   });
 
   it('never writes a material no overlay touched', () => {
-    const untouched = coloured(0x123456);
+    const owner = new MaterialPresentation();
+    const untouched = coloured(owner, 0x123456);
     const material = standard(untouched);
     const version = material.version;
-    const owner = new MaterialPresentation();
-    owner.setHighlight({ lit: [coloured(0xffffff)], others: [], color: '#abc', mode: 'ghost' });
+    owner.setHighlight({ lit: [coloured(owner, 0xffffff)], others: [], color: '#abc', mode: 'ghost' });
     owner.setHighlight(null);
     owner.forget();
     expect(material.version).toBe(version);
@@ -186,9 +209,9 @@ describe('MaterialPresentation', () => {
   });
 
   it('reports ghosted meshes and only those', () => {
-    const hub = coloured(0xcc4444);
-    const blade = coloured(0x4477cc);
     const owner = new MaterialPresentation();
+    const hub = coloured(owner, 0xcc4444);
+    const blade = coloured(owner, 0x4477cc);
     expect(owner.isGhosted(blade)).toBe(false);
     owner.setHighlight({ lit: [hub], others: [blade], color: '#00ff00', mode: 'dim' });
     expect(owner.isGhosted(blade)).toBe(false);

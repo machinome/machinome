@@ -86,7 +86,7 @@ import {
   boundsOnScreen, projectToViewport, searchPoint, worldBounds,
 } from './screen';
 import type { CanvasBounds, Point, ScreenRect } from './screen';
-import { highlightRequest, MaterialPresentation } from './presentation';
+import { drawOrderSort, highlightRequest, MaterialPresentation } from './presentation';
 import { assertColor } from './color';
 import type {
   HighlightOptions, HighlightRequest, OthersMode,
@@ -416,6 +416,12 @@ export async function mount(
   scene.add(sun);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  // Parts of one appearance share a material, so three.js's own opaque
+  // sort, which reads `material.id`, would group them and change which of
+  // two coincident surfaces shows. The viewer's sort reads each mesh's
+  // place instead: the order the shipped per-part materials were made in
+  // (OpenSpec `share-one-material-per-appearance`, design Decision 3).
+  renderer.setOpaqueSort(drawOrderSort);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.style.position = 'relative';
   renderer.domElement.style.display = 'block';
@@ -1765,8 +1771,9 @@ export async function mount(
       }
       settlement.installed();
       if (tree) {
-        // Every base goes back before the materials are disposed with the
-        // tree (OpenSpec `highlight-a-part`, design D7).
+        // Every overlaid mesh points back at its plain material before the
+        // tree's meshes are released (OpenSpec `highlight-a-part`, design
+        // D7; `share-one-material-per-appearance`, design Decision 4).
         presentation.forget();
         scene.remove(tree.group);
         tree.dispose();
@@ -2123,7 +2130,8 @@ export async function mount(
       // go with the mount (design D13).
       partSurface.dispose();
       partLabel.remove();
-      // The materials go with the tree, so nothing is written back.
+      // The meshes are released with the trees next, whatever they point
+      // at, so nothing is pointed back (design Decision 4).
       standingHighlight = null;
       presentation.drop();
       partMeshes = new Map();
@@ -2136,6 +2144,8 @@ export async function mount(
       runtime = undefined;
       for (const pending of pendingTrees) pending.dispose();
       tree?.dispose();
+      // Empty by now; disposes anything still held.
+      presentation.dispose();
       renderer.dispose();
       container.replaceChildren();
       // Releases this mount's hold on the shared expression table

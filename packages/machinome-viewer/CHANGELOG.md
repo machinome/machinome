@@ -46,6 +46,12 @@ it carries release together and share one version.
   in two passes over its vertices, where three.js's functions made three
   through accessors, with the same values, refusals and bounds as before.
   Viewer API 30 and document versions 1 through 14 are unchanged.
+- Parts of one appearance, the kind of material and its colour, are drawn
+  with one material, where every part had a material of its own. A hover,
+  a highlight and a colour the model chooses point parts at other shared
+  materials and back instead of writing them, with the same pictures and
+  the same order of drawing as before. Viewer API 30 and document versions
+  1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

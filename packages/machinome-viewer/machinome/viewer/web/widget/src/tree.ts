@@ -21,7 +21,7 @@ import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
 import { admitGeometry, GeometryBatch, GeometryOwner } from './geometry-admission';
 import { initialColor, resolveColor } from './color';
-import { MaterialPresentation } from './presentation';
+import { MaterialKind, MaterialPresentation, releaseMaterial } from './presentation';
 
 /** What changed since the last update, when not everything did.
  *
@@ -52,7 +52,7 @@ export function assemblyPathKey(path: AssemblyPath): string {
   return JSON.stringify(path);
 }
 
-export function materialForColor(color: string | null): THREE.Material {
+export function materialForColor(color: string | THREE.Color | null): THREE.Material {
   if (color === null) {
     return new THREE.MeshNormalMaterial();
   }
@@ -62,6 +62,10 @@ export function materialForColor(color: string | null): THREE.Material {
     roughness: 0.6,
   });
 }
+
+/** A rigid part's kind of material (OpenSpec
+ * `share-one-material-per-appearance`, design Decision 1). */
+export const RIGID: MaterialKind = { name: 'rigid', make: materialForColor };
 
 /** The anti-z-fighting lift, in document units (millimetres).
  *
@@ -129,7 +133,7 @@ export function liftAlongNormals(geometry: THREE.BufferGeometry): void {
  * through a part standing genuinely in front of it. Depth is written
  * normally -- a decal that did not would show through everything drawn
  * after it. */
-export function markingMaterial(color: string): THREE.Material {
+export function markingMaterial(color: string | THREE.Color): THREE.Material {
   const material = materialForColor(color) as THREE.MeshStandardMaterial;
   material.side = THREE.DoubleSide;
   material.polygonOffset = true;
@@ -137,6 +141,11 @@ export function markingMaterial(color: string): THREE.Material {
   material.polygonOffsetUnits = -1;
   return material;
 }
+
+/** A marking's kind of material: a marking's colour is always its own. */
+export const MARKING: MaterialKind = {
+  name: 'marking', make: (color) => markingMaterial(color as THREE.Color),
+};
 
 /** One marking as this viewer holds it: the entry the document
  * published, and the mesh drawn for it.
@@ -165,8 +174,7 @@ function disposeMesh(mesh: THREE.Mesh): void {
   meshOwnership.get(mesh)?.();
   meshOwnership.delete(mesh);
   mesh.geometry.dispose();
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  materials.forEach((material) => material.dispose());
+  releaseMaterial(mesh);
 }
 
 function markingRecord(entry: ManifestMarking, mesh: THREE.Mesh): LoadedMarking {
@@ -269,7 +277,8 @@ export class WidgetTree {
     // before the camera frames anything), so a flexible node is on
     // screen at the driver defaults exactly as a rigid one is.
     if (data.flexible) {
-      this.flexible = new FlexibleShape(data.name, data.flexible, color, bindings);
+      this.flexible = new FlexibleShape(data.name, data.flexible, color, bindings,
+                                        this.presentation);
       this.group.add(this.flexible.mesh);
     }
 
@@ -286,7 +295,7 @@ export class WidgetTree {
   }
 
   private async loadModel(url: string, color: string | null): Promise<void> {
-    const mesh = await loadMesh(url, color, materialForColor, this.owner);
+    const mesh = await loadMesh(url, color, RIGID, this.presentation, this.owner);
     if (this.disposed) { disposeMesh(mesh); throw this.owner.cancellation; }
     this.group.add(mesh);
   }
@@ -298,7 +307,7 @@ export class WidgetTree {
                              baseUrl: string): Promise<void> {
     const group = this.markingGroup();
     this.markings = await Promise.all(entries.map(async (entry) => markingRecord(
-      entry, await loadDecal(baseUrl + entry.model, entry.color, this.owner))));
+      entry, await loadDecal(baseUrl + entry.model, entry.color, this.presentation, this.owner))));
     if (this.disposed) throw this.owner.cancellation;
     this.markings.forEach((record) => group.add(record.mesh));
   }
@@ -338,10 +347,11 @@ export class WidgetTree {
     collect(this);
     await Promise.all([
       ...replacements.map(async (replacement) => {
-        replacement.mesh = await loadMesh(baseUrl + path, replacement.tree.color, materialForColor, owner);
+        replacement.mesh = await loadMesh(baseUrl + path, replacement.tree.color, RIGID,
+                                          this.presentation, owner);
       }),
       ...decals.map(async (decal) => {
-        decal.mesh = await loadDecal(baseUrl + path, decal.record.color, owner);
+        decal.mesh = await loadDecal(baseUrl + path, decal.record.color, this.presentation, owner);
       }),
     ]);
     if (this.disposed) throw this.owner.cancellation;
@@ -394,7 +404,8 @@ export class WidgetTree {
     const skipMtimeCheck = this.freshFromArtifact;
     const modelChanged = this.model !== data.model || (this.mtime !== data.mtime && !skipMtimeCheck);
     const replacement = data.model && modelChanged
-      ? await loadMesh(baseUrl + data.model, nextColor, materialForColor, owner) : undefined;
+      ? await loadMesh(baseUrl + data.model, nextColor, RIGID, this.presentation, owner)
+      : undefined;
 
     // Built here rather than below for the reason the mesh above is:
     // a `tech` this viewer cannot evaluate must be refused BEFORE the
@@ -404,7 +415,8 @@ export class WidgetTree {
     // buffers behind them survive the republish.
     const nextFlexible = data.flexible
       && !this.flexible?.describes(data.flexible)
-      ? new FlexibleShape(data.name, data.flexible, nextColor, bindings) : undefined;
+      ? new FlexibleShape(data.name, data.flexible, nextColor, bindings, this.presentation)
+      : undefined;
     if (nextFlexible) batch.own(() => nextFlexible.dispose());
 
     // A decal's identity is its own `model` path and its own `mtime`,
@@ -426,7 +438,8 @@ export class WidgetTree {
           entry,
           current,
           mesh: stale
-            ? await loadDecal(baseUrl + entry.model, entry.color, owner) : undefined,
+            ? await loadDecal(baseUrl + entry.model, entry.color, this.presentation, owner)
+            : undefined,
         };
       }));
 
@@ -521,14 +534,12 @@ export class WidgetTree {
         return markingRecord(entry, mesh);
       }
       // Retained: only the colour can have moved, and colour is not
-      // geometry identity, so the material is replaced in place and the
-      // old one disposed, with no refetch (design D4).
+      // geometry identity, so the mesh's material is replaced in place,
+      // with no refetch (design D4): it points at its new colour's
+      // material and takes a new place.
       const record = current!;
       if (record.color !== entry.color) {
-        const previous = record.mesh.material;
-        record.mesh.material = markingMaterial(entry.color);
-        (Array.isArray(previous) ? previous : [previous])
-          .forEach((material) => material.dispose());
+        this.presentation.recolor(record.mesh, entry.color);
       }
       record.color = entry.color;
       record.mtime = entry.mtime;
@@ -600,11 +611,7 @@ export class WidgetTree {
       return;
     }
     this.group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
-      .forEach((mesh) => {
-        const previous = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mesh.material = materialForColor(color);
-        previous.forEach((material) => material.dispose());
-      });
+      .forEach((mesh) => this.presentation.recolor(mesh, color));
   }
 
   /** Whether anything under here reads `$t`, and therefore whether the
@@ -872,15 +879,16 @@ function isPathPrefix(prefix: AssemblyPath, path: AssemblyPath): boolean {
 
 async function loadMesh(
   url: string, color: string | null,
-  material: (color: string | null) => THREE.Material = materialForColor,
+  kind: MaterialKind, presentation: MaterialPresentation,
   owner = new GeometryOwner(),
 ): Promise<THREE.Mesh> {
-  // Reserve both render identities in document traversal order, before any
-  // STL can finish. Equal-depth surfaces must not change their draw order
-  // merely because one response beat another. The placeholder is never
-  // attached to the scene; a ready mesh takes the existing attachment path.
+  // Reserve both render identities -- the mesh and its place in the order
+  // of drawing -- in document traversal order, before any STL can finish.
+  // Equal-depth surfaces must not change their draw order merely because
+  // one response beat another. The placeholder is never attached to the
+  // scene; a ready mesh takes the existing attachment path.
   const placeholder = new THREE.BufferGeometry();
-  const mesh = new THREE.Mesh(placeholder, material(color));
+  const mesh = presentation.mesh(placeholder, kind, color);
   const forget = owner.own(() => disposeMesh(mesh));
   meshOwnership.set(mesh, forget);
   let geometry: THREE.BufferGeometry | undefined;
@@ -935,9 +943,9 @@ export function liftDecal(geometry: THREE.BufferGeometry): THREE.BufferGeometry 
  * artifact is a binary STL like any other, and nothing about it needs a
  * second loader, a second cache or a second failure mode. What is added
  * is the viewer's own rendering constant, and only that. */
-async function loadDecal(url: string, color: string, owner = new GeometryOwner()): Promise<THREE.Mesh> {
-  const mesh = await loadMesh(url, color,
-                              (own) => markingMaterial(own as string), owner);
+async function loadDecal(url: string, color: string, presentation: MaterialPresentation,
+                         owner = new GeometryOwner()): Promise<THREE.Mesh> {
+  const mesh = await loadMesh(url, color, MARKING, presentation, owner);
   try {
     const loadedGeometry = mesh.geometry;
     mesh.geometry = liftDecal(loadedGeometry);

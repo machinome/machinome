@@ -8,6 +8,11 @@
 
 **Amends:** [ADR-076](ADR-076-a-parts-presented-look-has-one-owner.md)
 
+**Amended by:** ADR-076's shared-materials amendment of 21 November 2026:
+in point 4, a colour change preserves the mesh, its geometry and its place
+in the order of drawing, and points the mesh at the material of its new
+colour, where the sentence says "and colored material"
+
 **Builds on:** [ADR-044](ADR-044-a-binding-name-resolves-into-the-shared-dag.md),
 [ADR-046](ADR-046-a-committed-bank-is-a-name-in-the-same-scope.md),
 [ADR-078](ADR-078-geometry-admission-is-shared-and-resources-keep-their-owner.md)
