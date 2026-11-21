@@ -165,10 +165,19 @@ function, a function that may throw, an unknown operator, the untaken side
 of `&&`, `||` or a ternary — SHALL stay with the recursive evaluation, lazy
 as it is.
 
-A pose whose scope the flat pass cannot serve — an input it reads missing or
-not a number, a member read through a primitive owner, a driver named like a
-function it calls — SHALL be evaluated wholly as before for that pose, and
-SHALL leave nothing of the flat pass that a later pose could read stale.
+An input the flat pass reads that a pose's scope does not supply as a number
+— missing, holding something else, or reached through a member read on a
+primitive owner — SHALL take off the flat pass, for that pose, only what
+depends on it: whatever depends on such an input SHALL be evaluated as
+before, when the pose reads it, with the value or the refusal it gives
+without the flat pass, and everything else SHALL still be served by the
+flat pass. A pose whose drivers are not a map of values, or that names a
+driver like a function the flat pass calls, SHALL be evaluated wholly as
+before. Neither SHALL leave anything of the flat pass that a later pose
+could read stale: an input supplied again after a pose that did not supply
+it SHALL count as changed whatever its value, and nothing that depends on
+it SHALL be served again until it has been computed from the inputs of the
+pose that serves it.
 
 The flat pass SHALL compute only what the inputs that changed since the
 table's last served pose feed, however many inputs the table reads, so a
@@ -206,13 +215,28 @@ the flat pass.
 - **THEN** the pose does not throw; and when the guard does take it, the
   pose refuses with the message it gives without the flat pass
 
-#### Scenario: A scope the flat pass cannot serve
+#### Scenario: An input the scope does not supply
 
 - **WHEN** a pose's scope lacks an input of a served table, or holds
-  something other than a number there, or names a driver like a function the
-  table calls
+  something other than a number there, and its other inputs are numbers
+- **THEN** the formulas that do not depend on that input are served by the
+  flat pass, and those that do give the values of the recursive evaluation,
+  and its refusal only where the pose reads one of them
+
+#### Scenario: An input supplied again
+
+- **WHEN** an input absent from a pose is supplied again by a later pose,
+  at the value it had before or another, after other inputs moved while it
+  was absent
+- **THEN** every formula, the ones that depend on it included, gives the
+  values of the later pose's own inputs
+
+#### Scenario: A scope the flat pass cannot serve
+
+- **WHEN** a pose's scope names a driver like a function the table calls,
+  or carries drivers that are not a map of values
 - **THEN** the pose gives the values, and the refusal if any, of the
-  recursive evaluation, and a later pose with a complete scope gives the
+  recursive evaluation, and a later pose with an ordinary scope gives the
   values of its own inputs
 
 #### Scenario: A small document compiles nothing

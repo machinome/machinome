@@ -35,6 +35,12 @@ it carries release together and share one version.
   renders nothing itself, and a drawn request refused by a flexible part
   leaves every part where it stood. Viewer API 30 and document versions 1
   through 14 are unchanged.
+- A pose of a document with a large bindings table now computes its
+  formulas in one flat pass, only where an input moved, with the same
+  values, refusals and messages as before, where every formula the moved
+  input fed was walked again node by node. A document with a small table
+  or none is evaluated as before. Viewer API 30 and document versions 1
+  through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

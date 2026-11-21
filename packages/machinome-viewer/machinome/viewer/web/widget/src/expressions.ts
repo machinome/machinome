@@ -589,6 +589,10 @@ function resetStore(): void {
   nodeStamp = [];
   passCounter = 0;
   lastScope = undefined;
+  // The flat pass (Decision 7): every program, and the served program
+  // and pass, go with the nodes they index.
+  flatPrograms = new WeakMap();
+  forgetServedFlatPass();
   storeGeneration += 1;
 }
 
@@ -638,6 +642,7 @@ export function resetExpressionMetrics(): void {
   resolutions = 0;
   profileInspectionVisits = 0;
   peakNodes = nodes.length;
+  resetFlatPassCounters();
 }
 
 // ---------------------------------------------------------------------
@@ -910,11 +915,829 @@ function compute(id: NodeId, scope: EvalScope): unknown {
 export function valueOf(id: NodeId, scope: EvalScope): unknown {
   ensurePass(scope);
   if (nodeStamp[id] === passCounter) return nodeValue[id];
+  // The flat pass (Decision 6): a node the served program covers is read
+  // from it, a comparison handed out as the boolean the walk gives.
+  if (servedPass === passCounter && id < servedSlotOf.length) {
+    const slot = servedSlotOf[id];
+    if (slot >= 0) return servedKinds[slot] === 1 ? servedSlots[slot] !== 0 : servedSlots[slot];
+  }
   const result = compute(id, scope);
   nodeValue[id] = result;
   nodeStamp[id] = passCounter;
   resolutions += 1;
   return result;
+}
+
+// ---------------------------------------------------------------------
+// The flat pass (OpenSpec `evaluate-a-pose-in-one-flat-pass`, design
+// Decisions 1-10). On a large bound document nearly every node depends
+// on whichever input moves, so the memoized walk above computes the
+// whole graph at every pose. A binding table's graph is therefore
+// compiled ONCE per table and store generation into a flat program over
+// typed arrays, run in one loop before a pose (`WidgetTree.update` and
+// `admit` call `prepareFlatPass` first), and read by `valueOf` for that
+// pass. The walk stays the reference, and computes everything the
+// program does not cover exactly as before.
+//
+// COVERED (Decision 1), reached from the table's roots in table order,
+// a node whose every child is covered and that is:
+//   - a literal whose value is a number;
+//   - `$t` (one part), read as `scope.time`;
+//   - a binding name (one part, an entry, not `$t` or `profileOverlap`),
+//     which SHARES its root's slot: the same value and kind by
+//     construction; every entry's own name node in the store gets it;
+//   - another name, unless its first part is `$t`, `profileOverlap` or an
+//     entry, or names something of the OpenSCAD context that is not a
+//     number: an INPUT, read each run by `resolveName`'s own steps;
+//   - unary `-`, as jokenizer's `-1 * v`;
+//   - `+ - * / %`, and `< <= > >= == !=` (whose result is a boolean);
+//   - a call whose callee is one of twenty listed names of the context
+//     (`FLAT_FUNCTIONS`), not an entry, calling the very function object
+//     `resolveName` returns for it.
+// Everything else stays with the walk, and so does everything above it:
+// `!`, unary `+`, `~`, `&&`, `||`, a ternary, `===`, `!==`, the bitwise
+// operators, members, indexes, arrays, objects, non-numeric literals,
+// `profileOverlap`, `random` and every unlisted function, a function or
+// owner map used as a value.
+//
+// WHY EACH VALUE IS THE WALK'S (Decision 2). A slot holds a double and a
+// kind fixed at compile: a comparison is a boolean, held as 1 or 0 and
+// handed out as `slot !== 0`, so every walked parent and every caller
+// receives `true` or `false` as before. Inside the program an operand is
+// a number or such a boolean, and every covered operator gives the same
+// result for `true`/`false` as for 1/0: arithmetic and the comparisons
+// apply ToNumeric to two non-strings; `==` and `!=` between two booleans
+// or two numbers are strict, and between a boolean and a number compare
+// ToNumber(boolean); every listed function applies ToNumber to each
+// argument first. A `Float64Array` keeps `-0` and `NaN`. A covered
+// computation is a pure function of its slots, so an entry whose inputs
+// did not change keeps a value equal to recomputing it.
+//
+// NOTHING HERE THROWS (Decision 3). Covered operations are arithmetic,
+// comparisons and listed calls on numbers. Every place the walk can
+// throw is uncovered or is detected by a run's reads and checks. An input
+// missing, not a number, or reached through a truthy primitive owner (read
+// without `in`) is ABSENT (Decision 4): the run computes nothing over it and
+// the pass does not serve its cone, which the walk evaluates when a pose
+// reads it, with the walk's value or its own error; the rest is served. A
+// `drivers` value that is not an object, or a listed callee name present
+// in the driver map, declines the whole pass, and a declined run writes
+// nothing. An input supplied again counts as changed whatever its value,
+// so nothing over it is served before it is recomputed. A throw inside the
+// compile or a run is a defect: it is caught, the table is unserved for
+// the store generation, and the pose is walked.
+//
+// WORK (Decision 5): every covered node has a CLASS, the set of inputs it
+// depends on; entries are laid out in segments, one per class, ordered by
+// class size and keeping postorder, and a run computes only the segments
+// a changed input belongs to.
+//
+// THE SERVED SLOT INDEX (Decision 4): `valueOf` reads a node's slot from
+// the program's own index when no input is absent, else from the program's
+// VIEW for the run's absent set (the index with every node of the cones at
+// -1), built only when the absent set differs from the last view's. A flat
+// read costs the same either way.
+//
+// LIFETIME (Decision 7): programs live in a `WeakMap` keyed by the
+// table's map object, replaced by `resetStore()` with every other
+// node-keyed array; the served program, pass and index are forgotten
+// there too.
+// ---------------------------------------------------------------------
+
+/** Source-only switches for the widget's own tests, never a host
+ * capability: the smallest table compiled (a knob value, Decision 5),
+ * and a self-check that compares every covered value with the walk's
+ * after every run (Decision 10). */
+export const FLAT_PASS = { minimumBindings: 1_000, verify: false };
+
+// The twenty functions a covered call may name (Decision 1), as the
+// objects `context` holds at module load. Each applies ToNumber to every
+// argument first, never throws on numbers, returns a number and keeps no
+// state.
+const FLAT_FUNCTION_NAMES = [
+  'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sign', 'ln', 'log', 'mod',
+  'abs', 'ceil', 'exp', 'floor', 'max', 'min', 'pow', 'round', 'sqrt',
+] as const;
+
+type FlatFunction = (...args: number[]) => number;
+
+const FLAT_FUNCTIONS: readonly FlatFunction[] = FLAT_FUNCTION_NAMES.map((name) => {
+  const listed = context[name];
+  if (typeof listed !== 'function') {
+    throw new Error(`The flat pass's listed function "${name}" is not a function`);
+  }
+  return listed as FlatFunction;
+});
+
+const FLAT_FUNCTION_INDEX: ReadonlyMap<string, number> =
+  new Map(FLAT_FUNCTION_NAMES.map((name, index) => [name, index]));
+
+// Entry operator codes. A call's code is FLAT_CALL + 4 * its function's
+// index + its arity class (none, one, two, or more from the pool).
+const FLAT_NEG = 0;
+const FLAT_ADD = 1;
+const FLAT_SUB = 2;
+const FLAT_MUL = 3;
+const FLAT_DIV = 4;
+const FLAT_MOD = 5;
+const FLAT_LT = 6;
+const FLAT_LE = 7;
+const FLAT_GT = 8;
+const FLAT_GE = 9;
+const FLAT_EQ = 10;
+const FLAT_NE = 11;
+const FLAT_CALL = 16;
+
+const FLAT_BINARY: ReadonlyMap<string, number> = new Map([
+  ['+', FLAT_ADD], ['-', FLAT_SUB], ['*', FLAT_MUL], ['/', FLAT_DIV], ['%', FLAT_MOD],
+  ['<', FLAT_LT], ['<=', FLAT_LE], ['>', FLAT_GT], ['>=', FLAT_GE],
+  ['==', FLAT_EQ], ['!=', FLAT_NE],
+]);
+
+const KIND_NUMBER = 0;
+const KIND_BOOLEAN = 1;
+
+interface FlatInput {
+  /** The name's parts; `null` for `$t`. */
+  readonly parts: readonly string[] | null;
+  readonly slot: number;
+}
+
+interface FlatProgram {
+  readonly generation: number;
+  /** The store's node count at the compile: a node interned later has an
+   * id at or above it and no slot. */
+  readonly nodeCount: number;
+  /** Node id -> slot, or -1 for a node the program does not cover. */
+  readonly slotOf: Int32Array;
+  /** Entries first, in run order (entry `e` writes slot `e`), then the
+   * literals and the inputs. */
+  readonly slots: Float64Array;
+  readonly kinds: Uint8Array;
+  readonly ops: Uint8Array;
+  readonly left: Int32Array;
+  readonly right: Int32Array;
+  /** Argument slots of calls of more than two arguments. */
+  readonly pool: Int32Array;
+  readonly entries: number;
+  readonly inputs: readonly FlatInput[];
+  /** Phase one's reads, written to the slots only once all are checked. */
+  readonly scratch: Float64Array;
+  readonly words: number;
+  readonly changed: Uint32Array;
+  /** Segment `s` runs entries `segmentStart[s]` to `segmentStart[s + 1]`. */
+  readonly segmentStart: Int32Array;
+  readonly segmentMask: Uint32Array;
+  /** The listed names its calls name: a driver of one of them declines. */
+  readonly callees: readonly string[];
+  readonly covered: number;
+  /** Whether a run has completed since the compile. */
+  ran: boolean;
+  /** The inputs absent from the last completed run (Decision 4). */
+  readonly absent: Uint32Array;
+  /** Phase one's absent inputs, which become `absent` when the run completes. */
+  readonly incoming: Uint32Array;
+  /** The served slot index for `viewAbsent`: `slotOf` with every node over
+   * an input of `viewAbsent` at -1; null until a run leaves one absent. */
+  view: Int32Array | null;
+  readonly viewAbsent: Uint32Array;
+}
+
+const NO_SLOTS = new Int32Array(0);
+
+let flatPrograms = new WeakMap<ReadonlyMap<string, NodeId>, FlatProgram | null>();
+let servedPass = -1;
+let servedSlotOf: Int32Array = NO_SLOTS;
+let servedSlots: Float64Array = new Float64Array(0);
+let servedKinds: Uint8Array = new Uint8Array(0);
+let servedInPart = false;
+
+function forgetServedFlatPass(): void {
+  servedPass = -1;
+  servedSlotOf = NO_SLOTS;
+  servedSlots = new Float64Array(0);
+  servedKinds = new Uint8Array(0);
+  servedInPart = false;
+}
+
+let flatCompiles = 0;
+let flatRuns = 0;
+let flatPartial = 0;
+let flatDeclined = 0;
+let flatFailures = 0;
+let flatEntries = 0;
+let flatViews = 0;
+let flatCompared = 0;
+let flatAbsentInputs = 0;
+let lastProgram: { entries: number; segments: number; inputs: number; covered: number } =
+  { entries: 0, segments: 0, inputs: 0, covered: 0 };
+
+function resetFlatPassCounters(): void {
+  flatCompiles = 0;
+  flatRuns = 0;
+  flatPartial = 0;
+  flatDeclined = 0;
+  flatFailures = 0;
+  flatEntries = 0;
+  flatViews = 0;
+  flatCompared = 0;
+  flatAbsentInputs = 0;
+}
+
+export interface FlatPassMetrics {
+  /** Programs compiled. */
+  readonly compiles: number;
+  /** Runs that completed and served a pass, in full or in part. */
+  readonly runs: number;
+  /** Of `runs`, those that left an input absent and served the pass in
+   * part, the absent inputs' cones left to the walk. */
+  readonly partial: number;
+  /** Runs that declined a scope whole (a `drivers` value that is not an
+   * object, a driver named like a called function), leaving that pass to
+   * the walk. */
+  readonly declined: number;
+  /** Compiles or runs that threw, leaving their table to the walk. */
+  readonly failures: number;
+  /** Entries computed by runs. */
+  readonly entries: number;
+  /** Served views built, one each time a run's absent set differs from the
+   * one its program's view was built for. */
+  readonly views: number;
+  /** Values compared with the walk's by `FLAT_PASS.verify`. */
+  readonly compared: number;
+  /** The inputs absent from the last completed run. */
+  readonly absentInputs: number;
+  /** The last compiled program's entries, segments, inputs and covered
+   * nodes. */
+  readonly programEntries: number;
+  readonly segments: number;
+  readonly inputs: number;
+  readonly coveredNodes: number;
+}
+
+/** The flat pass's counts (Decision 9), for the widget's own tests;
+ * never on the mount handle. `resetExpressionMetrics()` zeroes the
+ * counters. The work a pose performs is `expressionMetrics().resolutions`
+ * plus `entries`. */
+export function flatPassMetrics(): FlatPassMetrics {
+  return {
+    compiles: flatCompiles, runs: flatRuns, partial: flatPartial, declined: flatDeclined,
+    failures: flatFailures, entries: flatEntries, views: flatViews, compared: flatCompared,
+    absentInputs: flatAbsentInputs,
+    programEntries: lastProgram.entries, segments: lastProgram.segments,
+    inputs: lastProgram.inputs, coveredNodes: lastProgram.covered,
+  };
+}
+
+/** A test probe: whether `valueOf` would read `id` from the flat pass in
+ * the current pass. */
+export function flatPassServes(id: NodeId): boolean {
+  return servedPass === passCounter && id >= 0 && id < servedSlotOf.length
+    && servedSlotOf[id] >= 0;
+}
+
+/** A test probe: whether the current pass is served in full, served in
+ * part (an input absent, its cone left to the walk), or not served. */
+export function flatPassServing(): 'full' | 'part' | 'none' {
+  if (servedPass !== passCounter) return 'none';
+  return servedInPart ? 'part' : 'full';
+}
+
+/** A name node that is a binding name of `bindings` (Decision 1). */
+function isBindingName(node: NameNode, bindings: ReadonlyMap<string, NodeId>): boolean {
+  const first = node.parts[0];
+  return node.parts.length === 1 && first !== TIME_ID && first !== 'profileOverlap'
+    && bindings.has(first);
+}
+
+/** Compile the part of `bindings`' graph the flat pass covers. */
+function compileFlatPass(bindings: ReadonlyMap<string, NodeId>): FlatProgram {
+  const count = nodes.length;
+  // 0 unvisited, 1 open (on the current path), 2 finished.
+  const state = new Uint8Array(count);
+  // A covered node's class; -1 for one not covered.
+  const classOf = new Int32Array(count).fill(-1);
+  const covered: NodeId[] = [];
+  const inputParts: (readonly string[] | null)[] = [];
+  const inputNode: NodeId[] = [];
+  const callees = new Set<string>();
+
+  // Classes: sorted input-index lists, interned, with memoized unions so
+  // the compile stays linear in the graph.
+  const classMembers: number[][] = [[]];
+  const classIds = new Map<string, number>([['', 0]]);
+  const unions = new Map<string, number>();
+  const internClass = (members: number[]): number => {
+    const key = members.join(',');
+    const found = classIds.get(key);
+    if (found !== undefined) return found;
+    const id = classMembers.length;
+    classMembers.push(members);
+    classIds.set(key, id);
+    return id;
+  };
+  const unite = (a: number, b: number): number => {
+    if (a === b || b === 0) return a;
+    if (a === 0) return b;
+    const key = a < b ? `${a},${b}` : `${b},${a}`;
+    const found = unions.get(key);
+    if (found !== undefined) return found;
+    const x = classMembers[a];
+    const y = classMembers[b];
+    const merged: number[] = [];
+    let i = 0;
+    let j = 0;
+    while (i < x.length || j < y.length) {
+      if (j >= y.length || (i < x.length && x[i] < y[j])) merged.push(x[i++]);
+      else if (i >= x.length || y[j] < x[i]) merged.push(y[j++]);
+      else { merged.push(x[i++]); j += 1; }
+    }
+    const id = internClass(merged);
+    unions.set(key, id);
+    return id;
+  };
+  const done = (id: NodeId): boolean => id < count && state[id] === 2 && classOf[id] >= 0;
+  const input = (id: NodeId, parts: readonly string[] | null): number => {
+    const index = inputParts.length;
+    inputParts.push(parts);
+    inputNode.push(id);
+    return internClass([index]);
+  };
+
+  const finish = (id: NodeId): void => {
+    state[id] = 2;
+    const node = nodes[id];
+    let found = -1;
+    switch (node.kind) {
+      case 'const':
+        if (typeof node.value === 'number') found = 0;
+        break;
+      case 'name': {
+        const first = node.parts[0];
+        if (first === TIME_ID) {
+          if (node.parts.length === 1) found = input(id, null);
+        } else if (first === 'profileOverlap') {
+          // Resolved before the table when the scope carries profiles.
+        } else if (bindings.has(first)) {
+          if (node.parts.length === 1) {
+            const root = bindings.get(first)!;
+            if (done(root)) found = classOf[root];
+          }
+        } else if (!(first in context) || typeof context[first] === 'number') {
+          found = input(id, node.parts);
+        }
+        break;
+      }
+      case 'unary':
+        if (node.op === '-' && done(node.target)) found = classOf[node.target];
+        break;
+      case 'binary':
+        if (FLAT_BINARY.has(node.op) && done(node.left) && done(node.right)) {
+          found = unite(classOf[node.left], classOf[node.right]);
+        }
+        break;
+      case 'call': {
+        const callee = nodes[node.callee];
+        if (callee.kind !== 'name' || callee.parts.length !== 1) break;
+        const name = callee.parts[0];
+        if (!FLAT_FUNCTION_INDEX.has(name) || bindings.has(name)) break;
+        let cls = 0;
+        let all = true;
+        for (const arg of node.args) {
+          if (!done(arg)) { all = false; break; }
+          cls = unite(cls, classOf[arg]);
+        }
+        if (all) {
+          found = cls;
+          callees.add(name);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    if (found >= 0) {
+      classOf[id] = found;
+      covered.push(id);
+    }
+  };
+
+  // An iterative postorder (no recursion, no depth limit). A node popped
+  // while still open is on the current path: a cycle, which leaves the
+  // parent that reached it uncovered (`done` is false for it).
+  const stack: number[] = [];
+  for (const rootId of bindings.values()) {
+    if (rootId < 0 || rootId >= count || state[rootId] !== 0) continue;
+    stack.push(rootId);
+    while (stack.length > 0) {
+      const top = stack.pop()!;
+      if (top < 0) { finish(~top); continue; }
+      if (state[top] !== 0) continue;
+      state[top] = 1;
+      stack.push(~top);
+      const node = nodes[top];
+      switch (node.kind) {
+        case 'unary': stack.push(node.target); break;
+        case 'binary': stack.push(node.right, node.left); break;
+        case 'call':
+          for (let i = node.args.length - 1; i >= 0; i -= 1) stack.push(node.args[i]);
+          break;
+        case 'name':
+          if (isBindingName(node, bindings)) stack.push(bindings.get(node.parts[0])!);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  // Segments (Decision 5): one per class, ordered by the number of
+  // inputs it holds, each keeping postorder. A child's class is a subset
+  // of its parent's, so this is a dependency order.
+  const isEntry = (node: Node): boolean =>
+    node.kind === 'unary' || node.kind === 'binary' || node.kind === 'call';
+  const perClass = new Int32Array(classMembers.length);
+  let entries = 0;
+  for (const id of covered) {
+    if (isEntry(nodes[id])) { perClass[classOf[id]] += 1; entries += 1; }
+  }
+  const ranked = classMembers.map((_, id) => id).filter((id) => perClass[id] > 0)
+    .sort((a, b) => classMembers[a].length - classMembers[b].length || a - b);
+  const words = Math.max(1, Math.ceil(inputParts.length / 32));
+  const segmentStart = new Int32Array(ranked.length + 1);
+  const segmentMask = new Uint32Array(ranked.length * words);
+  const cursor = new Int32Array(classMembers.length);
+  let start = 0;
+  ranked.forEach((cls, segment) => {
+    segmentStart[segment] = start;
+    cursor[cls] = start;
+    start += perClass[cls];
+    for (const member of classMembers[cls]) {
+      segmentMask[segment * words + (member >>> 5)] |= 1 << (member & 31);
+    }
+  });
+  segmentStart[ranked.length] = start;
+
+  // Slots: entries in run order, then literals and inputs; then every
+  // binding name shares its root's slot.
+  const slotOf = new Int32Array(count).fill(-1);
+  let leaves = 0;
+  for (const id of covered) {
+    const node = nodes[id];
+    if (isEntry(node)) slotOf[id] = cursor[classOf[id]]++;
+    else if (!(node.kind === 'name' && isBindingName(node, bindings))) leaves += 1;
+  }
+  const slots = new Float64Array(entries + leaves);
+  const kinds = new Uint8Array(entries + leaves);
+  let leaf = entries;
+  for (const id of covered) {
+    const node = nodes[id];
+    if (node.kind === 'const') {
+      slots[leaf] = node.value as number;
+      slotOf[id] = leaf++;
+    } else if (node.kind === 'name' && !isBindingName(node, bindings)) {
+      slotOf[id] = leaf++;
+    }
+  }
+  let coveredCount = 0;
+  for (const id of covered) {
+    const node = nodes[id];
+    if (node.kind === 'name' && isBindingName(node, bindings)) {
+      slotOf[id] = slotOf[bindings.get(node.parts[0])!];
+    }
+    coveredCount += 1;
+  }
+  // Every entry's own name node in the store, read by an operation or
+  // not: found by the intern table's key, so nothing is minted.
+  for (const [name, root] of bindings) {
+    const nameId = table.get(`n${name}`);
+    if (nameId === undefined || nameId >= count || slotOf[nameId] >= 0) continue;
+    const node = nodes[nameId];
+    if (node.kind !== 'name' || !isBindingName(node, bindings)) continue;
+    if (root < 0 || root >= count || slotOf[root] < 0) continue;
+    slotOf[nameId] = slotOf[root];
+    coveredCount += 1;
+  }
+
+  const ops = new Uint8Array(entries);
+  const left = new Int32Array(entries);
+  const right = new Int32Array(entries);
+  const pool: number[] = [];
+  for (const id of covered) {
+    const node = nodes[id];
+    if (!isEntry(node)) continue;
+    const slot = slotOf[id];
+    if (node.kind === 'unary') {
+      ops[slot] = FLAT_NEG;
+      left[slot] = slotOf[node.target];
+    } else if (node.kind === 'binary') {
+      const op = FLAT_BINARY.get(node.op)!;
+      ops[slot] = op;
+      if (op >= FLAT_LT) kinds[slot] = KIND_BOOLEAN;
+      left[slot] = slotOf[node.left];
+      right[slot] = slotOf[node.right];
+    } else if (node.kind === 'call') {
+      const fn = FLAT_FUNCTION_INDEX.get((nodes[node.callee] as NameNode).parts[0])!;
+      const arity = node.args.length;
+      ops[slot] = FLAT_CALL + 4 * fn + Math.min(arity, 3);
+      if (arity === 1) {
+        left[slot] = slotOf[node.args[0]];
+      } else if (arity === 2) {
+        left[slot] = slotOf[node.args[0]];
+        right[slot] = slotOf[node.args[1]];
+      } else if (arity > 2) {
+        left[slot] = pool.length;
+        right[slot] = arity;
+        for (const arg of node.args) pool.push(slotOf[arg]);
+      }
+    }
+  }
+
+  return {
+    generation: storeGeneration,
+    nodeCount: count,
+    slotOf, slots, kinds, ops, left, right,
+    pool: Int32Array.from(pool),
+    entries,
+    inputs: inputParts.map((parts, index) => ({ parts, slot: slotOf[inputNode[index]] })),
+    scratch: new Float64Array(inputParts.length),
+    words,
+    changed: new Uint32Array(words),
+    segmentStart, segmentMask,
+    callees: [...callees],
+    covered: coveredCount,
+    ran: false,
+    absent: new Uint32Array(words),
+    incoming: new Uint32Array(words),
+    view: null,
+    viewAbsent: new Uint32Array(words),
+  };
+}
+
+/** Entries `start` to `end` of `program`, in order. */
+function runFlatEntries(program: FlatProgram, start: number, end: number): void {
+  const { slots, ops, left, right, pool } = program;
+  for (let entry = start; entry < end; entry += 1) {
+    const op = ops[entry];
+    const a = left[entry];
+    const b = right[entry];
+    let value: number;
+    switch (op) {
+      // -1 * v, not -v: jokenizer's own unary rule, as `applyUnary`.
+      case FLAT_NEG: value = -1 * slots[a]; break;
+      case FLAT_ADD: value = slots[a] + slots[b]; break;
+      case FLAT_SUB: value = slots[a] - slots[b]; break;
+      case FLAT_MUL: value = slots[a] * slots[b]; break;
+      case FLAT_DIV: value = slots[a] / slots[b]; break;
+      case FLAT_MOD: value = slots[a] % slots[b]; break;
+      case FLAT_LT: value = slots[a] < slots[b] ? 1 : 0; break;
+      case FLAT_LE: value = slots[a] <= slots[b] ? 1 : 0; break;
+      case FLAT_GT: value = slots[a] > slots[b] ? 1 : 0; break;
+      case FLAT_GE: value = slots[a] >= slots[b] ? 1 : 0; break;
+      // On two doubles `==` is `===`, and `!=` is `!==`.
+      case FLAT_EQ: value = slots[a] === slots[b] ? 1 : 0; break;
+      case FLAT_NE: value = slots[a] !== slots[b] ? 1 : 0; break;
+      default: {
+        const call = op - FLAT_CALL;
+        const fn = FLAT_FUNCTIONS[call >> 2];
+        switch (call & 3) {
+          case 0: value = fn(); break;
+          case 1: value = fn(slots[a]); break;
+          case 2: value = fn(slots[a], slots[b]); break;
+          default: {
+            const args = new Array<number>(b);
+            for (let i = 0; i < b; i += 1) args[i] = slots[pool[a + i]];
+            value = fn(...args);
+          }
+        }
+      }
+    }
+    slots[entry] = value;
+  }
+}
+
+/** Whether mask `a` from word `at` and mask `b`, of `words` words, meet. */
+function masksMeet(a: Uint32Array, at: number, b: Uint32Array, words: number): boolean {
+  for (let word = 0; word < words; word += 1) {
+    if ((a[at + word] & b[word]) !== 0) return true;
+  }
+  return false;
+}
+
+/** One two-phase run (Decision 4): with nothing written, decline (-1) a
+ * scope that is not about one input, then read every input or mark it
+ * absent; then store the present inputs that changed (one absent from the
+ * last run counts as changed, whatever its value) and run the segments
+ * they belong to, all of them on the first run after the compile, except
+ * those over an absent input. Returns the number of absent inputs. */
+function runFlatPass(program: FlatProgram, scope: EvalScope): number {
+  const drivers = scope.drivers as unknown;
+  const hasDrivers = drivers !== undefined;
+  // `in` on anything but an object throws in the walk: leave it there.
+  if (hasDrivers && (drivers === null
+      || (typeof drivers !== 'object' && typeof drivers !== 'function'))) return -1;
+  const driverMap = drivers as Record<string, unknown>;
+  if (hasDrivers) {
+    // A driver named like a called function is what `resolveName` would
+    // call, and the walk throws its own TypeError for it.
+    for (const callee of program.callees) if (callee in driverMap) return -1;
+  }
+  const { inputs, scratch, slots, incoming } = program;
+  incoming.fill(0);
+  let absentCount = 0;
+  for (let i = 0; i < inputs.length; i += 1) {
+    const parts = inputs[i].parts;
+    let value: unknown;
+    if (parts === null) {
+      value = scope.time;
+    } else {
+      const first = parts[0];
+      if (hasDrivers && first in driverMap) value = driverMap[first];
+      else if (first in context) value = context[first];
+      else value = undefined;
+      for (let p = 1; p < parts.length; p += 1) {
+        // `readMember`, except that a truthy owner that is not an object
+        // or a function is not read with `in` (the walk throws there): the
+        // input is absent.
+        if (!value) { value = undefined; break; }
+        if (typeof value !== 'object' && typeof value !== 'function') { value = undefined; break; }
+        const part = parts[p];
+        value = part in (value as object) ? (value as Record<string, unknown>)[part] : undefined;
+      }
+    }
+    if (typeof value !== 'number') {
+      incoming[i >>> 5] |= 1 << (i & 31);
+      absentCount += 1;
+      continue;
+    }
+    scratch[i] = value;
+  }
+
+  const { changed, words, segmentStart, segmentMask, absent } = program;
+  const first = !program.ran;
+  changed.fill(0);
+  for (let i = 0; i < inputs.length; i += 1) {
+    const word = i >>> 5;
+    const bit = 1 << (i & 31);
+    // An absent input's slot is not written, and nothing over it is run.
+    if ((incoming[word] & bit) !== 0) continue;
+    const slot = inputs[i].slot;
+    // By `Object.is`: -0 and 0 differ, NaN equals NaN. An input absent
+    // from the last run counts as changed whatever its value: every
+    // segment over it was skipped since.
+    if (first || (absent[word] & bit) !== 0 || !Object.is(scratch[i], slots[slot])) {
+      slots[slot] = scratch[i];
+      changed[word] |= bit;
+    }
+  }
+  absent.set(incoming);
+  const segments = segmentStart.length - 1;
+  for (let segment = 0; segment < segments; segment += 1) {
+    if (!first && !masksMeet(segmentMask, segment * words, changed, words)) continue;
+    if (absentCount > 0 && masksMeet(segmentMask, segment * words, absent, words)) continue;
+    const start = segmentStart[segment];
+    const end = segmentStart[segment + 1];
+    runFlatEntries(program, start, end);
+    flatEntries += end - start;
+  }
+  program.ran = true;
+  return absentCount;
+}
+
+/** The slot index a completed run serves (Decision 4): the program's own
+ * when no input is absent, else its view for the absent set, built only
+ * when that set differs from the one the view was built for. */
+function servedSlotIndex(program: FlatProgram, absentCount: number): Int32Array {
+  if (absentCount === 0) return program.slotOf;
+  const { absent, words, viewAbsent } = program;
+  if (program.view !== null) {
+    let same = true;
+    for (let word = 0; word < words; word += 1) {
+      if (viewAbsent[word] !== absent[word]) { same = false; break; }
+    }
+    if (same) return program.view;
+  }
+  // The cones: every segment whose class holds an absent input, and the
+  // absent inputs' own slots. A binding name shares its root's slot, so it
+  // goes with its root.
+  const blocked = new Uint8Array(program.slots.length);
+  const { segmentStart, segmentMask, inputs } = program;
+  for (let segment = 0; segment < segmentStart.length - 1; segment += 1) {
+    if (masksMeet(segmentMask, segment * words, absent, words)) {
+      blocked.fill(1, segmentStart[segment], segmentStart[segment + 1]);
+    }
+  }
+  for (let i = 0; i < inputs.length; i += 1) {
+    if ((absent[i >>> 5] & (1 << (i & 31))) !== 0) blocked[inputs[i].slot] = 1;
+  }
+  const view = program.slotOf.slice();
+  for (let id = 0; id < view.length; id += 1) {
+    const slot = view[id];
+    if (slot >= 0 && blocked[slot] === 1) view[id] = -1;
+  }
+  program.view = view;
+  viewAbsent.set(absent);
+  flatViews += 1;
+  return view;
+}
+
+function formatFlatValue(value: unknown): string {
+  return `${Object.is(value, -0) ? '-0' : String(value)} (${typeof value})`;
+}
+
+function describeFlatNode(id: NodeId): string {
+  const node = nodes[id];
+  switch (node.kind) {
+    case 'const': return `a literal ${formatFlatValue(node.value)}`;
+    case 'name': return `the name "${node.name}"`;
+    case 'unary': return `a unary "${node.op}"`;
+    case 'binary': return `a binary "${node.op}"`;
+    case 'call': return `a call of "${(nodes[node.callee] as NameNode).name}"`;
+    default: return `a ${node.kind}`;
+  }
+}
+
+/** `FLAT_PASS.verify` (Decision 10): every node the pass is about to serve
+ * (`slotOf`, the served slot index) evaluated by the walk -- before the
+ * pass is served, so no slot is read -- and compared with its slot's
+ * handed-out value by `Object.is`. Leaves first, then the entries in run
+ * order, then the binding names, so the walk of each finds its children
+ * already memoized. A node of a cone has no slot there and is not
+ * checked. */
+function verifyFlatPass(program: FlatProgram, slotOf: Int32Array,
+                        bindings: ReadonlyMap<string, NodeId>, scope: EvalScope): void {
+  const { slots, kinds, entries } = program;
+  const owner = new Int32Array(slots.length).fill(-1);
+  const aliases: NodeId[] = [];
+  for (let id = 0; id < slotOf.length; id += 1) {
+    const slot = slotOf[id];
+    if (slot < 0) continue;
+    const node = nodes[id];
+    if (node.kind === 'name' && isBindingName(node, bindings)) aliases.push(id);
+    else owner[slot] = id;
+  }
+  const check = (id: NodeId): void => {
+    const slot = slotOf[id];
+    const flat = kinds[slot] === KIND_BOOLEAN ? slots[slot] !== 0 : slots[slot];
+    const walked = valueOf(id, scope);
+    flatCompared += 1;
+    if (!Object.is(flat, walked)) {
+      throw new Error(
+        `The flat pass differs from the walk at node ${id}, ${describeFlatNode(id)}: `
+        + `flat ${formatFlatValue(flat)}, walk ${formatFlatValue(walked)}`);
+    }
+  };
+  for (let slot = entries; slot < slots.length; slot += 1) if (owner[slot] >= 0) check(owner[slot]);
+  for (let slot = 0; slot < entries; slot += 1) if (owner[slot] >= 0) check(owner[slot]);
+  for (const id of aliases) check(id);
+}
+
+/** The flat pass's one entry (Decision 6), called first by
+ * `WidgetTree.update` and `admit`: compile this table's program if it has
+ * none in this store generation, run it, and serve the current pass from
+ * it, in full or, with an input absent, in part. A table smaller than
+ * `FLAT_PASS.minimumBindings`, or none, returns at once; a scope declined
+ * whole, or a failure, leaves the pass to the walk. Never throws, except for the source-only self-check's
+ * mismatch. */
+export function prepareFlatPass(scope: EvalScope): void {
+  const bindings = scope.bindings;
+  if (bindings === undefined || bindings.size < FLAT_PASS.minimumBindings) return;
+  ensurePass(scope);
+  if (servedPass === passCounter) return;
+  let program = flatPrograms.get(bindings);
+  if (program === null) return;
+  let absentCount: number;
+  let slotIndex: Int32Array = NO_SLOTS;
+  try {
+    if (program === undefined || program.generation !== storeGeneration) {
+      program = compileFlatPass(bindings);
+      flatPrograms.set(bindings, program);
+      flatCompiles += 1;
+      lastProgram = {
+        entries: program.entries, segments: program.segmentStart.length - 1,
+        inputs: program.inputs.length, covered: program.covered,
+      };
+    }
+    absentCount = runFlatPass(program, scope);
+    if (absentCount >= 0) slotIndex = servedSlotIndex(program, absentCount);
+  } catch {
+    flatPrograms.set(bindings, null);
+    flatFailures += 1;
+    return;
+  }
+  if (absentCount < 0) {
+    flatDeclined += 1;
+    return;
+  }
+  flatRuns += 1;
+  if (absentCount > 0) flatPartial += 1;
+  flatAbsentInputs = absentCount;
+  if (FLAT_PASS.verify) verifyFlatPass(program, slotIndex, bindings, scope);
+  servedPass = passCounter;
+  servedSlotOf = slotIndex;
+  servedSlots = program.slots;
+  servedKinds = program.kinds;
+  servedInPart = absentCount > 0;
 }
 
 /** Inspect a document expression, including binding aliases, before execution.

@@ -16,7 +16,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ManifestColor, ManifestMarking, ManifestNode, RawOperation } from './types';
 import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
-import { bindingRootsEqual, withExpressions } from './expressions';
+import { bindingRootsEqual, prepareFlatPass, withExpressions } from './expressions';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
 import { admitGeometry, GeometryBatch, GeometryOwner } from './geometry-admission';
@@ -714,6 +714,9 @@ export class WidgetTree {
   // free variables none of it touches keeps the matrix it has.
   update(scope: EvalScope, changed: Changed = 'all'): void {
     withExpressions(() => {
+      // OpenSpec `evaluate-a-pose-in-one-flat-pass`: a large table's
+      // formulas are computed first, in one flat pass, where an input moved.
+      prepareFlatPass(scope);
       // A clocked request poses BEFORE assigning its bank. Prepare every
       // affected transform before touching the scene, so a later sibling's
       // domain error cannot leave an earlier sibling at the refused bank.
@@ -741,6 +744,8 @@ export class WidgetTree {
    * judged here: the drawing shows it when it lands. */
   admit(scope: EvalScope, changed: Changed = 'all'): void {
     withExpressions(() => {
+      // OpenSpec `evaluate-a-pose-in-one-flat-pass`, as `update`.
+      prepareFlatPass(scope);
       this.prepareTransforms(scope, changed, [], undefined, false, []);
       this.admitShapes(scope, changed);
     });

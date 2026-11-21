@@ -223,3 +223,14 @@ and [parent review](../../../openspec/changes/archive/2026-10-05-mount-voron-exp
 retain counted work, document/generation isolation, reserved-call refusals and
 the full-manifest refusal/restoration check. This is reuse of proven absence in
 one operation, not a generalized persistent graph analyser or validation bypass.
+
+## Flat-pass pointer — 21 November 2026
+
+This record's decision says an entry "is evaluated only when something reads
+it". ADR-043's flat-pass amendment of 21 November 2026
+(`evaluate-a-pose-in-one-flat-pass`) qualifies that for a pose of a document
+with a large table: the entries the pass covers are computed whenever an
+input they read moves, read or not, in an evaluation that cannot throw and
+changes no value. Everything else this record decided stands: a binding name
+is still one node per name for the page, its meaning is still its document's
+table, and the pass keeps one program per table for that reason.

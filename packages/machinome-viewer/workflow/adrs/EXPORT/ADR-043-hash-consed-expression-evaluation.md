@@ -267,3 +267,90 @@ API and the document versions are unchanged.
 [Design](../../../openspec/changes/archive/2026-11-20-keep-a-live-model-parsed/design.md)
 and [evidence](../../../openspec/changes/archive/2026-11-20-keep-a-live-model-parsed/evidence.md)
 record the cases, the tests and the measurements.
+
+## Flat-pass amendment — 21 November 2026
+
+Amendment accepted after the repository agent's adversarial review of the plan
+and of the implementation, under the pilot's advance authority of 20 November
+2026; the preceding accepted decisions retain their status.
+
+`evaluate-a-pose-in-one-flat-pass` adds a second way of computing the values
+this record's memoized walk computes, for poses only, and keeps the walk as
+the reference and as the evaluator of everything the second way does not
+cover. On the Enigma I page almost every one of 546,768 nodes depends on
+whichever operation input moves, so each pose walked about 540,000 nodes,
+about 100 ms. Keeping a node's value across passes while its inputs stand was
+prototyped and does not pay there: there is almost nothing a moved input does
+not feed.
+
+**What it is.** A pose (`WidgetTree.update`, `admit`) of a document whose
+binding table holds at least `FLAT_PASS.minimumBindings` entries (1,000)
+first calls `prepareFlatPass(scope)`. Once per table and store generation the
+part of the graph reached from the table's roots is compiled into a program
+over typed arrays: a slot per covered node in one `Float64Array`, a kind per
+slot (number or boolean), an operator and two operands per entry, the entries
+laid out in segments by the set of inputs they depend on, in an order that is
+also a dependency order. A run reads the program's inputs from the scope,
+finds those that changed since its own last run, and runs only the segments
+they meet. `valueOf` then reads a covered node from its slot, a comparison
+handed out as the boolean the walk gives.
+
+**What it covers.** Numeric literals, `$t`, binding names (which share their
+root's slot), names read from the scope, unary minus as `-1 * v`, the
+arithmetic operators, the comparisons and `==`/`!=`, and calls of twenty
+named functions of the OpenSCAD context that never throw on numbers and keep
+no state, wherever every operand is covered. Everything else stays with the
+walk, lazy as it is: `&&`, `||`, a ternary, `===`, a member or index read,
+`random`, `profileOverlap`, anything that can throw. The pass has no
+operation that can throw, so every refusal a pose makes is still made by the
+walk, at the same point and with the same message.
+
+**Inputs a scope does not supply.** An input that is missing, is not a
+number, or is reached through a member read on a primitive is absent for that
+run, and takes off the pass only what depends on it: those nodes are neither
+computed nor served, and the walk evaluates them if a pose reads them. An
+input supplied again counts as changed whatever its value. The first design
+declined the whole pass instead; its own parity proof showed twelve of 52
+committed documents declining at every pose, because their tables name things
+no pose binds (`_own`, `_j0`), and the rule was replaced before the change was
+committed. Two scopes are still left to the walk whole: a driver map that is
+not an object, and a driver named like a function the program calls.
+
+**Who enters it.** Poses only. The clocked machine's solving, a running
+program's ticks, `PathValue` and validation evaluate few nodes under many
+scopes and are not routed through it; their path gains one comparison per
+memo miss.
+
+**Lifetime.** Programs are kept per table in a `WeakMap` that `resetStore()`
+replaces, so every reclamation point of the amendment above drops them with
+the nodes they index. Two documents on one page keep two programs.
+
+**Counts.** `expressionMetrics().resolutions` still counts values computed by
+the walk; `flatPassMetrics()` counts compilations, runs served in full and in
+part, declines, failures and entries computed. Sharing ("one resolution per
+pass") is asserted as before by tests that do not pose a tree.
+
+**One ratified sentence is qualified.** "An entry SHALL be evaluated only when
+something reads it" no longer holds for a pose served by the pass: a covered
+entry is computed whenever an input it reads moves. Such an evaluation cannot
+throw, changes no value and is counted apart.
+
+**Proof.** A source-only switch makes the pass compare every covered value
+with the walk's after each run. With it on, a parity proof poses every
+committed document that carries a table, 52 of them, by both evaluators: all
+are served, in full or in part, with no mismatch. Eleven deliberate
+mutations of the implementation each turn named tests red.
+
+**Measured** on the Enigma I page (`enigma-i` at `081f4e6`), script only, with
+draw calls skipped: 444,782 nodes covered by 216,690 entries in 53 segments
+over 14 inputs, compiled once at the load; 24,463,010 covered values compared
+with the walk's over 55 poses with no difference; a key press frame 197 to
+108 ms and 10 to 20 pictures in its two seconds; a key press's click 176 to
+120 ms, a key selection's 152 to 67 ms, a wheel step's 108 to 29 ms; a flap
+frame's run seven entries. Not measured: the program's memory on that page,
+any GPU's frame time, another browser. The viewer API and the document
+versions are unchanged.
+
+[Design](../../../openspec/changes/archive/2026-11-21-evaluate-a-pose-in-one-flat-pass/design.md)
+and [evidence](../../../openspec/changes/archive/2026-11-21-evaluate-a-pose-in-one-flat-pass/evidence.md)
+record the cases, the tests and the measurements.

@@ -693,8 +693,9 @@ a GPU takes to draw the scene.
 `keep-a-live-model-parsed`, the second by
 `rebuild-only-changed-flexible-parts` and the third by
 `draw-a-press-from-its-first-frame`, all archived 20 November 2026; what
-closed each is noted under it. The drawing load and the formula evaluation
-below are open.
+closed each is noted under it. The formula evaluation below is closed by
+`evaluate-a-pose-in-one-flat-pass`, archived 21 November 2026. The drawing
+load is open.
 
 ## A model larger than the store's ceiling is parsed again at every pose
 
@@ -848,6 +849,18 @@ below are open.
 
 - **Taken up** as the change `evaluate-a-pose-in-one-flat-pass`, on the
   pilot's "yes, go" of 20 November 2026.
+
+- **Closed by `evaluate-a-pose-in-one-flat-pass`**, archived 21 November
+  2026. A pose of a document with a large table now computes its formulas
+  in one flat pass over a compiled program, only where an input moved, with
+  the walk kept as the reference and for everything the program does not
+  cover (ADR-043, amendment of 21 November 2026). On this page a key press
+  frame went from 197 to 108 ms and shows 20 pictures in its two seconds
+  instead of 10, with 24.5 million values compared with the walk's and no
+  difference. What is left of that frame is mostly the seven flexible parts
+  rebuilt. The change's
+  `openspec/changes/archive/2026-11-21-evaluate-a-pose-in-one-flat-pass/evidence.md`
+  has the measurement.
 
 - **Not the viewer's.** That the graph is this large, and that every case of
   a piecewise law is computed and gated, is how the framework writes the

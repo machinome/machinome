@@ -26,6 +26,7 @@ vi.mock('./evaluator', async (importOriginal) => {
 });
 
 import { evalExpr } from './evaluator';
+import { FLAT_PASS, flatPassMetrics } from './expressions';
 import { bindingTable, EMPTY_BINDINGS } from './bindings';
 import { controlPlan } from './options';
 import { clockedScope } from './run/pose';
@@ -1362,4 +1363,72 @@ describe('WidgetTree atomic rendered transforms', () => {
     expect(matrices(tree)).toEqual(before);
     tree.dispose();
   });
+});
+
+// OpenSpec `evaluate-a-pose-in-one-flat-pass`, design "Tests" T1 and T2:
+// the tree's two pose entries run the flat pass first. The minimum is
+// lowered for these tests only (and tolerated absent, so T2 reaches its
+// assertions on a source without the pass).
+describe('WidgetTree poses through the flat pass', () => {
+  const lowered = <T>(action: () => Promise<T>): Promise<T> => {
+    const minimum = FLAT_PASS?.minimumBindings;
+    if (FLAT_PASS !== undefined) FLAT_PASS.minimumBindings = 0;
+    return action().finally(() => {
+      if (FLAT_PASS !== undefined) FLAT_PASS.minimumBindings = minimum!;
+    });
+  };
+  const machine = () => root([
+    leaf({ name: 'moved', operations: [['t', ['_flat', '0', '0']] as const] }),
+    leaf({ name: 'still', operations: [['t', ['0', '(_still + 1)', '0']] as const] }),
+  ]);
+  const table = () => bindings([
+    { name: '_flat', expression: '(press * 2)' },
+    { name: '_still', expression: '(independent * 3)' },
+  ]);
+  const selected = (id: string) => ({ time: false, drivers: new Set([id]) });
+
+  it('T1 update and admit each serve a pose, from one compile', () => lowered(async () => {
+    const bound = table();
+    const tree = new WidgetTree(machine(), '/build/', null, bound);
+    await tree.loaded;
+    const scope = (press: number) => clockedScope({ press, independent: 1 }, 0, bound);
+    const before = flatPassMetrics();
+
+    tree.update(scope(1));
+    const updated = flatPassMetrics();
+    expect(updated.runs).toBe(before.runs + 1);
+    expect(updated.compiles).toBe(before.compiles + 1);
+    expect(tree.children[0].group.matrix.elements[12]).toBe(2);
+
+    tree.admit(scope(3), selected('press'));
+    const admitted = flatPassMetrics();
+    expect(admitted.runs).toBe(before.runs + 2);
+    expect(admitted.compiles).toBe(before.compiles + 1);
+    // `admit` judges and shows nothing.
+    expect(tree.children[0].group.matrix.elements[12]).toBe(2);
+
+    tree.update(scope(3), selected('press'));
+    expect(tree.children[0].group.matrix.elements[12]).toBe(6);
+    expect(flatPassMetrics().compiles).toBe(before.compiles + 1);
+    tree.dispose();
+  }));
+
+  it('T2 a pose evaluating no operation still leaves the matrices the base leaves', () => lowered(async () => {
+    const bound = table();
+    const tree = new WidgetTree(machine(), '/build/', null, bound);
+    await tree.loaded;
+    const scope = (press: number) => clockedScope({ press, independent: 1 }, 0, bound);
+    tree.update(scope(1));
+    const posed = tree.children.map((child) => [...child.group.matrix.elements]);
+    vi.mocked(evalExpr).mockClear();
+
+    tree.update(scope(5), selected('unrelated'));
+
+    expect(evaluations()).toEqual([]);
+    expect(tree.children.map((child) => [...child.group.matrix.elements])).toEqual(posed);
+    tree.update(scope(5), selected('press'));
+    expect(tree.children[0].group.matrix.elements[12]).toBe(10);
+    expect(tree.children[1].group.matrix.elements).toEqual(posed[1]);
+    tree.dispose();
+  }));
 });
