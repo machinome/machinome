@@ -1234,3 +1234,60 @@ load is open.
   finding is the page's memory, and which gives every part the bytes it is
   given today. It costs extra requests whenever updates overlap, two
   viewers mounting together included. With the pilot.
+
+## A navigator chip whose colour the machine chooses shows the choice of the last assembly change, not of the pose
+
+- **Symptom, read from the source and not observed on a page.** A part
+  whose colour is `{when, on, off}` changes colour in the scene as the
+  machine is posed, and its chip in the navigator does not: after a key
+  press on the Enigma I the scene lights a current path, and the chips stay
+  at the choice they had when the navigator last received an assembly,
+  until the maker hides, shows or focuses something or the document is
+  republished, when they jump to the choice of that moment.
+
+- **Cause.** The navigator reads `viewer.assembly()` once at mount
+  (`navigator.ts:248`, drawn at `:516`) and redraws from the assembly each
+  notification carries (`navigator.ts:518-519`, `:443`); an expand or a
+  collapse redraws from the assembly it already holds (`navigator.ts:423`).
+  A pose (a driver, a clocked request, a run tick, a reset) recolours the
+  scene through `WidgetTree.update` → `setColor` (`tree.ts:797-799`) and
+  notifies nobody: the viewer notifies only from `replaceTree`
+  (`viewer.ts:2118`), `focusOn` (`:2194`), `artifactChanged` (`:2567`),
+  `manifestChanged` (`:2630`) and `setVisible` (`:2651`), which is the
+  baseline contract ("each accepted operation that publishes a tree or
+  changes the focused root or the visibility state"). Following the pose
+  would need a notification the viewer does not send, or the navigator
+  subscribing to poses: a change of the notification contract (ADR-049)
+  and a redraw of up to 4,173 rows per frame on the Enigma I.
+
+- **Reach.** Every version 14 document with a conditional colour: 754
+  nodes of the Enigma I carry one.
+
+- **Found** by reading the source while proposing
+  `colour-a-node-by-what-it-holds`, 22 November 2026. That change makes a
+  group's chip exactly as current as its parts' chips, and no more: a
+  group row is decided from the same assembly its parts' rows are drawn
+  from.
+
+- **Not taken up.** With the pilot.
+
+## `AssemblyNode.model` is false for a flexible part
+
+- **Symptom, read from the source.** The assembly snapshot reports
+  `model: false` for a flexible part, exactly as it does for an empty
+  assembly, so a host cannot tell from the snapshot which nodes are drawn:
+  the 426 flexible parts of the Enigma I report `model: false` like its one
+  empty assembly, `operation`.
+
+- **Cause.** `tree.ts:725` reports `this.model !== undefined`, and a
+  flexible leaf has no model path: it has "neither a model nor children"
+  (`types.ts:77-79`). The baseline says the snapshot gives "whether it has
+  model geometry", while the manual says "``model`` is a boolean indicating
+  geometry" (`packages/machinome/docs/reference/viewer/viewer-handle.rst:139`).
+
+- **Found** while proposing `colour-a-node-by-what-it-holds`, 22 November
+  2026. That change counts a group's parts as the nodes without children
+  beneath it instead of the nodes reporting `model: true` (its design,
+  Decision 1), so the snapshot's flag is not read for them.
+
+- **Not taken up.** With the pilot.

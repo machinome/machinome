@@ -358,10 +358,239 @@ describe('navigatorRows over a marked document', () => {
 
     expect(marked.map((row) => row.node.name)).toEqual(['Bench', 'dial', 'plate']);
     expect(marked.map((row) => row.key)).toEqual(twin.map((row) => row.key));
-    expect(marked.map((row) => [row.node.name, row.depth, row.node.color]))
-      .toEqual(twin.map((row) => [row.node.name, row.depth, row.node.color]));
+    expect(marked.map((row) => [row.node.name, row.depth, row.node.color, row.color]))
+      .toEqual(twin.map((row) => [row.node.name, row.depth, row.node.color, row.color]));
     for (const name of ['digits', 'badge', 'band']) {
       expect(marked.some((row) => row.node.name === name)).toBe(false);
     }
+  });
+});
+
+// OpenSpec `colour-a-node-by-what-it-holds` (design Decision 8, N1 to
+// N11 and N13): a row without children shows its node's effective
+// colour, as before; a row with children shows the one colour every part
+// beneath it shows, when they all show one, and otherwise what it showed
+// before. A part is every node without children beneath the row, and the
+// node itself when it has a model of its own. Every tree is written by
+// hand, every row is expanded unless the test says otherwise, and every
+// assertion reads the rows `navigatorRows` returns.
+describe('the colour a row shows', () => {
+  type Rows = ReturnType<typeof navigatorRows>;
+
+  const part = (path: string[], color: string | null, model = true): AssemblyNode => ({
+    name: path[path.length - 1], path, color, model, children: [],
+  });
+  const group = (
+    path: string[], color: string | null, children: AssemblyNode[], model = false,
+  ): AssemblyNode => ({
+    name: path.length === 0 ? 'Root' : path[path.length - 1], path, color, model, children,
+  });
+  const everyKey = (node: AssemblyNode, keys = new Set<string>()): Set<string> => {
+    keys.add(assemblyPathKey(node.path));
+    node.children.forEach((child) => everyKey(child, keys));
+    return keys;
+  };
+  const rowsOf = (
+    tree: AssemblyNode, navigation = nav(), expanded = everyKey(tree),
+  ): Rows => navigatorRows(tree, navigation, local({ expanded }));
+  const rowAt = (rows: Rows, path: string[]) => {
+    const row = rows.find((candidate) => candidate.key === assemblyPathKey(path));
+    if (!row) throw new Error(`no row at ${assemblyPathKey(path)}`);
+    return row;
+  };
+  const colourAt = (rows: Rows, path: string[]) => rowAt(rows, path).color;
+
+  // N1: Root -> G -> [p, q]; G has no colour, p and q are both grey.
+  const uniform = () => group([], null, [
+    group(['G'], null, [part(['G', 'p'], '#a0a0a0'), part(['G', 'q'], '#a0a0a0')]),
+  ]);
+  // N2: the same shape, its parts of two colours.
+  const mixed = () => group([], null, [
+    group(['G'], null, [part(['G', 'p'], '#a0a0a0'), part(['G', 'q'], '#191919')]),
+  ]);
+  const mixedUnderColour = () => group([], null, [
+    group(['G'], '#336699', [part(['G', 'p'], '#a0a0a0'), part(['G', 'q'], '#336699')]),
+  ]);
+  // N3: a part with no colour beside a coloured one.
+  const colourless = () => group([], null, [
+    group(['G'], null, [part(['G', 'p'], '#a0a0a0'), part(['G', 'q'], null)]),
+  ]);
+  // N4: inner uniform, outer mixed.
+  const nested = () => group([], null, [
+    group(['Outer'], null, [
+      group(['Outer', 'Inner'], null, [
+        part(['Outer', 'Inner', 'a'], '#a0a0a0'), part(['Outer', 'Inner', 'b'], '#a0a0a0'),
+      ]),
+      part(['Outer', 'c'], '#191919'),
+    ]),
+  ]);
+  // N5: the inner group's declared colour matches the outer group's
+  // other part, but its own parts are of two other colours.
+  const standIn = () => group([], null, [
+    group(['Outer'], null, [
+      group(['Outer', 'Inner'], '#ff0000', [
+        part(['Outer', 'Inner', 'a'], '#0000ff'), part(['Outer', 'Inner', 'b'], '#00ff00'),
+      ]),
+      part(['Outer', 'c'], '#ff0000'),
+    ]),
+  ]);
+  // N6: a declared colour every part overrides with one other.
+  const overridden = () => group([], null, [
+    group(['G'], '#ff0000', [part(['G', 'p'], '#0000ff'), part(['G', 'q'], '#0000ff')]),
+  ]);
+  // N7: the group's own model is one of its parts.
+  const ownModelColourless = () => group([], null, [
+    group(['G'], null, [part(['G', 'p'], '#a0a0a0')], true),
+  ]);
+  const ownModelColoured = () => group([], null, [
+    group(['G'], '#a0a0a0', [part(['G', 'p'], '#a0a0a0')], true),
+  ]);
+  // N8: a flexible part has no model and no children, and still counts.
+  const flexibleAlike = () => group([], null, [
+    group(['G'], null, [part(['G', 'rigid'], '#a0a0a0'), part(['G', 'flexible'], '#a0a0a0', false)]),
+  ]);
+  const flexibleOther = () => group([], null, [
+    group(['G'], null, [part(['G', 'rigid'], '#a0a0a0'), part(['G', 'flexible'], '#ff0000', false)]),
+  ]);
+
+  it('shows the one colour a group\'s parts all show (N1)', () => {
+    expect(colourAt(rowsOf(uniform()), ['G'])).toBe('#a0a0a0');
+  });
+
+  it('shows the group\'s own effective colour, or none, when its parts differ (N2)', () => {
+    expect(colourAt(rowsOf(mixed()), ['G'])).toBeNull();
+    expect(colourAt(rowsOf(mixedUnderColour()), ['G'])).toBe('#336699');
+  });
+
+  it('shares no colour with a part that has none (N3)', () => {
+    expect(colourAt(rowsOf(colourless()), ['G'])).toBeNull();
+  });
+
+  it('shows an inner group\'s shared colour where its outer group shares none (N4)', () => {
+    const rows = rowsOf(nested());
+    expect(colourAt(rows, ['Outer', 'Inner'])).toBe('#a0a0a0');
+    expect(colourAt(rows, ['Outer'])).toBeNull();
+  });
+
+  it('never lets a group\'s own colour stand in for its parts (N5)', () => {
+    const rows = rowsOf(standIn());
+    expect(colourAt(rows, ['Outer', 'Inner'])).toBe('#ff0000');
+    expect(colourAt(rows, ['Outer'])).toBeNull();
+  });
+
+  it('shows the colour its parts all override a declared one with (N6)', () => {
+    const row = rowAt(rowsOf(overridden()), ['G']);
+    expect(row.color).toBe('#0000ff');
+    expect(row.node.color).toBe('#ff0000');
+  });
+
+  it('counts the group\'s own model among its parts (N7)', () => {
+    expect(colourAt(rowsOf(ownModelColourless()), ['G'])).toBeNull();
+    expect(colourAt(rowsOf(ownModelColoured()), ['G'])).toBe('#a0a0a0');
+  });
+
+  it('counts a flexible part of the same colour (N8, first case)', () => {
+    expect(colourAt(rowsOf(flexibleAlike()), ['G'])).toBe('#a0a0a0');
+  });
+
+  it('counts a flexible part of another colour (N8, second case)', () => {
+    expect(colourAt(rowsOf(flexibleOther()), ['G'])).toBeNull();
+  });
+
+  it('does not follow what is expanded, focused or hidden (N9)', () => {
+    const tree = uniform();
+    const rootOnly = new Set([assemblyPathKey([])]);
+    expect(colourAt(rowsOf(tree, nav(), rootOnly), ['G'])).toBe('#a0a0a0');
+    expect(colourAt(rowsOf(tree, nav({ hidden: [['G', 'p']] })), ['G'])).toBe('#a0a0a0');
+    expect(colourAt(rowsOf(tree, nav({ hidden: [['G']] })), ['G'])).toBe('#a0a0a0');
+    expect(colourAt(rowsOf(tree, nav({ root: ['G'] })), ['G'])).toBe('#a0a0a0');
+    expect(colourAt(rowsOf(tree, nav({ root: ['G', 'p'] })), ['G'])).toBe('#a0a0a0');
+  });
+
+  it('leaves every row without children at its node\'s colour (N10)', () => {
+    const trees = [
+      uniform, mixed, mixedUnderColour, colourless, nested, standIn, overridden,
+      ownModelColourless, ownModelColoured, flexibleAlike, flexibleOther,
+    ].map((make) => make());
+    const navigations = [
+      nav(), nav({ hidden: [['G', 'p']] }), nav({ hidden: [['G']] }),
+      nav({ root: ['G'] }), nav({ root: ['G', 'p'] }),
+    ];
+    let leaves = 0;
+    for (const tree of trees) {
+      for (const navigation of navigations) {
+        for (const row of rowsOf(tree, navigation)) {
+          if (row.node.children.length === 0) {
+            leaves += 1;
+            expect(row.color).toBe(row.node.color);
+          }
+        }
+      }
+    }
+    expect(leaves).toBeGreaterThan(0);
+  });
+
+  it('fills a uniform group\'s chip with its colour, its checked state and name as any group\'s (N11)', () => {
+    const shown = chipState(rowAt(rowsOf(uniform()), ['G']));
+    const hidden = chipState(rowAt(rowsOf(uniform(), nav({ hidden: [['G']] })), ['G']));
+    expect(shown).toEqual({ checked: true, fill: 'color', label: 'Visibility for G' });
+    expect(hidden).toEqual({ checked: false, fill: 'none', label: 'Visibility for G' });
+
+    const mixedShown = chipState(rowAt(rowsOf(mixed()), ['G']));
+    const mixedHidden = chipState(rowAt(rowsOf(mixed(), nav({ hidden: [['G']] })), ['G']));
+    expect([shown.checked, shown.label]).toEqual([mixedShown.checked, mixedShown.label]);
+    expect([hidden.checked, hidden.label]).toEqual([mixedHidden.checked, mixedHidden.label]);
+  });
+
+  describe('reads each node a constant number of times (N13)', () => {
+    // Replaces every node's `children` with a getter counting its reads.
+    const counted = (tree: AssemblyNode): Map<AssemblyNode, number> => {
+      const reads = new Map<AssemblyNode, number>();
+      const install = (node: AssemblyNode): void => {
+        const children = node.children;
+        children.forEach(install);
+        reads.set(node, 0);
+        Object.defineProperty(node, 'children', {
+          get: () => {
+            reads.set(node, reads.get(node)! + 1);
+            return children;
+          },
+          enumerable: true,
+          configurable: true,
+        });
+      };
+      install(tree);
+      return reads;
+    };
+
+    // 200 nested groups, each holding one part and the next group.
+    const chain = (count: number): AssemblyNode => {
+      const build = (index: number, above: string[]): AssemblyNode => {
+        const here = [...above, `g${index}`];
+        const children = [part([...here, 'p'], '#a0a0a0')];
+        if (index < count) {
+          children.push(build(index + 1, here));
+        }
+        return group(here, null, children);
+      };
+      return group([], null, [build(1, [])]);
+    };
+    // One group of 2,000 parts.
+    const flat = (count: number): AssemblyNode => group([], null, [
+      group(['G'], null, Array.from(
+        { length: count }, (_, index) => part(['G', `p${index}`], '#a0a0a0'))),
+    ]);
+
+    it.each([
+      ['a chain of 200 nested groups', () => chain(200), 401],
+      ['a flat group of 2,000 parts', () => flat(2000), 2002],
+    ] as const)('over %s', (_name, make, size) => {
+      const tree = make();
+      const expanded = everyKey(tree);
+      const reads = counted(tree);
+      const rows = navigatorRows(tree, nav(), local({ expanded }));
+      expect(rows.length).toBe(size);
+      expect(Math.max(...reads.values())).toBeLessThanOrEqual(4);
+    });
   });
 });

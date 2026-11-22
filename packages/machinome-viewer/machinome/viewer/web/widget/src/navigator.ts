@@ -43,7 +43,7 @@ const STYLE_ID = 'machinome-navigator-style';
 // The class contract and the custom-property defaults of design D13.
 // Every colour and metric a host may want is a variable declared on
 // `.machinome-nav`; everything else in this stylesheet is structure. Per-row
-// data that is NOT theme -- depth and the node's own colour -- is written
+// data that is NOT theme -- depth and the colour the row shows -- is written
 // straight to the row element with `style.setProperty`, never here.
 const NAVIGATOR_STYLESHEET = `
 .machinome-nav {

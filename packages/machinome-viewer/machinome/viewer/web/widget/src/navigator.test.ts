@@ -455,3 +455,73 @@ describe('refusal', () => {
       .toThrow('machinome-viewer: no element matches "#does-not-exist"');
   });
 });
+
+// OpenSpec `colour-a-node-by-what-it-holds` (design Decision 8, D1 to
+// D3): a row with children writes the one colour its parts all show, and
+// its chip keeps its checked state and accessible name.
+describe('the colour a group row writes', () => {
+  const NEUTRAL = 'var(--machinome-nav-chip-neutral)';
+  const colourOf = (name: string) =>
+    rowFor(name).style.getPropertyValue('--machinome-nav-node-color');
+
+  // Root -> [G -> [p, q], Leaf]; nothing but p and q has a colour.
+  const grouped = (pColour = '#a0a0a0', qColour = '#a0a0a0'): AssemblyNode => ({
+    name: 'Root', path: [], color: null, model: false,
+    children: [
+      {
+        name: 'G', path: ['G'], color: null, model: false,
+        children: [
+          { name: 'p', path: ['G', 'p'], color: pColour, model: true, children: [] },
+          { name: 'q', path: ['G', 'q'], color: qColour, model: true, children: [] },
+        ],
+      },
+      { name: 'Leaf', path: ['Leaf'], color: null, model: true, children: [] },
+    ],
+  });
+
+  it('writes the colour a group\'s parts share, and the neutral fill for a mixed one (D1)', () => {
+    const stub = new StubHandle();
+    stub.assemblyTree = grouped();
+    mount(stub);
+    expect(colourOf('G')).toBe('#a0a0a0');
+    expect(colourOf('Root')).toBe(NEUTRAL);
+  });
+
+  it('keeps the checked state and the name off colour when the group is hidden (D2)', () => {
+    const stub = new StubHandle();
+    stub.assemblyTree = grouped();
+    mount(stub);
+    const before = rowFor('G').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
+    expect(before.checked).toBe(true);
+    expect(before.getAttribute('aria-label')).toBe('Visibility for G');
+
+    before.checked = false;
+    before.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(stub.calls.setVisible).toEqual([[['G'], false]]);
+    const after = rowFor('G').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
+    expect(after.checked).toBe(false);
+    expect(after.getAttribute('aria-label')).toBe('Visibility for G');
+    expect(colourOf('G')).toBe('#a0a0a0');
+  });
+
+  it('follows the choice the machine makes for the parts, as their rows do (D3)', () => {
+    const stub = new StubHandle();
+    stub.assemblyTree = grouped();
+    mount(stub);
+    rowFor('Root').focus();
+    press('ArrowDown'); // Root -> G
+    press('ArrowRight'); // expands G
+    expect(() => rowFor('p')).not.toThrow();
+
+    stub.push({ assembly: grouped('#ff9b32', '#ff9b32'), navigation: { root: null, hidden: [] } });
+    expect(colourOf('G')).toBe('#ff9b32');
+    expect(colourOf('p')).toBe('#ff9b32');
+    expect(colourOf('q')).toBe('#ff9b32');
+
+    stub.push({ assembly: grouped('#ff9b32', '#393d43'), navigation: { root: null, hidden: [] } });
+    expect(colourOf('G')).toBe(NEUTRAL);
+    expect(colourOf('p')).toBe('#ff9b32');
+    expect(colourOf('q')).toBe('#393d43');
+  });
+});

@@ -348,6 +348,36 @@ describe('WidgetTree assembly navigation', () => {
     });
   });
 
+  // OpenSpec `colour-a-node-by-what-it-holds` (design Decision 2, T1):
+  // the navigator may show a group the colour its parts share, but the
+  // snapshot a host reads keeps reporting the group's own effective
+  // colour.
+  it('keeps reporting a group\'s own colour when its parts share another', async () => {
+    const tree = new WidgetTree(root([
+      {
+        name: 'plain', type: 'assembly', color: null, operations: [],
+        children: [
+          leaf({ name: 'p', color: '#a0a0a0', model: 'p.stl' }),
+          leaf({ name: 'q', color: '#a0a0a0', model: 'q.stl' }),
+        ],
+      },
+      {
+        name: 'declared', type: 'assembly', color: '#ff0000', operations: [],
+        children: [
+          leaf({ name: 'r', color: '#0000ff', model: 'r.stl' }),
+          leaf({ name: 's', color: '#0000ff', model: 's.stl' }),
+        ],
+      },
+    ]), '/build/');
+    await tree.loaded;
+
+    const [plain, declared] = tree.assembly().children;
+    expect(plain.color).toBeNull();
+    expect(plain.children.map((child) => child.color)).toEqual(['#a0a0a0', '#a0a0a0']);
+    expect(declared.color).toBe('#ff0000');
+    expect(declared.children.map((child) => child.color)).toEqual(['#0000ff', '#0000ff']);
+  });
+
   it('validates node paths and filters the rendered tree by focus and visibility', async () => {
     const tree = new WidgetTree(root([
       leaf({ name: 'left', model: 'left.stl' }),

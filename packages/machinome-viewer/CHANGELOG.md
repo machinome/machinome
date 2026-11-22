@@ -5,6 +5,14 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- A row of the assembly navigator whose parts all show one colour now
+  shows that colour, where a row with children showed only a colour its
+  node declared or inherited and was otherwise neutral. A part is every
+  node without children beneath the row, shown or hidden, and the node
+  itself when it has a model of its own; a row whose parts show different
+  colours, or a part with none, shows what it showed before. The assembly
+  a host reads is unchanged: a node's `color` is still its own effective
+  colour. Viewer API 30 and document versions 1 through 14 are unchanged.
 - Viewer API 30 reads document versions 1 through 14. A node's published
   `color: {when, on, off}` selects its existing body's color from the same
   standing state as its pose, including ordinary controls, reset, restore

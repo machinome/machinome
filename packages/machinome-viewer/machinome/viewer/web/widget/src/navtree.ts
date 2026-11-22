@@ -11,10 +11,15 @@
 // which is what lets every decision below be tested in plain node, where
 // there is no document object at all.
 //
-// `AssemblyNode.color` already carries the EFFECTIVE, inherited colour
-// (`tree.ts`'s `WidgetTree` resolves `data.color ?? inheritedColor` once,
-// when the node is built): nothing here re-derives inheritance, it only
-// reads `node.color` through.
+// The snapshot's `AssemblyNode.color` is the node's own EFFECTIVE,
+// inherited colour (`tree.ts`'s `WidgetTree` resolves
+// `data.color ?? inheritedColor` once, when the node is built): nothing
+// here re-derives inheritance, and a row without children reads it
+// through. A row with children shows the one colour its parts all show,
+// when they share one, and otherwise its own `node.color` (OpenSpec
+// `colour-a-node-by-what-it-holds`): its parts are every node without
+// children beneath it, and the node itself when it has a model of its
+// own. The snapshot's colour is left as it is.
 
 import type { AssemblyNavigationState } from './assembly';
 import { assemblyPathKey, type AssemblyNode, type AssemblyPath } from './tree';
@@ -50,7 +55,10 @@ export interface NavigatorRow {
   /** The name of the nearest hidden ancestor, for the accessible name of
    * an obscured row's visibility control; `null` when not obscured. */
   hidingAncestor: string | null;
-  /** The node's effective, inherited colour, or `null`. */
+  /** The colour this row shows, or `null`: for a node with children,
+   * the one colour all its parts show when they share one; otherwise the
+   * node's effective, inherited colour, `node.color` (OpenSpec
+   * `colour-a-node-by-what-it-holds`). */
   color: string | null;
 }
 
@@ -80,6 +88,28 @@ export function navigatorRows(
   const rootKey = navigation.root === null ? null : assemblyPathKey(navigation.root);
   const rows: NavigatorRow[] = [];
 
+  // One post-order pass over the whole snapshot, before the row walk
+  // (design Decisions 1 and 5): for every node, the one colour its parts
+  // share, or `null` when they share none. A node without children is its
+  // own part; a node with children holds its children's parts, and itself
+  // when it has a model of its own. Colours are compared as the strings
+  // the snapshot reports, and a part with no colour shares with nothing.
+  // Every node is visited once, whatever is expanded.
+  const shared = new Map<AssemblyNode, string | null>();
+  const gather = (node: AssemblyNode): string | null => {
+    const children = node.children;
+    let colour: string | null | undefined =
+      children.length === 0 || node.model ? node.color : undefined;
+    for (const child of children) {
+      const held = gather(child);
+      colour = colour === undefined || colour === held ? held : null;
+    }
+    const result = colour ?? null;
+    shared.set(node, result);
+    return result;
+  };
+  gather(assembly);
+
   const visit = (
     node: AssemblyNode,
     depth: number,
@@ -90,6 +120,7 @@ export function navigatorRows(
     const expanded = expandable && local.expanded.has(key);
     const hidden = hiddenKeys.has(key);
     const isRoot = navigation.root === null ? depth === 0 : key === rootKey;
+    const partsColour = shared.get(node) ?? null;
 
     rows.push({
       node,
@@ -102,7 +133,7 @@ export function navigatorRows(
       hidden,
       obscured: hidingAncestor !== null,
       hidingAncestor,
-      color: node.color,
+      color: expandable && partsColour !== null ? partsColour : node.color,
     });
 
     if (expanded) {
