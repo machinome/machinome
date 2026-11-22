@@ -19,7 +19,9 @@ import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
 import { bindingRootsEqual, prepareFlatPass, withExpressions } from './expressions';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
-import { admitGeometry, GeometryBatch, GeometryOwner } from './geometry-admission';
+import {
+  admitGeometry, GeometryBatch, GeometryOwner, ReadingKind, Share,
+} from './geometry-admission';
 import { initialColor, resolveColor } from './color';
 import { MaterialKind, MaterialPresentation, releaseMaterial } from './presentation';
 
@@ -37,6 +39,21 @@ export interface ChangeSet {
 export type Changed = ChangeSet | 'all';
 
 const stlLoader = new STLLoader();
+
+/** One reading of a model file (OpenSpec `share-one-geometry-per-model-file`,
+ * design Decisions 1, 4 and 10): one request through three.js's
+ * `STLLoader`, one parse, and the normals computed once, before any part
+ * has the geometry; a parse whose normals throw is freed and the reading
+ * fails. A further viewer is given a copy. */
+const STL_READING: ReadingKind<THREE.BufferGeometry> = {
+  async read(url: string): Promise<THREE.BufferGeometry> {
+    const loaded = await stlLoader.loadAsync(url);
+    try { loaded.computeVertexNormals(); } catch (error) { loaded.dispose(); throw error; }
+    return loaded;
+  },
+  copy: (geometry) => geometry.clone(),
+  dispose: (geometry) => geometry.dispose(),
+};
 
 export type AssemblyPath = readonly string[];
 
@@ -168,12 +185,22 @@ export interface LoadedMarking {
 
 const disposedMeshes = new WeakSet<THREE.Mesh>();
 const meshOwnership = new WeakMap<THREE.Mesh, () => void>();
+// The share of a model file's geometry each mesh showing it holds. A mesh
+// holding one lets go of it; any other geometry (a placeholder, a decal's
+// own, a flexible part's) is the mesh's own and is disposed.
+const meshShares = new WeakMap<THREE.Mesh, Share<THREE.BufferGeometry>>();
 function disposeMesh(mesh: THREE.Mesh): void {
   if (disposedMeshes.has(mesh)) return;
   disposedMeshes.add(mesh);
   meshOwnership.get(mesh)?.();
   meshOwnership.delete(mesh);
-  mesh.geometry.dispose();
+  const share = meshShares.get(mesh);
+  if (share !== undefined) {
+    meshShares.delete(mesh);
+    share.release();
+  } else {
+    mesh.geometry.dispose();
+  }
   releaseMaterial(mesh);
 }
 
@@ -359,6 +386,11 @@ export class WidgetTree {
     // `draw-only-when-the-picture-changes`, design Decision 2).
     this.presentation.picture.raise();
     replacements.forEach(({ tree, mesh }) => {
+      // A node a republish removed while this update was reading is
+      // disposed and never drawn again: its replacement lets go of its
+      // share rather than hold the file's geometry from a group nothing
+      // shows (OpenSpec `share-one-geometry-per-model-file`, evidence).
+      if (tree.disposed) { disposeMesh(mesh); return; }
       tree.replaceMesh(mesh);
       tree.freshFromArtifact = true;
     });
@@ -908,22 +940,20 @@ async function loadMesh(
   const mesh = presentation.mesh(placeholder, kind, color);
   const forget = owner.own(() => disposeMesh(mesh));
   meshOwnership.set(mesh, forget);
-  let geometry: THREE.BufferGeometry | undefined;
+  let share: Share<THREE.BufferGeometry> | undefined;
   try {
-    geometry = await admitGeometry(url, owner, async () => {
-      const loaded = await stlLoader.loadAsync(url);
-      if (owner.cancelled) { loaded.dispose(); throw owner.cancellation; }
-      return loaded;
-    }, loaded => loaded.dispose());
+    // The viewer is the holder of its materials: one per viewer.
+    share = await admitGeometry(url, owner, presentation, STL_READING);
     if (owner.cancelled) throw owner.cancellation;
-    geometry.computeVertexNormals();
-    mesh.geometry = geometry;
+    mesh.geometry = share.value;
+    meshShares.set(mesh, share);
     placeholder.dispose();
     return mesh;
   } catch (error) {
-    // Only this load's reservation and returned geometry are ours here.
-    // Other successful or pending sibling loads retain their old lifecycle.
-    if (geometry && geometry !== mesh.geometry) geometry.dispose();
+    // Only this load's reservation and share are ours here. Other
+    // successful or pending sibling loads retain their old lifecycle, and
+    // the geometry stays while another part holds it.
+    if (share && meshShares.get(mesh) !== share) share.release();
     disposeMesh(mesh);
     forget();
     throw error;
@@ -963,15 +993,20 @@ export function liftDecal(geometry: THREE.BufferGeometry): THREE.BufferGeometry 
 async function loadDecal(url: string, color: string, presentation: MaterialPresentation,
                          owner = new GeometryOwner()): Promise<THREE.Mesh> {
   const mesh = await loadMesh(url, color, MARKING, presentation, owner);
+  // Disposed between `loadMesh`'s return and here (its owner cancelled):
+  // nothing is made for it.
+  if (disposedMeshes.has(mesh)) throw owner.cancellation;
+  const share = meshShares.get(mesh)!;
   try {
-    const loadedGeometry = mesh.geometry;
-    mesh.geometry = liftDecal(loadedGeometry);
-    loadedGeometry.dispose();
-    return mesh;
+    mesh.geometry = liftDecal(share.value);
   } catch (error) {
     disposeMesh(mesh);
     throw error;
   }
+  // The decal's geometry is its own; the file's is let go at once.
+  meshShares.delete(mesh);
+  share.release();
+  return mesh;
 }
 
 function uniqueByName(children: WidgetTree[]): Map<string, WidgetTree> {

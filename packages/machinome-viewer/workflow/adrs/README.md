@@ -97,7 +97,8 @@ ADR-194 is the current account.
 - [ADR-075](EXPORT/ADR-075-two-moving-envelopes-retain-a-free-follower.md) — Two moving envelopes retain a free follower — **Accepted**, extends 067, builds on 054/061
 - [ADR-076](EXPORT/ADR-076-a-parts-presented-look-has-one-owner.md) — A part's presented look has one owner — **Accepted**, amends 053, builds on 035
 - [ADR-077](EXPORT/ADR-077-an-on-demand-viewer-poses-a-clocked-machine-by-request.md) — An on-demand viewer poses a clocked machine by request — **Accepted**, extends 062 and 064, builds on 035
-- [ADR-078](EXPORT/ADR-078-geometry-admission-is-shared-and-resources-keep-their-owner.md) — Geometry admission is shared, and resources keep their owner — **Accepted**, builds on 035, 056 and 037
+- [ADR-078](EXPORT/ADR-078-geometry-admission-is-shared-and-resources-keep-their-owner.md) — Geometry admission is shared, and resources keep their owner — **Accepted**, amended by 082, builds on 035, 056 and 037
 - [ADR-079](EXPORT/ADR-079-model-colors-follow-the-admitted-presentation-scope.md) — Model colors follow the admitted presentation scope — **Accepted**, amends 076, builds on 044, 046 and 078
 - [ADR-080](EXPORT/ADR-080-a-continuous-viewer-draws-a-frame-only-when-its-picture-has-changed.md) — A continuous viewer draws a frame only when its picture has changed — **Accepted**, builds on 076, 077 and 043
 - [ADR-081](EXPORT/ADR-081-a-dragged-clocked-slider-is-followed-one-posed-request-a-frame.md) — A dragged clocked slider is followed, one posed request a frame — **Accepted**, amends 065, extends 064 and 080, builds on 073
+- [ADR-082](EXPORT/ADR-082-one-reading-of-a-model-file-is-one-geometry-held-by-count.md) — One reading of a model file is one geometry, held by count — **Accepted**, amends 078, builds on 076 and 056

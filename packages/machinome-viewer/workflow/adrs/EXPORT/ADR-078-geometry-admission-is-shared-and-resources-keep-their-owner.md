@@ -114,3 +114,27 @@ qualification, and these measured runs are not a universal memory/performance
 or cross-browser guarantee. The parent reviewed this complete ADR text after
 the actual Voron adversarial acceptance and accepted it under the pilot's
 advance authority on 5 October 2026.
+
+## Shared-geometry amendment — 22 November 2026
+
+[ADR-082: One reading of a model file is one geometry, held by count](ADR-082-one-reading-of-a-model-file-is-one-geometry-held-by-count.md)
+(`share-one-geometry-per-model-file`) replaces what this record decided
+about who holds a parsed geometry. "Each subscriber owns its own STLLoader
+parse, mutable geometry and material" and "Parsed geometry and scene
+resources remain owner-local" no longer hold for the geometry: a group
+sends one request and parses it once, and the parts and markings of one
+viewer that joined it are drawn from that one geometry, each holding a
+share, a further viewer taking a copy. "Late or abandoned returned
+geometry is disposed exactly once" becomes: a load cancelled when its
+reading arrives is given no share, and a geometry is freed exactly once,
+when no share of it is held and every load that joined its reading has
+settled. A group now closes when its request settles, where it closed at
+its first subscriber's settlement.
+
+Everything else this record decided stands: the budget of four groups and
+its FIFO order, queued work cancelled without a request, the slot held
+until every subscriber settles, the last good model after a failure,
+idempotent cleanup, and no public option, retry, permanent cache, geometry
+substitution or version change. A material was already one per appearance
+in each viewer (ADR-076).
+

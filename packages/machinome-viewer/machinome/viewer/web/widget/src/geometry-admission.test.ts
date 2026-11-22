@@ -31,60 +31,65 @@ it('bounds active distinct geometry groups across two roots and markings while e
 const flush = async () => { for(let i=0;i<15;i++)await Promise.resolve(); };
 it('cancels queued jobs without requests and retains active capacity until real settlement', async () => {
   const owner = new GeometryOwner(),other = new GeometryOwner();
+  const viewer = {}, reading = (read: () => Promise<void>) => ({ read, copy: (value: void) => value, dispose: () => undefined });
   const settle: (()=>void)[]=[];
   let started=0;
-  const jobs=Array.from({length:7},(_,i)=>admitGeometry(`cancel-${i}`,owner,()=>{
+  const jobs=Array.from({length:7},(_,i)=>admitGeometry(`cancel-${i}`,owner,viewer,reading(()=>{
     started++;return new Promise<void>(resolve=>settle.push(resolve));
-  }));
+  })));
   const all=Promise.allSettled(jobs);
   owner.cancel();
   let otherStarted=false;
-  const survivor=admitGeometry('survivor',other,async()=>{otherStarted=true;});
+  const survivor=admitGeometry('survivor',other,viewer,reading(async()=>{otherStarted=true;}));
   await flush();
   expect(started).toBe(4);expect(otherStarted).toBe(false);
   settle.shift()!();await flush();expect(otherStarted).toBe(true);
   settle.splice(0).forEach(resolve=>resolve());
   expect((await all).every(row=>row.status==='rejected')).toBe(true);
-  await survivor;
+  (await survivor).release();
 });
 
 it('removes cancelled queued URL eligibility so a later request cannot inherit abandoned FIFO priority', async () => {
   const activeOwner = new GeometryOwner(), cancelled = new GeometryOwner();
   const survivor = new GeometryOwner(), laterOwner = new GeometryOwner();
+  const viewer = {}, reading = (read: () => Promise<void>) => ({ read, copy: (value: void) => value, dispose: () => undefined });
   const settle: (() => void)[] = [];
   const activeJobs = Array.from({ length: 4 }, (_, index) =>
-    admitGeometry(`fifo-active-${index}`, activeOwner, () =>
-      new Promise<void>(resolve => settle.push(resolve))));
+    admitGeometry(`fifo-active-${index}`, activeOwner, viewer, reading(() =>
+      new Promise<void>(resolve => settle.push(resolve)))));
   const starts: string[] = [];
-  const abandoned = admitGeometry('fifo-X', cancelled, async () => { starts.push('abandoned'); });
+  const abandoned = admitGeometry('fifo-X', cancelled, viewer, reading(async () => { starts.push('abandoned'); }));
   const abandonedResult = Promise.allSettled([abandoned]);
-  const first = admitGeometry('fifo-Y', survivor, async () => { starts.push('Y'); });
+  const first = admitGeometry('fifo-Y', survivor, viewer, reading(async () => { starts.push('Y'); }));
   cancelled.cancel();
-  const second = admitGeometry('fifo-X', laterOwner, async () => { starts.push('new X'); });
+  const second = admitGeometry('fifo-X', laterOwner, viewer, reading(async () => { starts.push('new X'); }));
   settle.shift()!();
   await flush();
   settle.splice(0).forEach(resolve => resolve());
-  await Promise.all([...activeJobs, first, second, abandonedResult]);
+  const [shares] = await Promise.all([Promise.all([...activeJobs, first, second]), abandonedResult]);
   expect(starts).toEqual(['Y', 'new X']);
+  shares.forEach(share => share.release());
 });
 
 it('releases failures, preserves their original error and closes duplicate groups after actual settlement', async () => {
   const a=new GeometryOwner(),b=new GeometryOwner();
-  let fail!: (e:Error)=>void,resolve!:()=>void;
+  const viewer = {}, reading = <T>(read: () => Promise<T>) => ({ read, copy: (value: T) => value, dispose: () => undefined });
+  let fail!: (e:Error)=>void;
   const error=new Error('original parse failure');
-  const failed=admitGeometry('same',a,()=>new Promise<void>((_,reject)=>{fail=reject;}));
-  const joined=admitGeometry('same',b,()=>new Promise<void>(yes=>{resolve=yes;}));
+  const failed=admitGeometry('same',a,viewer,reading(()=>new Promise<void>((_,reject)=>{fail=reject;})));
+  // Joins the reading: one request, so one outcome for both.
+  const joined=admitGeometry('same',b,viewer,reading(()=>new Promise<void>(()=>undefined)));
   const result=Promise.allSettled([failed,joined]);
   a.cancel(); fail(error); await flush();
-  // A completed callback group must no longer be joined while another
-  // subscriber's parser is still finishing. The fresh load stays independent.
+  // A settled reading must no longer be joined. The later load is a fresh one.
   let fresh=0;
-  const later=admitGeometry('same',b,async()=>{fresh++;return 3;});
-  expect(await later).toBe(3);expect(fresh).toBe(1);
-  resolve();
+  const later=admitGeometry('same',b,viewer,reading(async()=>{fresh++;return 3;}));
+  const share=await later;
+  expect(share.value).toBe(3);expect(fresh).toBe(1);
+  share.release();
   const rows=await result;
   expect(rows[0]).toEqual({status:'rejected',reason:error});
-  expect(rows[1].status).toBe('fulfilled');
+  expect(rows[1]).toEqual({status:'rejected',reason:error});
 });
 
 it('disposes active late geometry and never attaches it to a disposed tree', async () => {
@@ -137,7 +142,8 @@ it.each([3, 4, 5, 10])('does not commit prepared shared-path models or markings 
     pending.push(() => resolve(new THREE.BoxGeometry()));
   }));
   const result = Promise.allSettled([tree.artifactChanged('shared.stl', '/')]);
-  expect(pending).toHaveLength(2);
+  // The part and its marking name one path: one reading, one load.
+  expect(pending).toHaveLength(1);
   pending.forEach(resolve => resolve());
   for (let step = 0; step < steps; step++) await Promise.resolve();
   tree.dispose();

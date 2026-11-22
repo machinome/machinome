@@ -73,6 +73,14 @@ it carries release together and share one version.
   the bank a drag leaves is the bank its requests leave, and a host
   reading the bank during a drag sees it follow the thumb. The on-demand
   mode, viewer API 30 and document versions 1 through 14 are unchanged.
+- The parts and markings of a viewer that name one model file, and ask for
+  it while it is being read, are drawn from one geometry, read and
+  uploaded once, where every part parsed the file into a geometry of its
+  own; the geometry is freed when the last part holding it is replaced,
+  removed or disposed. Two viewers in a page never share a geometry: each
+  further viewer holds a copy, freed with it. Which bytes a part is given,
+  the requests a page makes, the pictures, the order of drawing, the mount
+  handle, viewer API 30 and document versions 1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

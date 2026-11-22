@@ -970,9 +970,10 @@ load is open.
   `openspec/changes/archive/2026-11-22-draw-only-when-the-picture-changes/evidence.md`
   has the measurement.
 
-- **Left open in this section.** One parsed geometry per part. And what a
-  frame costs while something moves, which no change of this section has
-  touched since the materials.
+- **Left open in this section, as of 22 November 2026 before the geometry
+  was taken up.** One parsed geometry per part. And what a frame costs
+  while something moves, which no change of this section has touched
+  since the materials.
 
 - **The geometry, measured 22 November 2026**
   (`evidence/enigma-page-memory-2026-11-22.md`), on the pilot's "yes" to
@@ -991,6 +992,26 @@ load is open.
   2026, after they asked how a changed file would be handled. It revises
   ADR-078, which gave each subscriber its own parse and its own mutable
   geometry and set a cache aside.
+
+- **The geometry closed by `share-one-geometry-per-model-file`**, archived
+  22 November 2026. One reading of a model file is one request and one
+  parse, and within one viewer the parts and markings that join it are
+  drawn from its one geometry, each holding a share; the geometry is freed
+  when the last share is let go, and a second viewer takes a copy
+  (ADR-082, which amends ADR-078). On this page one open copy went from
+  4,217 MiB to 3,034: 1,472 geometries for the same 3,347 meshes, the
+  tab's typed arrays and the WebGL buffers each 573.5 MiB less. The peak
+  while the page loads went from 4,343 MiB to 3,265, and while a reload
+  holds two models from 6,286 to 4,581. Sixteen states drawn in software
+  equal the previous viewer's pictures pixel for pixel. The change's
+  `openspec/changes/archive/2026-11-22-share-one-geometry-per-model-file/evidence.md`
+  has the measurement.
+
+- **Left open in this section.** What a frame costs while something moves.
+  And of one open copy's memory: the `normal` attribute of the parts read
+  from files (268 MiB in each process now), the tab's copy of every
+  geometry after its upload, and the flexible parts' 490 MiB in each
+  process; none proposed.
 
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 
