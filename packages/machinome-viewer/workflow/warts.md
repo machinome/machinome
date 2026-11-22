@@ -1013,6 +1013,21 @@ load is open.
   geometry after its upload, and the flexible parts' 490 MiB in each
   process; none proposed.
 
+- **The stored normals, measured 22 November 2026**
+  (`evidence/enigma-rigid-part-normals-2026-11-22.md`), on the pilot's
+  "ok, merge and next". A part read from a file holds a `normal` attribute
+  the viewer computes itself, one normal a triangle written three times;
+  a flexible part holds none and is drawn with the normal taken from the
+  derivatives. With the 993 file geometries drawn that way on this page,
+  one open copy is 2,489 MiB where it is 3,034, the tab's typed arrays
+  and the WebGL buffers each 268.4 MiB less, and in nine states at most
+  508 of a picture's 605,864 pixels differ, each by one step of 255, with
+  one pixel differing by 11 in three of them. Drawn in software; no
+  graphics card was measured.
+
+- **Taken up, the stored normals,** as the change
+  `draw-rigid-parts-without-stored-normals`, on that word of the pilot's.
+
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 
 - **Symptom.** None seen in a project. Found on 21 November 2026 while
