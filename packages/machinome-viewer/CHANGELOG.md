@@ -94,7 +94,7 @@ it carries release together and share one version.
 
 Every entry above but the first was made for one page and measured on it:
 an Enigma I of 3,347 drawn parts (2,868 read from 993 model files, 426
-flexible parts and 53 markings, 44.7 million triangles), a clocked machine
+flexible parts and 53 markings, 44.8 million triangles), a clocked machine
 whose document holds 546,768 expression nodes. One script measured the
 viewer as it stood before the first of those changes and as it stands
 after the last, each bundled with molejo 0.2.0:
