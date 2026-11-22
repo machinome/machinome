@@ -90,6 +90,43 @@ it carries release together and share one version.
   flexible parts, highlights, picking, the order of drawing, the mount
   handle, viewer API 30 and document versions 1 through 14 are unchanged.
 
+### Showing a machine of thousands of parts
+
+Every entry above but the first was made for one page and measured on it:
+an Enigma I of 3,347 drawn parts (2,868 read from 993 model files, 426
+flexible parts and 53 markings, 44.7 million triangles), a clocked machine
+whose document holds 546,768 expression nodes. One script measured the
+viewer as it stood before the first of those changes and as it stands
+after the last, each bundled with molejo 0.2.0:
+
+| | Before | After |
+|---|---|---|
+| At rest for three seconds | 126 frames drawn, 421,722 draw calls, the page's script never idle | no frame drawn, no draw call, under 5 ms of script a second |
+| Pressing a key, an instruction drawn over 2 s: the click itself | 5.3 to 6.2 s | 82 to 170 ms |
+| frames drawn | 3, of about 2.7 s of script each | 28 to 31, of 70 to 77 ms each |
+| the last frame | 10.9 to 11.9 s after the click | 2.00 to 2.08 s after it |
+| Closing or opening the case, drawn over 3 s: the click itself | 3.4 to 4.3 s | 8 to 10 ms |
+| frames drawn | 19 to 33 | 154 to 170, of 17 to 18 ms each |
+| the last frame | 7.6 to 8.5 s after the click | 3.03 to 3.05 s after it |
+| The case's slider dragged through eight positions | the machine at the thumb's value at none | at all eight |
+| Memory of one open page | 4,097 MiB: the tab 2,087, the graphics process 1,889 | 2,488 MiB: 1,312 and 1,055 |
+| its peak while the page loads | 4,468 MiB | 2,714 MiB |
+| its peak while `reload()` holds two models | 6,258 MiB | 3,589 MiB |
+| From the click that loads the machine to a ready page | 15.1 and 15.7 s | 10.3 and 10.5 s |
+
+Measured in Chromium drawing in software, on a machine with no graphics
+card. Draw calls were counted and not executed, so every time is the
+page's script alone and none says what a graphics card draws in; memory is
+the proportional set size of the browser's processes, and on a card the
+graphics process's share is the card's. One run of each build for the
+times, with three presses of the key and four moves of the case in it; two
+for the load. The parts and the triangles drawn are the same, and so is
+the picture of a state, but for the difference the last entry states.
+With molejo's source of 21 November 2026, which no release of molejo
+holds yet, in place of 0.2.0, a key press draws 45 or 46 frames of about
+46 ms each and no other row moves. Not measured: any graphics card, and
+any other browser.
+
 ## 0.9.0 — 31 October 2026
 
 Released with Machinome 0.9.0 and numbered with it, the first release of
