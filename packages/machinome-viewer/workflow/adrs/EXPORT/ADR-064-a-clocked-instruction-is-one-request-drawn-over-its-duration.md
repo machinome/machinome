@@ -530,3 +530,14 @@ kind and still show their start and their end only.
 [Design](../../../openspec/changes/archive/2026-11-20-draw-a-press-from-its-first-frame/design.md)
 and [evidence](../../../openspec/changes/archive/2026-11-20-draw-a-press-from-its-first-frame/evidence.md)
 record the cases, the tests and the measurements.
+
+## Dragged-slider pointer — 22 November 2026
+
+This record has every gesture land a running drawing before it acts, so
+that one authority holds the pose.
+[ADR-081: A dragged clocked slider is followed, one posed request a frame](ADR-081-a-dragged-clocked-slider-is-followed-one-posed-request-a-frame.md)
+(`follow-the-slider-as-it-is-dragged`) keeps that for a followed position
+of a dragged slider, with one exception: the drawing of the press's own
+jump (a press on the track, or on a thumb pinned at an end) is waited for,
+and the positions that came meanwhile are followed from the frame it lands
+in. A pressed instruction is as this record decided.

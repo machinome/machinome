@@ -100,7 +100,8 @@ Three kinds of motion
      - Movement requests, jogging, instructions, run/pause/step
      - A coordinate bank advanced in fixed simulation ticks
    * - Clocked
-     - One input request per gesture; an optional elapsed clock
+     - One input request per gesture, or per frame while a slider is dragged;
+       an optional elapsed clock
      - Driver/state values committed by the machine's events
 
 Posed models
@@ -147,13 +148,17 @@ is not automatically a control.
 Clocked machines
 ================
 
-Each input gesture requests one movement. The machine solves that path,
-applies events in order, and retains the result. State readouts are read-only:
-they are written by the mechanism, not set directly by the viewer.
+Dragging a slider's thumb moves the machine with it: once per animation frame
+the thumb's latest position is requested, and the model and the readouts
+follow while the thumb stays under the pointer. A click on the track, a key, a
+typed value and a nudge each request one movement, drawn as described below.
+The machine solves each request's path, applies events in order, and retains
+the result. State readouts are read-only: they are written by the mechanism,
+not set directly by the viewer.
 Mechanical stops can admit only part of a request. A refused request leaves
 the committed bank unchanged.
 
-The built-in panel draws a manual gesture at the tempo of the first declared
+The built-in panel draws such a gesture at the tempo of the first declared
 instruction that states a travel on that input. The drawing time scales with
 the travel the machine admits. If no instruction states a travel on that input,
 the panel uses a short interval (0.2 seconds). A pressed instruction is drawn

@@ -83,7 +83,7 @@ ADR-194 is the current account.
 - [ADR-062](EXPORT/ADR-062-the-viewer-executes-a-clocked-machine-in-thread.md) — The viewer executes a clocked machine in thread, and a declared stop clips the request before any event — **Accepted**, extends 045 and 047, builds on 054, 057, 058, 060 and 061, consumes solid-node ADR-125, ADR-126 and ADR-128
 - [ADR-063](EXPORT/ADR-063-the-clock-is-an-input-and-a-frame-advances-it.md) — The clock is an input a request moves, and one rendered frame is one request — **Accepted**, extends 062, builds on 045, 046, 047 and 048, consumes solid-node ADR-127 and ADR-128
 - [ADR-064](EXPORT/ADR-064-a-clocked-instruction-is-one-request-drawn-over-its-duration.md) — A clocked instruction is one request, drawn over its duration — **Accepted**, amends 062, extends 063, builds on 045, 047 and 048, consumes solid-node ADR-129
-- [ADR-065](EXPORT/ADR-065-every-request-the-clocked-panel-makes-is-drawn.md) — Every request the clocked panel makes is drawn, over a duration of the viewer's own — **Accepted**, amends 064, extends 062 and 063
+- [ADR-065](EXPORT/ADR-065-every-request-the-clocked-panel-makes-is-drawn.md) — Every request the clocked panel makes is drawn, over a duration of the viewer's own — **Accepted**, amended by 081, amends 064, extends 062 and 063
 - [ADR-066](EXPORT/ADR-066-the-viewer-host-contract-adopts-machinome.md) — The viewer host contract adopts Machinome — **Accepted**
 - [ADR-067](EXPORT/ADR-067-a-play-edge-retains-contact-history-in-the-running-bank.md) — A play edge retains contact history in the running bank — **Accepted**, extends 045 and 047, builds on 054, consumes machinome ADR-130
 - [ADR-068](EXPORT/ADR-068-time-drives-admit-independent-motion-without-bank-state.md) — Time drives admit independent motion without bank state — **Accepted**, extends 045 and 047, preserves 067, consumes machinome ADR-133
@@ -100,3 +100,4 @@ ADR-194 is the current account.
 - [ADR-078](EXPORT/ADR-078-geometry-admission-is-shared-and-resources-keep-their-owner.md) — Geometry admission is shared, and resources keep their owner — **Accepted**, builds on 035, 056 and 037
 - [ADR-079](EXPORT/ADR-079-model-colors-follow-the-admitted-presentation-scope.md) — Model colors follow the admitted presentation scope — **Accepted**, amends 076, builds on 044, 046 and 078
 - [ADR-080](EXPORT/ADR-080-a-continuous-viewer-draws-a-frame-only-when-its-picture-has-changed.md) — A continuous viewer draws a frame only when its picture has changed — **Accepted**, builds on 076, 077 and 043
+- [ADR-081](EXPORT/ADR-081-a-dragged-clocked-slider-is-followed-one-posed-request-a-frame.md) — A dragged clocked slider is followed, one posed request a frame — **Accepted**, amends 065, extends 064 and 080, builds on 073

@@ -4177,11 +4177,13 @@ focused layer's declared inputs as HANDLES and its declared states as
 follow-only READOUTS.
 
 Each input's handle SHALL show where the input stands, in design units,
-and SHALL offer a way to move it to another value; every such gesture
-SHALL submit exactly ONE request to move that input TO the value the
-gesture names, and SHALL report that request's outcome where the gesture
-was made — the travel admitted, the STOPS that truncated it named by
-coordinate and side, or the refusal's own message. A gesture an interlock
+and SHALL offer a way to move it to another value. Every such gesture other
+than a DRAG of the input's slider SHALL submit exactly ONE request to move
+that input TO the value the gesture names, and SHALL report that request's
+outcome where the gesture was made — the travel admitted, the STOPS that
+truncated it named by coordinate and side, or the refusal's own message; a
+drag SHALL submit the requests and report the outcome stated below. A
+gesture an interlock
 holds SHALL be reported as a stop at that control rather than passed over
 as a control that did nothing. A declared range SHALL be presentation only
 and SHALL NOT clamp a request.
@@ -4203,8 +4205,8 @@ and readouts SHALL follow THE DRAWING rather than the bank, so that what a
 maker reads beside the model is what the model is showing; when the drawing
 lands the two are the same values again.
 
-A gesture on a HANDLE SHALL be ONE request, and the transition that request
-reports SHALL BE DRAWN under the requirement "The viewer plays a clocked
+A gesture on a HANDLE, other than the positions a drag FOLLOWS, SHALL be ONE
+request, and the transition that request reports SHALL BE DRAWN under the requirement "The viewer plays a clocked
 instruction as one drawn transition", exactly as a pressed instruction's is:
 the machine is solved once, at the gesture, and what follows is a picture of a
 transition that has already happened. A handle declares no duration, so the
@@ -4225,13 +4227,70 @@ far it travels, WITHOUT CAP: a maker who asks for twice the declared travel has
 asked to watch twice the declared stroke, and a picture drawn at one rate for
 its first half and another for the rest would be a picture of neither.
 
+A DRAG is a pointer pressed on a ranged input's slider and moved while it is
+held. A PRESS begins when the pointer's primary button or contact goes down on
+the slider while no clock's transport is playing, and lasts until it ends as
+stated below. While a press lasts, each
+value the slider reports is a POSITION, and the thumb SHALL stay where the
+pointer puts it. A position SHALL be DRAWN, as one request under the paragraph
+above, when it is the first position of its press and either the pointer had
+not moved since the press began — the slider placed its thumb where a press on
+its track landed — or the input, as the model showed it at the press, stood
+outside the slider's range. Every other position SHALL be FOLLOWED: the viewer
+SHALL ask the machine for it in ONE request, posed at once and not drawn, so
+that the model, the handle's reading and the readouts of the states its
+commits write show the machine's answer no later than the next animation
+frame. The viewer SHALL submit at most one followed request per animation
+frame, for the latest position the thumb has reached; SHALL NOT submit two in
+succession for one position; and SHALL NOT leave the last position of a press
+unasked. A thumb held still SHALL submit nothing and draw nothing. The
+positions that come while a press's own drawn position is being drawn SHALL
+wait until that drawing lands, and the latest of them SHALL then be followed.
+
+A press SHALL end when its pointer is let go, wherever it is let go; when the
+pointer is cancelled or the slider loses it; when a key is pressed on the
+slider; and when another slider is pressed. The window losing focus or the
+page being hidden SHALL NOT end it. No release event SHALL be needed for any of these. When a
+press ends, its last position SHALL be asked if it has not been, once any
+drawing of its own position has landed; nothing further SHALL be asked or
+drawn for that gesture; and the thumb SHALL stand where the machine stands,
+pinned at an end where that lies outside the range. While a press lasts the
+panel SHALL NOT be replaced: the slider the pointer holds SHALL remain the
+element it holds, and SHALL keep the focus after the press ends. The handle
+SHALL report a drag as a whole: the travel the machine admitted from where the
+input stood at the press, with the stops of its latest request, or that
+request's refusal. A stop or a refusal repeated by later positions SHALL leave
+the report as it stands.
+
+A drag is a sequence of requests, each admitted or refused by the machine as
+the one before it left it, and the bank a drag leaves SHALL be the bank that
+sequence leaves. For a travel in one direction that is the bank one request to
+the last position leaves; a hand that crosses a commit's level back and forth
+fires that commit at every crossing the machine fires on that path; and a drag
+can be admitted step by step where one request for the same travel would be
+refused whole.
+
+While the clock's transport plays, where the machine declares a clock, no
+press SHALL begin, and a slider's gesture is then the one request this
+requirement states for a gesture that is not a drag. Anything that would
+move or repose the machine or replace the panel while a press lasts — a typed
+value, a nudge, a pressed instruction, a request, restore, reset, trigger or
+clock start from the host's own handle, a change of focus, a reload, or an
+in-place update that keeps the machine — SHALL end the press first, its last
+position asked before that thing acts, and a slider that thing replaces SHALL
+submit nothing afterwards. A press whose machine is replaced by a republish,
+or whose viewer is disposed, SHALL end with nothing more asked of any machine.
+
 A handle SHALL stay usable while a drawing runs; a gesture on one LANDS the
 running drawing and then draws its own, so repeated gestures give consecutive
-transitions, each drawn. A gesture whose request admits no travel and commits
+transitions, each drawn. A followed position lands a running drawing and is
+posed; the positions after a press's own drawn position wait for it, as stated
+above. A gesture whose request admits no travel and commits
 nothing SHALL draw nothing and SHALL report its outcome exactly as it does now.
 
 A control a maker is EDITING SHALL NOT be rewritten by a drawing that is
-running; every other handle and readout follows it.
+running; every other handle and readout follows it. A slider a pointer holds
+is a control a maker is editing.
 
 The chrome SHALL offer snapshot, restore and reset of the machine's bank.
 It SHALL NOT offer a transport over the machine's DRIVERS — a clocked
@@ -4303,10 +4362,11 @@ different values and neither moves the other.
 
 #### Scenario: A slider's commit is drawn
 
-- **WHEN** a maker drags a ranged input's slider and releases it, or clicks its
-  track away from the thumb
+- **WHEN** a maker clicks a ranged input's slider's track away from the thumb
+  and lets go without moving, or moves the slider with the keyboard
 - **THEN** the one request that gesture makes is drawn from where the input
-  stood to where the gesture put it, rather than posed in a single frame
+  stood to where the gesture put it, rather than posed in a single frame, and a
+  click on the track is drawn from the moment the pointer goes down
 
 #### Scenario: Consecutive gestures are consecutive drawings
 
@@ -4358,6 +4418,107 @@ different values and neither moves the other.
   input, over different durations
 - **THEN** a gesture on that input is drawn at the tempo of the one the document
   declares FIRST, whatever the second states
+
+#### Scenario: A dragged slider is followed
+
+- **WHEN** a maker presses a ranged input's slider on its thumb and drags it
+- **THEN** in every animation frame in which the thumb has moved, the machine
+  stands at the thumb's position, the model and the handle's reading show it,
+  the readouts show the states its commits wrote, the thumb stays under the
+  pointer, and nothing is drawn between one position and the next
+
+#### Scenario: Letting go asks nothing more
+
+- **WHEN** the maker lets the dragged thumb go
+- **THEN** no request is made beyond the last position the thumb reached and
+  nothing further is drawn, the slider is the element that was pressed and keeps
+  the focus, and the handle reports the travel the drag admitted
+
+#### Scenario: A thumb held still costs nothing
+
+- **WHEN** a maker holds a dragged thumb still
+- **THEN** no request is made and nothing is drawn for as long as it stays
+
+#### Scenario: A fast hand is not queued
+
+- **WHEN** the thumb reaches several positions before the next animation frame,
+  or a request takes longer than a frame
+- **THEN** one request is made in that frame, for the latest position, and the
+  position the thumb ends at is asked no later than the end of the press
+
+#### Scenario: A drag pushed past a stop
+
+- **WHEN** a maker drags a thumb past where an interlock stops the input
+- **THEN** the model and the handle's reading stand at the stop while the thumb
+  stays under the pointer, the handle reports the travel admitted and the stop
+  without the panel being replaced, and when the thumb is let go it moves to
+  where the machine stands
+
+#### Scenario: A refused position leaves the last admitted one
+
+- **WHEN** a position the thumb reaches is refused by the machine
+- **THEN** the model, the reading and the readouts stand where the last
+  admitted position put them, the handle reports the refusal once however many
+  later positions are refused, and when the thumb is let go it moves to where
+  the machine stands
+
+#### Scenario: A press on the track and then a drag
+
+- **WHEN** a maker presses a slider's track away from the thumb and drags without
+  letting go
+- **THEN** the jump to where the press landed is drawn from where the input
+  stood, the thumb stays under the pointer, and once that drawing lands the
+  machine follows the thumb
+
+#### Scenario: A press on a pinned thumb
+
+- **WHEN** an input stands outside its slider's range and a maker drags the
+  thumb pinned at the range's end
+- **THEN** the first position is drawn from where the input stood, and the
+  positions after it are followed once that drawing lands
+
+#### Scenario: A press that ends with no release
+
+- **WHEN** a press is cancelled or the slider loses the pointer while a thumb is
+  dragged
+- **THEN** the machine stands at the last position the thumb reached, nothing
+  more is asked, and the thumb stands where the machine stands
+
+#### Scenario: Another authority ends the drag first
+
+- **WHEN** a host requests, restores, resets or triggers through its handle,
+  or the maker types a value, nudges or presses an instruction, while a thumb is
+  dragged
+- **THEN** the drag's last position is asked first, the other thing then acts
+  on the bank it left, and the slider the pointer held asks nothing more
+
+#### Scenario: A replaced machine is asked nothing
+
+- **WHEN** the document is republished with another machine, or the viewer is
+  disposed, while a thumb is dragged
+- **THEN** no request from that drag reaches any machine
+
+#### Scenario: A window that loses focus does not end a drag
+
+- **WHEN** the window loses focus, or the page is hidden and shown again, while a
+  maker still holds a dragged thumb
+- **THEN** the positions the thumb reaches afterwards are followed as before
+
+#### Scenario: Whole-number and scaled inputs are dragged in design units
+
+- **WHEN** a maker drags the slider of an input declared as a whole number, or of
+  an input whose design units are scaled from its native ones
+- **THEN** every position asked is a whole number of design units for the first,
+  the machine holds the native value of each design position for the second, and
+  the reading shows the design value
+
+#### Scenario: A drag across a commit is the requests it made
+
+- **WHEN** a maker drags a thumb back and forth across the level at which a
+  commit fires
+- **THEN** the commit fires at every crossing the machine fires on that path,
+  and the bank is the one that drag's requests leave, which can differ from the
+  bank of one request to the last position
 
 ### Requirement: A maker runs an elapsed clocked machine on screen
 
@@ -4451,7 +4612,9 @@ maker's GESTURE on a handle produces, under the requirement "A maker operates
 a clocked machine on screen": one request, made once at the gesture, drawn over
 the duration that requirement gives it — the tempo of a declared instruction
 that states a travel on the same input, or the viewer's own short duration
-where the document states none. A PRESSED instruction SHALL still be drawn over
+where the document states none. A position a DRAGGED slider follows under that
+requirement SHALL NOT be drawn: it is one request posed at once, as a request
+on the mount handle is. A PRESSED instruction SHALL still be drawn over
 the duration it DECLARES, whatever travel its request admits: an instruction
 states its own duration and the viewer honours it, and a tempo is derived only
 where nothing is declared. Everything
@@ -4591,7 +4754,8 @@ the two being two authorities over one pose.
 
 #### Scenario: A handle's gesture is drawn like an instruction's press
 
-- **WHEN** a maker's gesture on a handle makes a request that travels
+- **WHEN** a maker's gesture on a handle, other than a position a dragged
+  slider follows, makes a request that travels
 - **THEN** exactly one request is made before the first frame, the transition
   is drawn frame by frame over the duration the panel gives it with each commit
   at its own fraction, and the drawing lands on the bank the machine has held

@@ -64,7 +64,7 @@ import type {
 import { drawing, drawingClock } from './clocked/drawing';
 import type { Drawing, DrawingClock, DrawnFrame } from './clocked/drawing';
 import {
-  clockedControlLayer, clockedFollowing, clockStepAmount,
+  clockedControlLayer, clockedFollowing, clockedInputControl, clockStepAmount,
   DEFAULT_CLOCK_STEP, formatClockedOutcome, gestureSeconds,
 } from './clockedControls';
 import type {
@@ -568,6 +568,18 @@ export async function mount(
   // and cleared in a `try`/`finally` around that one request, so it is
   // false on every exit of every door.
   let judging = false;
+  // The PRESS on a clocked slider, if one lasts (OpenSpec
+  // `follow-the-slider-as-it-is-dragged`, design Decisions 1 to 7): at
+  // most one. `released` is the slider whose press was let go since the
+  // last animation frame, whose own `change` is then not a request
+  // (design Decision 1). `following` is the pose hook's third mode, true
+  // only while a followed position is asked: the tree is updated and
+  // nothing is drawn, the frame loop drawing it (design Decisions 3 and
+  // 6); `followed` is what that request posed.
+  let press: SliderPress | null = null;
+  let released: HTMLInputElement | null = null;
+  let following = false;
+  let followed: { bank: Record<string, number>; moved: string[] } | null = null;
   // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
   // maker has typed into the amount and rate fields is a REQUEST
   // setting, not a coordinate: it survives a republish and moves
@@ -1293,6 +1305,10 @@ export async function mount(
    * and nothing shown -- the drawing shows the transition from where the
    * scene stands. */
   const startMachine = (loaded: LoadedMachine | null) => {
+    // A press on the old machine is dropped with nothing asked: no
+    // request reaches a machine that is gone or one the maker did not
+    // drag (`follow-the-slider-as-it-is-dragged`, design Decision 5).
+    dropPress();
     loadedMachine = loaded;
     clockedOutcomes = {};
     // A republish rebuilds the machine at its initial bank, so a drawing
@@ -1331,6 +1347,14 @@ export async function mount(
           return;
         }
         tree?.update(clockedScope(next, time, bindingsTable), posed(moved));
+        if (following) {
+          // A FOLLOWED position of a dragged slider
+          // (`follow-the-slider-as-it-is-dragged`, design Decisions 3 and
+          // 6): posed and not drawn. The update raised the picture's
+          // revision, so the frame loop's one draw shows it.
+          followed = { bank: next, moved };
+          return;
+        }
         // A request is a gesture, and a gesture that changed the pose
         // must reach the screen -- whether it came from the panel or
         // straight off the `machine()` handle a host holds.
@@ -1404,7 +1428,13 @@ export async function mount(
    * and a drawn step would be a transport control that pauses the
    * transport (design D4). */
   const clockedRequest = (id: string, request: { by?: number; to?: number },
-                          draw = false): ClockedOutcome | null => {
+                          draw = false, pressed = false): ClockedOutcome | null => {
+    // `pressed` is a press's own drawn jump (OpenSpec
+    // `follow-the-slider-as-it-is-dragged`, design Decision 3): it does
+    // not end the press it belongs to, and its rebuild is replaced by the
+    // row's report, so the slider the pointer holds stays in the page.
+    // Every other request ends a press first, its last position asked.
+    if (!pressed) endPress();
     const started = machine;
     if (started === undefined) return null;
     // A gesture LANDS a running drawing and then acts, on a bank the
@@ -1444,6 +1474,7 @@ export async function mount(
     }
     clockedOutcomes[id] = report;
     let drawingStarted = false;
+    let published: { bank: Record<string, number>; moved: string[] } | null = null;
     if (answered !== null && before !== null) {
       // THE TEMPO its own input's declared instruction states, in the
       // proportion the ADMITTED travel bears to the declared one, or the
@@ -1453,9 +1484,24 @@ export async function mount(
         null, answered, before,
         gestureSeconds(id, answered.admitted,
                        loadedMachine?.instructions ?? {}), id);
-      if (!drawingStarted) publishJudged(before, started.state());
+      if (!drawingStarted) {
+        const after = started.state();
+        published = { bank: after, moved: publishJudged(before, after) };
+      }
     }
-    rebuildClockedChrome();
+    if (pressed) {
+      clockedChrome?.report(id, report);
+      // A press's jump that starts no drawing -- a tempo of zero seconds --
+      // has no drawn frame to carry the panel, and no rebuild: what it
+      // published is written in place, the held thumb excepted.
+      if (published !== null && published.moved.length > 0
+          && loadedMachine !== null) {
+        clockedChrome?.follow(clockedFollowing(loadedMachine, published.bank,
+                                              published.moved));
+      }
+    } else {
+      rebuildClockedChrome();
+    }
     if (!drawingStarted) drawPicture();
     return report;
   };
@@ -1464,12 +1510,13 @@ export async function mount(
    * it (OpenSpec `draw-a-press-from-its-first-frame`, design D1): one
    * `tree.update` over the ids that differ from `before`, nothing when
    * none does. It repeats the evaluation the judgement accepted under
-   * the same scope, so it cannot refuse. */
+   * the same scope, so it cannot refuse. It answers the ids it published. */
   const publishJudged = (before: Record<string, number>,
-                         after: Record<string, number>): void => {
+                         after: Record<string, number>): string[] => {
     const moved = Object.keys(after).filter((id) => after[id] !== before[id]);
-    if (moved.length === 0) return;
+    if (moved.length === 0) return moved;
     tree?.update(clockedScope(after, time, bindingsTable), posed(moved));
+    return moved;
   };
 
   /** PLAY a declared instruction: ONE request, made once and before the
@@ -1488,6 +1535,7 @@ export async function mount(
    * drawing's first frame is the next picture. An instruction of zero
    * duration is posed and rendered by the machine's hook, as before. */
   const clockedPlay = (name: string): ClockedRequest => {
+    endPress();
     const started = machine as ClockedMachine;
     landDrawing();
     const declared = loadedMachine?.instructions[name];
@@ -1643,12 +1691,201 @@ export async function mount(
         `Advance the clock with machine().move('${started.clock()}', `
         + '{ by: seconds }).');
     }
+    endPress();
     if (playing) clockRefusal = null;
     clockPlaying = playing;
     rebuildClockedChrome();
   };
 
+  // -------------------------------------------------------------------
+  // A DRAGGED clocked slider is FOLLOWED (OpenSpec
+  // `follow-the-slider-as-it-is-dragged`).
+
+  /** The window's listeners for the press's pointer: its movement, its
+   * release wherever it is let go, and its cancellation, in the capture
+   * phase. Added when a press begins and removed when it ends or is
+   * dropped, so that nothing stands on the window while no slider is held
+   * (design Decision 5, and "Corrected in review"). */
+  const onPressMove = (event: PointerEvent): void => {
+    if (press !== null && press.held && event.pointerId === press.pointerId) {
+      press.moved = true;
+    }
+  };
+  const onPressEnd = (event: PointerEvent): void => {
+    if (press !== null && press.held && event.pointerId === press.pointerId) {
+      releasePress();
+    }
+  };
+  const addPressListeners = (): void => {
+    window.addEventListener('pointermove', onPressMove, true);
+    window.addEventListener('pointerup', onPressEnd, true);
+    window.addEventListener('pointercancel', onPressEnd, true);
+  };
+  const removePressListeners = (): void => {
+    window.removeEventListener('pointermove', onPressMove, true);
+    window.removeEventListener('pointerup', onPressEnd, true);
+    window.removeEventListener('pointercancel', onPressEnd, true);
+  };
+
+  /** A press begins on `slider` (design Decision 1). The bank is read
+   * once: the input's banked value, from which the drag's travel is
+   * reported, and whether the input stands outside the slider's range as
+   * the model shows it (the drawing's bank while one runs, Decision 7). */
+  const beginPress = (id: string, slider: HTMLInputElement,
+                      pointerId: number): void => {
+    const started = machine;
+    const driver = loadedMachine?.drivers[id];
+    if (started === undefined || driver === undefined) return;
+    const bank = started.state();
+    const shown = drawnBank ?? bank;
+    press = {
+      id, slider, pointerId, held: true, moved: false, positions: 0,
+      pending: null, asked: null, start: bank[id], scale: driver.scale ?? 1,
+      pinned: clockedInputControl(id, driver, shown[id]).pinned,
+      drawing: null, report: null, machine: started,
+    };
+    clockedChrome?.hold(id);
+    addPressListeners();
+  };
+
+  /** ASK a followed position: ONE request, posed through the hook's
+   * third mode and not drawn, the panel written in place (design
+   * Decisions 2, 3, 4). A running drawing that is not the press's own is
+   * landed first, as every gesture lands one (ADR-064). The row reports
+   * the drag as a whole: the travel admitted since the press, with the
+   * latest request's stops, or its refusal; a refusal that follows a
+   * refusal of the same press leaves the report as it stands (design
+   * Decision 4; evidence.md, "Departures"). */
+  const askPosition = (pressed: SliderPress, position: number): void => {
+    const started = machine;
+    if (started === undefined || started !== pressed.machine) return;
+    landDrawing();
+    const unit = loadedMachine?.drivers[pressed.id]?.unit ?? null;
+    let report: ClockedOutcome;
+    followed = null;
+    try {
+      let answered: ClockedRequest;
+      following = true;
+      try {
+        answered = started.move(pressed.id, { to: position });
+      } finally {
+        following = false;
+      }
+      const bank = followed === null ? started.state()
+        : (followed as { bank: Record<string, number> }).bank;
+      report = {
+        status: 'completed',
+        admitted: (bank[pressed.id] - pressed.start) * pressed.scale,
+        unit,
+        message: null,
+        stops: answered.stops,
+      };
+    } catch (error) {
+      report = {
+        status: 'refused',
+        admitted: null,
+        unit,
+        message: error instanceof Error ? error.message : String(error),
+        stops: [],
+      };
+    }
+    pressed.asked = position;
+    const repeated = report.status === 'refused' && pressed.report !== null
+      && pressed.report.status === 'refused';
+    if (!repeated) {
+      pressed.report = report;
+      clockedOutcomes[pressed.id] = report;
+      clockedChrome?.report(pressed.id, report);
+    }
+    const posedNow = followed as { bank: Record<string, number>;
+                                   moved: string[] } | null;
+    followed = null;
+    if (posedNow !== null && posedNow.moved.length > 0
+        && loadedMachine !== null && clockedChrome !== undefined) {
+      clockedChrome.follow(clockedFollowing(loadedMachine, posedNow.bank,
+                                            posedNow.moved));
+    }
+  };
+
+  /** END the press, if one lasts (design Decision 5): its own drawn jump
+   * landed, its last position asked unless it was asked already, the
+   * hold cleared and the thumb written once where the machine stands as
+   * the model shows it, pinned at an end where that is outside the
+   * range. Every door that would move or repose the machine or replace
+   * the panel calls this before it acts. */
+  const endPress = (): void => {
+    const ended = press;
+    if (ended === null) return;
+    press = null;
+    removePressListeners();
+    if (machine === ended.machine) {
+      if (ended.drawing !== null && clockedDrawing === ended.drawing) {
+        landDrawing();
+      }
+      if (ended.pending !== null && ended.pending !== ended.asked) {
+        askPosition(ended, ended.pending);
+      }
+    }
+    clockedChrome?.hold(null);
+    if (loadedMachine !== null && machine !== undefined
+        && clockedChrome !== undefined) {
+      clockedChrome.follow(clockedFollowing(
+        loadedMachine, drawnBank ?? machine.state(), [ended.id]));
+    }
+  };
+
+  /** DROP the press with nothing asked: its machine is replaced, or the
+   * viewer disposed (design Decision 5). */
+  const dropPress = (): void => {
+    if (press === null) return;
+    press = null;
+    released = null;
+    removePressListeners();
+    clockedChrome?.hold(null);
+  };
+
+  /** The press's pointer is let go, cancelled or loses its capture: its
+   * own `change` is ignored until the next frame, and the press ends --
+   * unless its own drawn jump is still being drawn, which goes on, the
+   * frame it lands in then ending the press (design Decision 5). */
+  const releasePress = (): void => {
+    const ended = press;
+    if (ended === null) return;
+    ended.held = false;
+    released = ended.slider;
+    removePressListeners();
+    if (ended.drawing !== null && clockedDrawing === ended.drawing) return;
+    endPress();
+  };
+
+  /** The press's step in the frame loop, after the drawing's frame
+   * (design Decisions 3 and 6): the release's marker is cleared; while
+   * the press's own drawn jump runs nothing is asked; then, if a position
+   * is pending and differs from the last one asked, ONE request for it.
+   * A released press whose jump has landed ends here. */
+  const pressFrame = (): void => {
+    released = null;
+    const current = press;
+    if (current === null) return;
+    if (current.drawing !== null) {
+      if (clockedDrawing === current.drawing) return;
+      current.drawing = null;
+    }
+    if (!current.held) {
+      endPress();
+      return;
+    }
+    const position = current.pending;
+    if (position === null) return;
+    current.pending = null;
+    if (position !== current.asked) askPosition(current, position);
+  };
+
   function rebuildClockedChrome(preserveScroll = true): void {
+    // Nothing replaces the panel while a press lasts: the press ends first
+    // (`follow-the-slider-as-it-is-dragged`, design Decision 2), so that a
+    // door added later cannot replace a held slider.
+    endPress();
     // A clocked gesture rebuilds the panel to carry the request's outcome.
     // The panel is its own scrollport, so replacing it without carrying this
     // position throws the maker back to the first handle after every slider,
@@ -1692,6 +1929,10 @@ export async function mount(
     // The readout widens once and never narrows, so the digits stand
     // still as the clock grows.
     clockWidth = Math.max(clockWidth, layer.transport?.elapsed.length ?? 0);
+    // The machine this panel was built for: a slider of it asks nothing
+    // once a republish has replaced the machine, until the panel is
+    // rebuilt (`follow-the-slider-as-it-is-dragged`, design Decision 5).
+    const builtFor = machine;
     clockedChrome = buildClockedChrome(container, layer, {
       // EVERY request a maker's gesture makes on an input is DRAWN
       // (OpenSpec `draw-every-request`): the number field's commit, the
@@ -1722,6 +1963,7 @@ export async function mount(
         }
       },
       reset() {
+        endPress();
         landDrawing();
         machine?.reset();
         tree?.update(scope());
@@ -1737,6 +1979,7 @@ export async function mount(
         setClockPlaying(!clockPlaying);
       },
       step() {
+        endPress();
         const clock = machine?.clock();
         if (clock === undefined || clock === null) return;
         // A STEP is ONE request of a stated number of seconds, made
@@ -1752,11 +1995,63 @@ export async function mount(
         drawPicture();
       },
       setStep(amount: number) {
+        endPress();
         clockStep = clockStepAmount(amount, clockStep);
         rebuildClockedChrome();
       },
       setSpeed,
       focus: focusOn,
+      // A press begins with the primary button or contact on a slider of
+      // this panel while no clock's transport plays; a second pointer on
+      // a held slider is ignored; a press on another slider ends the
+      // first (design Decisions 1 and 5).
+      pressSlider(id: string, slider: HTMLInputElement, event: PointerEvent) {
+        if (machine !== builtFor || machine === undefined) return;
+        if (event.button !== 0) return;
+        if (press !== null && press.held && press.slider === slider
+            && event.pointerId !== press.pointerId) return;
+        if (clockPlaying && machine.clock() !== null) return;
+        endPress();
+        beginPress(id, slider, event.pointerId);
+      },
+      // A position of the press: DRAWN, as one request in this task, when
+      // it is the press's first and either its pointer has not moved since
+      // the press (a press on the track) or the input stood outside the
+      // range (a pinned thumb); FOLLOWED otherwise, asked in the next
+      // frame. An `input` outside a press asks nothing, as before.
+      slide(id: string, slider: HTMLInputElement) {
+        const current = press;
+        if (current === null || !current.held || current.slider !== slider) return;
+        const position = slider.valueAsNumber;
+        if (!Number.isFinite(position)) return;
+        const first = current.positions === 0;
+        current.positions += 1;
+        if (first && (!current.moved || current.pinned)) {
+          current.asked = position;
+          current.report = clockedRequest(id, { to: position }, true, true);
+          current.drawing = clockedDrawing;
+          return;
+        }
+        current.pending = position;
+      },
+      // A slider's `change` is ignored while its press lasts and in the
+      // task of its release; every other is one drawn request, as before.
+      commitSlider(id: string, slider: HTMLInputElement) {
+        if (machine !== builtFor) return;
+        if (press !== null && press.slider === slider) return;
+        if (released === slider) return;
+        clockedRequest(id, { to: Number(slider.value) }, true);
+      },
+      loseSlider(_id: string, slider: HTMLInputElement, event: PointerEvent) {
+        if (press !== null && press.held && press.slider === slider
+            && event.pointerId === press.pointerId) releasePress();
+      },
+      // A key on the held slider ends its press; a key also clears the
+      // release's marker, so the key's own `change` is a request.
+      keySlider(_id: string, slider: HTMLInputElement) {
+        if (released === slider) released = null;
+        if (press !== null && press.slider === slider) endPress();
+      },
     });
     clockedChrome.element.scrollTop = scrollTop;
     placeFullscreenControl();
@@ -1780,6 +2075,11 @@ export async function mount(
         if (!disposed) {
           drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
           bindingsTable = table;
+          // A reload is a door (`follow-the-slider-as-it-is-dragged`,
+          // design Decision 5): a press goes on while the document loads,
+          // and ends here, its last position asked of the machine the
+          // maker dragged, before that machine is replaced.
+          endPress();
           startMachine(loaded);
           await startRuntime(document, program);
           if (disposed) { runtime?.dispose(); runtime = undefined; }
@@ -1827,6 +2127,7 @@ export async function mount(
   }
 
   const refreshControls = (document: Manifest) => {
+    endPress();
     controlElements.forEach((element) => element.remove());
     controlElements = [];
     slider = undefined;
@@ -1880,6 +2181,7 @@ export async function mount(
       throw new Error('Viewer assembly is unavailable');
     }
     assemblyNavigation.setRoot(tree, path);
+    endPress();
     applyFrame(null);
     rebuildDriverChrome();
     rebuildRunChrome();
@@ -2156,6 +2458,12 @@ export async function mount(
     // §3). What this costs is a POSE of the ids the frame moved: the
     // machine was solved once, at the press, and is not called here.
     drawingFrame(elapsed);
+    // And a DRAGGED slider's latest position, ONE request a frame, after
+    // the drawing's frame so that a drawn jump landing in this frame is
+    // followed in it (OpenSpec `follow-the-slider-as-it-is-dragged`,
+    // design Decisions 3 and 6). It poses without drawing; the draw below
+    // shows it.
+    pressFrame();
     if (playing) {
       setTime(advance(time, elapsed, cycleSeconds));
     }
@@ -2185,6 +2493,7 @@ export async function mount(
       }
       clockedDrawing = null;
       drawnBank = null;
+      dropPress();
       observer.disconnect();
       controls.dispose();
       unsubscribeDrivers();
@@ -2392,6 +2701,7 @@ export async function mount(
         // draws has already happened, so landing it loses nothing and
         // every gesture acts on a bank the maker can read.
         move: (input, request) => {
+          endPress();
           landDrawing();
           const answered = started.move(input, request);
           rebuildClockedChrome();
@@ -2410,6 +2720,7 @@ export async function mount(
           return clockedPlay(name);
         },
         restore: (state) => {
+          endPress();
           landDrawing();
           started.restore(state);
           rebuildClockedChrome();
@@ -2418,6 +2729,7 @@ export async function mount(
         // nobody could read, so a reset stops the transport -- from the
         // panel and from the handle alike.
         reset: () => {
+          endPress();
           landDrawing();
           started.reset();
           clockPlaying = false;
@@ -3978,6 +4290,16 @@ interface ClockedChromeActions {
   setStep(amount: number): void;
   setSpeed(speed: number): void;
   focus(path: AssemblyPath | null): void;
+  /** A slider's own events, which decide whether it is DRAGGED (OpenSpec
+   * `follow-the-slider-as-it-is-dragged`, design Decisions 1 and 5): a
+   * pointer pressed on it, a value it reported, a value it committed, the
+   * capture of its pointer lost, and a key pressed on it. Each acts only
+   * while its slider is in the page. */
+  pressSlider(id: string, slider: HTMLInputElement, event: PointerEvent): void;
+  slide(id: string, slider: HTMLInputElement): void;
+  commitSlider(id: string, slider: HTMLInputElement): void;
+  loseSlider(id: string, slider: HTMLInputElement, event: PointerEvent): void;
+  keySlider(id: string, slider: HTMLInputElement): void;
 }
 
 interface ClockedChrome {
@@ -3990,7 +4312,49 @@ interface ClockedChrome {
   /** Mark an instruction's button busy for as long as its drawing runs,
    * on the running chrome's own `aria-busy` treatment. */
   indicate(name: string, busy: boolean): void;
+  /** Write an input row's outcome line, and only where its text changes
+   * (`follow-the-slider-as-it-is-dragged`, design Decision 2): a drag
+   * reports through it without the panel being rebuilt. */
+  report(id: string, outcome: ClockedOutcome | null): void;
+  /** Name the row whose thumb a pointer holds, or none: no writer touches
+   * that thumb while it is held (design Decision 2). */
+  hold(id: string | null): void;
   remove(): void;
+}
+
+/** The ONE press on a clocked slider (OpenSpec
+ * `follow-the-slider-as-it-is-dragged`, design Decisions 1 to 7). */
+interface SliderPress {
+  id: string;
+  /** The element the pointer holds: the panel is not rebuilt while the
+   * press lasts, so it stays the element it holds. */
+  slider: HTMLInputElement;
+  pointerId: number;
+  /** False once its pointer is let go, while its own drawn jump is still
+   * being drawn; the press is over when that drawing lands. */
+  held: boolean;
+  /** Whether a `pointermove` of its pointer has been seen since the
+   * `pointerdown`: the order of events is what tells a jump from a drag. */
+  moved: boolean;
+  /** How many positions the press has reported. */
+  positions: number;
+  /** The latest followed position not yet asked, in design units. */
+  pending: number | null;
+  /** The last position asked, in design units. */
+  asked: number | null;
+  /** The input's banked native value at the press, and its scale: the
+   * drag's travel is `(bank - start) x scale`. */
+  start: number;
+  scale: number;
+  /** Whether the input, as the model showed it at the press, stood
+   * outside the slider's range. */
+  pinned: boolean;
+  /** The drawing of its own drawn jump, while that drawing runs. */
+  drawing: object | null;
+  /** What the row says about the drag. */
+  report: ClockedOutcome | null;
+  /** The machine the press asks. */
+  machine: ClockedMachine;
 }
 
 const CLOCKED_PANEL_STYLE = PANEL_STYLE;
@@ -4000,7 +4364,9 @@ type FieldWriter = (moved: FollowedInput) => void;
 
 function buildClockedRow(control: ClockedInputControl,
                          actions: ClockedChromeActions,
-                         fields: Map<string, FieldWriter>): HTMLElement {
+                         fields: Map<string, FieldWriter>,
+                         reports: Map<string, (text: string) => void>,
+                         held: () => string | null): HTMLElement {
   const row = document.createElement('div');
   row.className = 'clocked-input';
   row.dataset.input = control.id;
@@ -4087,8 +4453,25 @@ function buildClockedRow(control: ClockedInputControl,
     slider.value = String(control.slider.position);
     slider.style.cssText = 'flex:1;margin:0;min-width:120px;';
     slider.setAttribute('aria-label', `${control.label} slider`);
+    // Whether a change of this slider is a DRAG, followed, or a gesture
+    // drawn as one request, is decided by the mount from the order of
+    // these events (OpenSpec `follow-the-slider-as-it-is-dragged`, design
+    // Decision 1). A slider a rebuild has taken out of the page asks
+    // nothing (design Decision 5).
+    slider.addEventListener('pointerdown', (event) => {
+      if (slider.isConnected) actions.pressSlider(control.id, slider, event);
+    });
+    slider.addEventListener('input', () => {
+      if (slider.isConnected) actions.slide(control.id, slider);
+    });
     slider.addEventListener('change', () => {
-      actions.move(control.id, Number(slider.value));
+      if (slider.isConnected) actions.commitSlider(control.id, slider);
+    });
+    slider.addEventListener('lostpointercapture', (event) => {
+      if (slider.isConnected) actions.loseSlider(control.id, slider, event);
+    });
+    slider.addEventListener('keydown', () => {
+      if (slider.isConnected) actions.keySlider(control.id, slider);
     });
     row.append(slider);
   }
@@ -4099,6 +4482,11 @@ function buildClockedRow(control: ClockedInputControl,
   outcome.style.cssText = `${RUN_OUTCOME_STYLE}flex-basis:100%;`;
   outcome.textContent = formatClockedOutcome(control.outcome);
   row.append(outcome);
+  // A drag's report, written in place and only when its text changes
+  // (`follow-the-slider-as-it-is-dragged`, design Decision 2).
+  reports.set(control.id, (text) => {
+    if (outcome.textContent !== text) outcome.textContent = text;
+  });
   // The one narrow write a drawn frame makes to this row (design §9):
   // the field's reading and, where there is one, the thumb. A maker's
   // own focus and selection survive it, which a rebuild would destroy.
@@ -4108,8 +4496,11 @@ function buildClockedRow(control: ClockedInputControl,
     if (document.activeElement !== field) {
       field.value = formatDisplay(moved.display);
     }
+    // Nor is the thumb a pointer holds: it stays under the pointer
+    // (`follow-the-slider-as-it-is-dragged`, design Decision 2).
     const thumb = row.querySelector('.clocked-slider');
-    if (thumb instanceof HTMLInputElement && moved.slider !== null) {
+    if (thumb instanceof HTMLInputElement && moved.slider !== null
+        && held() !== control.id) {
       thumb.value = String(moved.slider.position);
     }
   });
@@ -4266,6 +4657,11 @@ function buildClockedChrome(
   const fields = new Map<string, FieldWriter>();
   const readings = new Map<string, (text: string) => void>();
   const indicators = new Map<string, (busy: boolean) => void>();
+  // The drag's two seams (`follow-the-slider-as-it-is-dragged`, design
+  // Decision 2): one outcome writer per row, and the row whose thumb a
+  // pointer holds.
+  const reports = new Map<string, (text: string) => void>();
+  let held: string | null = null;
 
   const panel = document.createElement('div');
   panel.className = 'clocked-controls';
@@ -4274,7 +4670,7 @@ function buildClockedChrome(
                                actions.focus, 'clocked'));
 
   layer.inputs.forEach((control) => {
-    panel.append(buildClockedRow(control, actions, fields));
+    panel.append(buildClockedRow(control, actions, fields, reports, () => held));
   });
 
   layer.readouts.forEach((entry) => {
@@ -4338,6 +4734,12 @@ function buildClockedChrome(
     },
     indicate(name: string, busy: boolean) {
       indicators.get(name)?.(busy);
+    },
+    report(id: string, outcome: ClockedOutcome | null) {
+      reports.get(id)?.(formatClockedOutcome(outcome));
+    },
+    hold(id: string | null) {
+      held = id;
     },
     remove: () => panel.remove(),
   };

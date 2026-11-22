@@ -1080,6 +1080,28 @@ load is open.
   pilot's "I want the case to follow the slider as I drag" of 22 November
   2026.
 
+- **Closed by `follow-the-slider-as-it-is-dragged`**, archived 22 November
+  2026. While a pointer drags a clocked slider's thumb the machine is
+  asked for its latest position once per animation frame, posed and drawn
+  by the loop's one draw, and the panel is written in place, so the slider
+  keeps the pointer and the focus (ADR-081, which amends ADR-065). A click
+  on the track, a key, a typed value and a nudge stay one drawn request. On
+  this page, with a real pointer: the machine's `case_open` equals the
+  thumb at each of twelve positions, 18.6 to 24.2 ms of script in a
+  followed frame, and nothing is asked or drawn while the thumb is held
+  still or after it is let go. The pictures a drag ends in equal the
+  previous viewer's pictures of the same banks pixel for pixel outside the
+  panel. The change's
+  `openspec/changes/archive/2026-11-22-follow-the-slider-as-it-is-dragged/evidence.md`
+  has the measurement.
+
+- **Seen while measuring, not taken up.** The sliders of the wheels and of
+  a key's press stand under the `operation` focus, and that node of the
+  Enigma's tree has no part: with it in focus the page shows the panel and
+  an empty stage, on the previous viewer as on this one. It is how the
+  project's tree is cut, not a fault of the viewer's; recorded here because
+  a maker can drag those sliders only without seeing the machine.
+
 ## A slider cannot be held while the clock's transport plays
 
 - **Symptom, read from the source and seen in jsdom, not in a browser.**

@@ -62,6 +62,17 @@ it carries release together and share one version.
   in frames that changed something; a read in the task of a call that
   draws and a page screenshot are unchanged. The on-demand mode, viewer
   API 30 and document versions 1 through 14 are unchanged.
+- Dragging a clocked machine's slider now moves the machine with the
+  thumb: one request per animation frame for the latest position, posed
+  without a drawing, with the panel written in place so that the slider
+  keeps the pointer and the focus, where the machine stood still until
+  the release and was then drawn from where it stood. A click on the track
+  (now drawn from the press), a key, a typed value and a nudge stay one
+  request drawn over its duration, and while a clock's transport plays a
+  slider is as before. The row reports the drag's travel since the press;
+  the bank a drag leaves is the bank its requests leave, and a host
+  reading the bank during a drag sees it follow the thumb. The on-demand
+  mode, viewer API 30 and document versions 1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

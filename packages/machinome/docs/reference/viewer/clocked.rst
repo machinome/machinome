@@ -25,7 +25,8 @@ Read the machine
 
    Return the committed bank as a copy, keyed by qualified ID, in **native
    units**. It can already hold an instruction's final state while its
-   transition is still being drawn on screen.
+   transition is still being drawn on screen, and it follows a slider of the
+   built-in panel while a maker drags it.
 
 .. js:method:: MachineHandle.drivers()
 
@@ -52,7 +53,9 @@ Request and inspect motion
    Mechanical bounds clip admissible travel rather than forcing the requested
    endpoint. A zero-travel stopped request is still a valid result. Direct
    host ``move()`` lands immediately; it does not draw a timed transition.
-   An active prior drawing is landed before the new request is made.
+   An active prior drawing is landed before the new request is made, and a
+   slider a maker is dragging on the built-in panel is let go first, its last
+   position requested before this one.
 
 .. js:method:: MachineHandle.trigger(name)
 

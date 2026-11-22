@@ -282,3 +282,21 @@ nothing, the panel is rebuilt once after the drawing has started, nothing is
 rendered when a drawing starts, and the duration is counted from the first
 drawn frame. What this record decided about which requests are drawn, and over
 what duration, is unchanged.
+
+## Dragged-slider amendment — 22 November 2026
+
+[ADR-081: A dragged clocked slider is followed, one posed request a frame](ADR-081-a-dragged-clocked-slider-is-followed-one-posed-request-a-frame.md)
+(`follow-the-slider-as-it-is-dragged`) replaces what this record decided
+under "There is no live-drag exception, because there is no live drag", and
+its rejected alternative "Requesting per pointer move during a drag". The
+clocked slider listens on `input` now: while a pointer drags its thumb the
+machine is asked for the thumb's latest position once per animation frame,
+the request posed and not drawn over a duration, and the panel written in
+place. The pilot asked for it on the Enigma I page on 22 November 2026; no
+record shows the pilot being asked about a drag when this record set it
+aside.
+
+What this record decided for every other gesture stands: a typed value, a
+nudge, a key and a click on the track are each one request, drawn over the
+gesture's duration. A press on the track makes that request when the button
+goes down, where it made it at the release.
