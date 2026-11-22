@@ -1051,3 +1051,49 @@ load is open.
   part still pays to learn that it need not be rebuilt; molejo's evaluator
   until a molejo release reaches the viewer; the rest of the tree update;
   the renderer's bookkeeping.
+
+## A clocked machine's slider moves nothing until it is released
+
+- **Symptom.** On the Enigma I page the pilot drags the slider that opens
+  the case: the case stands still for as long as the thumb is held, and at
+  the release the thumb goes back to where the input stood and the case
+  then swings there in a fifth of a second. The pilot wants the case to
+  follow the thumb.
+
+- **Cause.** The clocked panel's slider listens on `change` alone, so a
+  drag is one request made at the release, and every request a gesture
+  makes is drawn from where the input stood (ADR-065). It was written that
+  way on 17 September 2026 and has not changed since; the slider of a
+  document that carries no machine writes on `input` and is followed.
+  ADR-065 set a request per pointer sample aside on the Curta's cost, by
+  analogy with the pilot's rejection of an instruction sliced into
+  requests; the pilot was not asked about a drag.
+
+- **Measured** (`evidence/enigma-dragged-slider-2026-11-22.md`). A real
+  pointer on the case's slider: twelve `input` events and nothing moved;
+  after the release nine frames of drawing. One request posed at once in
+  every animation frame costs 25 to 30 ms of script on the case, the hood
+  and the flap, against 16 to 25 for a frame of that drawing, and 54 to 58
+  on `operation.press`, against 50 to 54 for a frame of a played press.
+
+- **Taken up** as the change `follow-the-slider-as-it-is-dragged`, on the
+  pilot's "I want the case to follow the slider as I drag" of 22 November
+  2026.
+
+## A slider cannot be held while the clock's transport plays
+
+- **Symptom, read from the source and seen in jsdom, not in a browser.**
+  While a clocked machine's clock plays, its transport makes one request in
+  every frame through `clockedRequest`, which ends by replacing the whole
+  panel. A slider pressed in one frame is a different element in the next,
+  so a pointer cannot hold its thumb.
+
+- **Found** while planning `follow-the-slider-as-it-is-dragged`, 22 November
+  2026. That change follows a dragged thumb only while no transport plays
+  and leaves this case as it was.
+
+- **Not taken up.** No project and no fixture of this repository carries a
+  clock beside a ranged input. Two ways were set aside for that reason:
+  stopping the transport when a slider is pressed, as starting a drawing
+  already does, and having the transport write the panel in place instead
+  of rebuilding it.
