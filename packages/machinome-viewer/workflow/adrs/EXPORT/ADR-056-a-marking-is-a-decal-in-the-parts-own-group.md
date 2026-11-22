@@ -208,3 +208,16 @@ names the producer bug where it can be fixed.
   the viewer, no markings in the OpenSCAD path, no version floor on the
   framework's `viewer` extra, and no driving a marking independently of
   its part.
+
+## Stored-normals pointer — 22 November 2026
+
+This record has each marking fetched "by the same `loadMesh(url, color)` a
+node's own model is: `STLLoader.loadAsync`, `computeVertexNormals()`, a
+`THREE.Mesh`".
+[ADR-083: A part read from a file holds its positions alone, and its facets are lit from their own planes](ADR-083-a-part-read-from-a-file-holds-its-positions-alone.md)
+(`draw-rigid-parts-without-stored-normals`) takes the normals out of that
+path: a file's geometry reaches a marking with positions only. What this
+record decided for the decal itself stands: it is welded, its normals are
+averaged on the welded sheet, and it is lifted along them, with its own
+material.
+

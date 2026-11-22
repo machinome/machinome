@@ -2154,11 +2154,18 @@ class OnDemandClockedTest(TestCase):
         # frame only where `setView` re-fits the near and far planes to
         # the posed bounds (design D3; evidence.md). A frame that depends
         # on the bank and the view alone is the one after `setView`.
+        #
+        # A pixel that differs by ONE grey step is not counted (OpenSpec
+        # `draw-rigid-parts-without-stored-normals`): a rigid part's
+        # facets take their normal from the derivatives of the position,
+        # and a re-fit of the planes moves that arithmetic's rounding by
+        # a step at several hundred pixels, where a stored normal moved
+        # it at a few dozen. A stale frame differs by tens of steps.
         def changed(a, b):
             difference = ImageChops.difference(
                 Image.open(io.BytesIO(a)).convert('L'),
                 Image.open(io.BytesIO(b)).convert('L'))
-            return difference.width * difference.height - difference.histogram()[0]
+            return sum(difference.histogram()[2:])
         moved, refit = changed(at_origin, restored), changed(restored, mid_frame)
         print(f'\nrestore alone: {moved} pixels from the origin, {refit} from the setView frame')
         self.assertGreater(moved, 0.9 * changed(at_origin, mid_frame))

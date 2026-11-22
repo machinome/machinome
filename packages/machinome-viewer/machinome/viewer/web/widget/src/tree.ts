@@ -42,13 +42,17 @@ const stlLoader = new STLLoader();
 
 /** One reading of a model file (OpenSpec `share-one-geometry-per-model-file`,
  * design Decisions 1, 4 and 10): one request through three.js's
- * `STLLoader`, one parse, and the normals computed once, before any part
- * has the geometry; a parse whose normals throw is freed and the reading
- * fails. A further viewer is given a copy. */
+ * `STLLoader`, one parse, and the `normal` attribute the parse makes
+ * removed, before any part has the geometry and before a copy is made
+ * (OpenSpec `draw-rigid-parts-without-stored-normals`, design Decision
+ * 1): a part read from a file holds its positions alone, and its facets
+ * are lit from their own planes by the rigid kind's flat material. A
+ * parse whose preparation throws is freed and the reading fails. A
+ * further viewer is given a copy. */
 const STL_READING: ReadingKind<THREE.BufferGeometry> = {
   async read(url: string): Promise<THREE.BufferGeometry> {
     const loaded = await stlLoader.loadAsync(url);
-    try { loaded.computeVertexNormals(); } catch (error) { loaded.dispose(); throw error; }
+    try { loaded.deleteAttribute('normal'); } catch (error) { loaded.dispose(); throw error; }
     return loaded;
   },
   copy: (geometry) => geometry.clone(),
@@ -81,8 +85,23 @@ export function materialForColor(color: string | THREE.Color | null): THREE.Mate
 }
 
 /** A rigid part's kind of material (OpenSpec
- * `share-one-material-per-appearance`, design Decision 1). */
-export const RIGID: MaterialKind = { name: 'rigid', make: materialForColor };
+ * `share-one-material-per-appearance`, design Decision 1): the pair
+ * `materialForColor` makes, shaded flat (OpenSpec
+ * `draw-rigid-parts-without-stored-normals`, design Decision 3). A part
+ * read from a file holds no normals, so each fragment takes the normal
+ * of its facet's plane, on the side facing the viewer, from the
+ * derivatives of its position, as a flexible part's does; every look
+ * is a clone and keeps the flag. The flag is set here and not in
+ * `materialForColor`, which a marking's material is built on: a
+ * marking keeps its own smoothed normals. */
+export const RIGID: MaterialKind = {
+  name: 'rigid',
+  make: (color) => {
+    const material = materialForColor(color) as THREE.MeshStandardMaterial | THREE.MeshNormalMaterial;
+    material.flatShading = true;
+    return material;
+  },
+};
 
 /** The anti-z-fighting lift, in document units (millimetres).
  *
@@ -643,8 +662,8 @@ export class WidgetTree {
       return;
     }
     if (this.flexible) {
-      // Its own material, because a swept indexed surface is shaded
-      // flat to match the rigid parts an STL already renders that way.
+      // Its own material, of the flexible kind: a swept indexed surface
+      // shaded flat, as the rigid parts are.
       this.flexible.setColor(color);
       return;
     }

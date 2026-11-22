@@ -16,7 +16,7 @@ resources remain owner-local")
 **Builds on:** [ADR-076: A part's presented look has one owner](ADR-076-a-parts-presented-look-has-one-owner.md)
 (one holder of the materials per viewer, which is what tells one viewer
 from another here),
-[ADR-056: A marking is a decal in the part's own group](ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md)
+[ADR-056: A marking is a decal mesh in the part's own group, and the bias over the surface is the viewer's](ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md)
 (a decal's geometry is its own, lifted from the file's)
 
 ## Context
@@ -172,3 +172,14 @@ process's share lives in the card's memory; another browser.
 record the cases, the tests and the measurements. The pilot was told
 before integration of what this record decides beyond what they were told
 when they ordered it.
+
+## Stored-normals pointer — 22 November 2026
+
+Point 1 has a reading compute the normals once, before any part has the
+geometry.
+[ADR-083: A part read from a file holds its positions alone, and its facets are lit from their own planes](ADR-083-a-part-read-from-a-file-holds-its-positions-alone.md)
+(`draw-rigid-parts-without-stored-normals`) replaces that: in the same
+step a reading removes the `normal` attribute the loader made and computes
+none. One request, one parse, the holdings, the shares and their release,
+and point 8 are as this record decided.
+

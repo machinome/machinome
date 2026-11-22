@@ -1007,7 +1007,8 @@ load is open.
   `openspec/changes/archive/2026-11-22-share-one-geometry-per-model-file/evidence.md`
   has the measurement.
 
-- **Left open in this section.** What a frame costs while something moves.
+- **Left open in this section, as of 22 November 2026 before the stored
+  normals were taken up.** What a frame costs while something moves.
   And of one open copy's memory: the `normal` attribute of the parts read
   from files (268 MiB in each process now), the tab's copy of every
   geometry after its upload, and the flexible parts' 490 MiB in each
@@ -1027,6 +1028,28 @@ load is open.
 
 - **Taken up, the stored normals,** as the change
   `draw-rigid-parts-without-stored-normals`, on that word of the pilot's.
+
+- **The stored normals closed by `draw-rigid-parts-without-stored-normals`**,
+  archived 22 November 2026. A reading removes the `normal` attribute the
+  loader makes and computes none, and the rigid kind of material is flat,
+  as the flexible kind was: each facet is lit from its own plane (ADR-083,
+  which amends ADR-082 and ADR-056). On this page one open copy went from
+  3,034 MiB to 2,489, the tab's typed arrays and the WebGL buffers each
+  268.4 MiB less. The picture is no longer equal to the previous viewer's
+  pixel for pixel: in sixteen states at most 534 of 605,864 pixels differ,
+  by one step of 255, with one pixel by 11 in three states and one to five
+  by 2 in three others; a facet seen within a pixel of edge-on and a
+  triangle of nearly no area can be lit as from another direction at a
+  few pixels; and a one-step rounding now moves from frame to frame.
+  Drawn in software; no graphics card was measured. The change's
+  `openspec/changes/archive/2026-11-22-draw-rigid-parts-without-stored-normals/evidence.md`
+  has the measurement.
+
+- **Left open in this section.** What a frame costs while something moves.
+  And of one open copy's memory: the tab's copy of every geometry after
+  its upload (268 MiB of positions for the parts read from files, which
+  picking reads), and the flexible parts' 490 MiB in each process; none
+  proposed.
 
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 

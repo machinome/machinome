@@ -122,7 +122,9 @@ describe('WidgetTree fresh-load identity order', () => {
       expect((first.material as THREE.Material).id).toBeLessThan((second.material as THREE.Material).id);
       expect(first.id).toBeLessThan(sentinel.id);
       expect((first.material as THREE.Material).id).toBeLessThan((sentinel.material as THREE.Material).id);
-      expect(first.geometry.getAttribute('normal')).toBeDefined();
+      // A part read from a file holds its positions alone (OpenSpec
+      // `draw-rigid-parts-without-stored-normals`).
+      expect(first.geometry.getAttribute('normal')).toBeUndefined();
       expect(placeOf(first)!).toBeLessThan(placeOf(second)!);
       expect(drawnOrder([first, second])).toEqual([first, second]);
       tree.dispose(); sentinel.geometry.dispose(); (sentinel.material as THREE.Material).dispose();
@@ -212,10 +214,12 @@ describe('WidgetTree fresh-load identity order', () => {
     }
   });
 
-  it('disposes returned geometry and its reserved material when normal preparation rejects', async () => {
+  it('disposes returned geometry and its reserved material when the reading\'s preparation rejects', async () => {
     const bad = new THREE.BoxGeometry();
     const disposed = vi.spyOn(bad, 'dispose');
-    vi.spyOn(bad, 'computeVertexNormals').mockImplementation(() => {
+    // The reading's one preparation removes the parse's normals (OpenSpec
+    // `draw-rigid-parts-without-stored-normals`, design Decision 1).
+    vi.spyOn(bad, 'deleteAttribute').mockImplementation(() => {
       throw new Error('normal preparation failed');
     });
     loadAsync.mockResolvedValueOnce(bad);

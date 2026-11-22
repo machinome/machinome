@@ -2923,11 +2923,11 @@ rendering constant and SHALL NOT be presented as, or derived from, anything the
 document states about where the part's surface is. A marking whose artwork is
 open on both sides SHALL be drawn from either side.
 
-A node that carries no markings SHALL be drawn exactly as it is drawn by a
-viewer that has never read a marking: the same geometry, the same material and
-the same scene contents. A document whose nodes carry no markings SHALL be
-rendered, read back and photographed identically to the same document published
-before markings existed.
+A node that carries no markings SHALL be drawn exactly as it is drawn when its
+document carries no marking at all: the same geometry, the same material and
+the same scene contents, nothing being added to it for markings. A document
+whose nodes carry no markings SHALL be rendered, read back and photographed
+identically to the same document published before markings existed.
 
 The viewer SHALL draw markings on a document of any schema version it renders:
 the markings list is additive to the document and is gated on no version.
@@ -2968,8 +2968,9 @@ the markings list is additive to the document and is gated on no version.
 #### Scenario: An unmarked document is untouched
 
 - **WHEN** a document whose parts carry no markings is mounted
-- **THEN** it renders exactly the picture it rendered before this viewer could
-  draw a marking, and its scene contains nothing a marking would have added
+- **THEN** it renders exactly the picture this viewer renders of the same
+  document published before markings existed, and its scene contains nothing
+  a marking would have added
 
 ### Requirement: A markings list the viewer cannot read is refused by name
 
@@ -5990,4 +5991,37 @@ Sharing SHALL NOT change the fully loaded picture, the order of drawing, picking
 
 - **WHEN** two viewers in one page mount documents whose parts name the same model files, and one of them is disposed
 - **THEN** each viewer draws from geometry of its own, the disposed viewer's geometry and graphics buffers are freed, and the other viewer is drawn exactly as before
+
+### Requirement: A part read from a model file is drawn from its positions alone
+
+A part read from a model file SHALL be held, in the page and in the viewer's graphics context, as its vertex positions without any normal: the viewer SHALL keep neither the normals the file carries nor normals of its own for it. Each of its facets SHALL be drawn flat, lit by the normal of the facet's own plane on the side that faces the viewer, whichever way the facet's triangle is wound, in every look a part takes: plain, hovered, highlighted, dimmed or ghosted, with or without a colour.
+
+At a pixel reached by a facet seen within about one pixel of edge-on, or by a triangle of nearly zero area, that facet's or triangle's share of the pixel MAY be lit as from another direction, as a flexible part's already is; every other pixel of a part SHALL show its facet lit by its own plane.
+
+A marking SHALL be drawn as before, with its own smoothed normals, its lift and its material, whether or not it names the file its part names, and a flexible part SHALL be drawn as before. Holding no normals SHALL NOT change what a press, a hover or a part control reaches, a part's bounds or position on screen, the order of drawing, the requests a page makes, or which parts share one geometry.
+
+#### Scenario: Parts hold their positions alone
+
+- **WHEN** a document whose parts name model files is mounted, reloaded, updated in place or mounted by a second viewer in the page
+- **THEN** every geometry its parts are drawn from holds no normals, and the graphics buffers the viewer uploads for it hold none: for a file without per-facet colours, its positions alone, twelve bytes a vertex
+
+#### Scenario: A facet is lit by its own plane
+
+- **WHEN** a part whose triangles are wound outward, a part whose triangles are wound inside out and a part with no colour are drawn
+- **THEN** each facet seen is drawn flat, lit by one normal over its whole face, from the side facing the viewer: none is black, and the faces' brightnesses follow their directions to the lights
+
+#### Scenario: Every look keeps the shading
+
+- **WHEN** a part is hovered, highlighted with the others kept, dimmed or ghosted, or hidden and shown again
+- **THEN** it is drawn flat and lit from the side facing the viewer as in its plain look, in that look's colours
+
+#### Scenario: A facet seen edge-on or a triangle of no area
+
+- **WHEN** a part has a facet seen within about one pixel of edge-on, or a triangle of nearly zero area that the browser still draws
+- **THEN** only the pixels that facet or triangle reaches may be lit as from another direction, and every other facet of the part is lit by its own plane
+
+#### Scenario: Markings and flexible parts are drawn as before
+
+- **WHEN** a document whose parts carry markings, one of them naming its part's own file, and whose tree holds flexible parts is mounted
+- **THEN** each marking is drawn lifted over its surface with its own smoothed normals, from the same geometry and material as before, and each flexible part is drawn as before
 

@@ -81,6 +81,14 @@ it carries release together and share one version.
   further viewer holds a copy, freed with it. Which bytes a part is given,
   the requests a page makes, the pictures, the order of drawing, the mount
   handle, viewer API 30 and document versions 1 through 14 are unchanged.
+- A part read from a model file no longer holds normals, in the page or in
+  the graphics context, which halves the memory and the upload of its
+  geometry. Each of its facets is lit from its own plane, as a flexible
+  part's is, and the picture is within one step of 255 in a channel of
+  the previous one except at pixels reached by a facet seen within about
+  a pixel of edge-on or by a triangle of nearly zero area. Markings,
+  flexible parts, highlights, picking, the order of drawing, the mount
+  handle, viewer API 30 and document versions 1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 

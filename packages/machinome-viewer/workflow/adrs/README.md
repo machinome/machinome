@@ -74,7 +74,7 @@ ADR-194 is the current account.
 - [ADR-051](EXPORT/ADR-051-the-bundle-ships-an-inspector-layout.md) — The bundle ships an inspector layout, and the page selects it — **Accepted**, extends 050
 - [ADR-053](EXPORT/ADR-053-a-pick-is-bound-to-a-declared-control.md) — A pick is bound to a declared control, and the part follows commits — **Accepted**, amended by 076, extends 048, consumes solid-node ADR-112
 - [ADR-054](EXPORT/ADR-054-a-constraint-is-derived-from-the-published-document.md) — A constraint is derived from the published document, never published — **Accepted**, amended by 069, extends 045 and 047, consumes solid-node ADR-113
-- [ADR-056](EXPORT/ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md) — A marking is a decal mesh in the part's own group, and the bias over the surface is the viewer's — **Accepted**, extends 035, consumes solid-node ADR-120
+- [ADR-056](EXPORT/ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md) — A marking is a decal mesh in the part's own group, and the bias over the surface is the viewer's — **Accepted**, amended by 083, extends 035, consumes solid-node ADR-120
 - [ADR-057](EXPORT/ADR-057-a-self-read-edge-is-executed-from-the-retained-value.md) — A self-read edge is executed from the retained value, piece by piece — **Accepted**, extends 045 and 047, builds on 054, consumes solid-node ADR-121
 - [ADR-058](EXPORT/ADR-058-a-block-is-ordered-per-piece-from-the-published-edges.md) — A block is ordered per piece from the published edges — **Accepted**, extends 045 and 047, builds on 057, consumes solid-node ADR-122
 - [ADR-059](EXPORT/ADR-059-the-viewer-keeps-its-own-bundle-current.md) — The viewer keeps its own bundle current, and refuses what it cannot repair — **Accepted**
@@ -101,4 +101,5 @@ ADR-194 is the current account.
 - [ADR-079](EXPORT/ADR-079-model-colors-follow-the-admitted-presentation-scope.md) — Model colors follow the admitted presentation scope — **Accepted**, amends 076, builds on 044, 046 and 078
 - [ADR-080](EXPORT/ADR-080-a-continuous-viewer-draws-a-frame-only-when-its-picture-has-changed.md) — A continuous viewer draws a frame only when its picture has changed — **Accepted**, builds on 076, 077 and 043
 - [ADR-081](EXPORT/ADR-081-a-dragged-clocked-slider-is-followed-one-posed-request-a-frame.md) — A dragged clocked slider is followed, one posed request a frame — **Accepted**, amends 065, extends 064 and 080, builds on 073
-- [ADR-082](EXPORT/ADR-082-one-reading-of-a-model-file-is-one-geometry-held-by-count.md) — One reading of a model file is one geometry, held by count — **Accepted**, amends 078, builds on 076 and 056
+- [ADR-082](EXPORT/ADR-082-one-reading-of-a-model-file-is-one-geometry-held-by-count.md) — One reading of a model file is one geometry, held by count — **Accepted**, amended by 083, amends 078, builds on 076 and 056
+- [ADR-083](EXPORT/ADR-083-a-part-read-from-a-file-holds-its-positions-alone.md) — A part read from a file holds its positions alone, and its facets are lit from their own planes — **Accepted**, amends 082 and 056, builds on 076

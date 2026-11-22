@@ -171,11 +171,14 @@ class ShareOneGeometryTest(unittest.TestCase):
         disposed = page.evaluate("buffers('a')")
         print('B1 dispose', disposed, flush=True)
         # The stated reason on the base: 8 at mount (a geometry per part),
-        # then 6 created and 6 deleted by the update.
-        self.assertEqual(mounted['created'], 4)
+        # then 6 created and 6 deleted by the update. On the base of
+        # OpenSpec `draw-rigid-parts-without-stored-normals`, where a file
+        # geometry held its normals too: 4 at mount, then 2 and 2. Now one
+        # buffer a geometry, its positions.
+        self.assertEqual(mounted['created'], 2)
         self.assertEqual(mounted['deleted'], 0)
         self.assertEqual((changed['created'] - mounted['created'],
-                          changed['deleted'] - mounted['deleted']), (2, 2))
+                          changed['deleted'] - mounted['deleted']), (1, 1))
         self.assertEqual(disposed['deleted'], disposed['created'])
 
     def test_b2_pixels_equal_the_same_document_with_every_part_naming_its_own_copy(self):

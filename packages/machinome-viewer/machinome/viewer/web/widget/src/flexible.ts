@@ -138,13 +138,13 @@ export class FlexibleShape {
     this.params = parameterList(flexible);
     this.bindings = bindings;
     this.geometry = new THREE.BufferGeometry();
-    // Flat shading, because that is the look every other part already
-    // has: an STL arrives non-indexed, so the vertex normals computed
-    // for it are per-face. This geometry is indexed and shares its rim
-    // vertices between the wall and the caps, so smooth normals would
-    // round the rim off and disagree with the rigid part beside it.
-    // Shading from the derivatives also spares an O(V) normal pass on
-    // every frame a driver moves.
+    // Flat shading, because that is the look every other part has: a
+    // rigid part read from a file holds no normals and is shaded flat
+    // too, each facet lit from its own plane. This geometry is indexed
+    // and shares its rim vertices between the wall and the caps, so
+    // smooth normals would round the rim off and disagree with the
+    // rigid part beside it. Shading from the derivatives also spares an
+    // O(V) normal pass on every frame a driver moves.
     this.mesh = presentation.mesh(this.geometry, FLEXIBLE, color);
   }
 
@@ -422,8 +422,9 @@ function parameterList(flexible: ManifestFlexible): [string, string][] {
 }
 
 // Kept beside the shape rather than imported from `tree.ts`, which
-// imports this module: the same two materials, with the flat shading a
-// swept indexed surface needs to look like the rigid parts around it.
+// imports this module: the same two materials as the rigid kind's, flat
+// shaded as those are, a kind of their own (OpenSpec
+// `share-one-material-per-appearance`, design Decision 1).
 function materialForFlexible(color: string | THREE.Color | null): THREE.Material {
   if (color === null) {
     return new THREE.MeshNormalMaterial({ flatShading: true });

@@ -309,7 +309,7 @@ afterEach(async () => {
 // S1 to S13.
 
 describe('share-one-geometry-per-model-file: the real tree', () => {
-  it('S1: a mount past the budget reads each file once, into one geometry whose normals are written once', async () => {
+  it('S1: a mount past the budget reads each file once, into one geometry that holds no normals', async () => {
     const at = base('s1');
     const files = [0, 1, 2, 3, 4, 5, 6].map((i) => `f${i}.stl`);
     const models = [...files, ...files, files[0]];
@@ -327,8 +327,10 @@ describe('share-one-geometry-per-model-file: the real tree', () => {
     shown.forEach((geometries, i) => expect(new Set(geometries).size, files[i]).toBe(1));
     expect(new Set(shown.flat()).size).toBe(7);
     for (const [geometry] of shown) {
-      expect(seen.normals.get(geometry)).toBe(1);
-      expect(geometry.getAttribute('normal').version).toBe(1);
+      // No normal is computed or held for a part read from a file
+      // (OpenSpec `draw-rigid-parts-without-stored-normals`).
+      expect(seen.normals.get(geometry)).toBeUndefined();
+      expect(geometry.getAttribute('normal')).toBeUndefined();
       expect(disposals(geometry)).toBe(0);
     }
     shown.forEach((geometries) => expect(holdersOf(geometries[0])).toBe(geometries.length));
@@ -663,9 +665,10 @@ describe('share-one-geometry-per-model-file: the real tree', () => {
     const mountedShown = tree.children.slice(0, 2).map((child) => ownMesh(child).geometry);
     const geometries = [...new Set(mountedShown)];
 
-    // What three.js's own parse of the same bytes and the one normal
-    // computation give: the mount, its decal lift included, wrote nothing
-    // else.
+    // What three.js's own parse of the same bytes and the reading's one
+    // preparation, the removal of its normals (OpenSpec
+    // `draw-rigid-parts-without-stored-normals`), give: the mount, its
+    // decal lift included, wrote nothing else.
     const reading = (geometry: THREE.BufferGeometry) => Object.keys(geometry.attributes).sort().map((name) => {
       const attribute = geometry.getAttribute(name) as THREE.BufferAttribute;
       return [name, attribute.version, Array.from(attribute.array as Float32Array)];
@@ -673,7 +676,7 @@ describe('share-one-geometry-per-model-file: the real tree', () => {
     for (const geometry of geometries) {
       const fresh = new STLLoader().parse(stl(versionOf(geometry), serialOf(geometry)));
       seen.parsed.delete(fresh);
-      fresh.computeVertexNormals();
+      fresh.deleteAttribute('normal');
       expect(reading(geometry)).toEqual(reading(fresh));
     }
     const after = geometries.map(reading);
