@@ -25,8 +25,13 @@
 // materials and back. A material is disposed when no mesh points at it,
 // except the ghosted ones, kept while their appearance has meshes, and
 // all of an appearance's materials when its last mesh is released.
+//
+// The holder carries the mount's picture revision and raises it whenever
+// it points a mesh at another material, and nothing else here raises it
+// (OpenSpec `draw-only-when-the-picture-changes`, design Decision 2).
 
 import * as THREE from 'three';
+import { PictureRevision } from './picture';
 import type { AssemblyPath } from './tree';
 
 /** What happens to the parts a highlight does not name. */
@@ -252,6 +257,8 @@ export class MaterialPresentation {
     lit: Set<THREE.Mesh>; others: Set<THREE.Mesh>;
     color: THREE.Color; mode: OthersMode;
   } | null = null;
+
+  constructor(readonly picture: PictureRevision = new PictureRevision()) {}
 
   /** Make a mesh of `kind` in `color`: its place, its appearance and its
    * material, the plain one, since no overlay stands on a new mesh. */
@@ -480,6 +487,7 @@ export class MaterialPresentation {
   private point(mesh: THREE.Mesh, held: Held, material: THREE.Material): void {
     const previous = held.material;
     if (previous === material) return;
+    this.picture.raise();
     this.count(material, 1);
     mesh.material = material;
     held.material = material;

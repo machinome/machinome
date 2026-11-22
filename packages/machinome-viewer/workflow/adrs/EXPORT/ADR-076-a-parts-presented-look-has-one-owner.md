@@ -158,3 +158,14 @@ and the document versions are unchanged.
 [Design](../../../openspec/changes/archive/2026-11-21-share-one-material-per-appearance/design.md)
 and [evidence](../../../openspec/changes/archive/2026-11-21-share-one-material-per-appearance/evidence.md)
 record the cases, the tests and the measurements.
+
+## Picture-revision amendment — 22 November 2026
+
+`draw-only-when-the-picture-changes` gives the holder one more thing to
+carry: the mount's picture revision, a counter it raises whenever it
+points a mesh at another material, and at no other moment. The viewer's
+loop reads it to know whether to draw
+([ADR-080](ADR-080-a-continuous-viewer-draws-a-frame-only-when-its-picture-has-changed.md)).
+The rule of the shared-materials amendment is what makes it sufficient:
+the holder is the only writer of a mesh's material, at one place.
+

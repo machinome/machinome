@@ -224,6 +224,13 @@ export class DriverStore {
     return nest(Object.fromEntries(this.values));
   }
 
+  /** Whether a ramp is moving a driver: the render loop draws every frame
+   * while one is (OpenSpec `draw-only-when-the-picture-changes`, design
+   * Decision 5). */
+  ramping(): boolean {
+    return this.ramps.size > 0;
+  }
+
   /** Advance the ramps to now, tell listeners what moved, and hand the
    * render loop the ids it must re-evaluate. */
   tick(): ReadonlySet<string> {

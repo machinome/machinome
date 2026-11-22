@@ -137,13 +137,17 @@ DRIVE = """async () => {
   const sleep = (ms) => new Promise((done) => { setTimeout(done, ms); });
   // The renderer keeps no drawing buffer between frames, so a canvas
   // read from a timer returns a CLEARED canvas and every picture would
-  // match every other. A picture is taken inside a requestAnimationFrame
-  // callback instead -- the widget's own animation loop registered
-  // first, so it has already rendered this frame when this runs.
-  const shot = () => new Promise((done) => {
-    requestAnimationFrame(() => { done(
-      host.querySelector('canvas').toDataURL()); });
-  });
+  // match every other; and a continuous viewer draws a frame only when
+  // its picture has changed (OpenSpec
+  // `draw-only-when-the-picture-changes`), so a read in a later
+  // animation frame finds a picture only in a frame that changed
+  // something. A picture is taken in the task of a call that draws
+  // instead: `setTime(0)` re-poses nothing here (nothing reads `$t`)
+  // and draws the current state, read in the same task.
+  const shot = () => {
+    viewer.setTime(0);
+    return host.querySelector('canvas').toDataURL();
+  };
   const panel = () => host.querySelector('.clocked-controls');
   const at = (selector) => panel().querySelector(selector);
   const readout = () => at('.clocked-elapsed').textContent;

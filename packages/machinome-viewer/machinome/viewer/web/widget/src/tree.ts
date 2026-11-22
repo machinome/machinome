@@ -355,6 +355,9 @@ export class WidgetTree {
       }),
     ]);
     if (this.disposed) throw this.owner.cancellation;
+    // The application writes what a draw reads (OpenSpec
+    // `draw-only-when-the-picture-changes`, design Decision 2).
+    this.presentation.picture.raise();
     replacements.forEach(({ tree, mesh }) => {
       tree.replaceMesh(mesh);
       tree.freshFromArtifact = true;
@@ -388,6 +391,9 @@ export class WidgetTree {
         const scope = candidateScope?.();
         if (scope !== undefined) admitPresentation(data, scope, inheritedColor);
         beforeCommit?.();
+        // The application writes what a draw reads (OpenSpec
+        // `draw-only-when-the-picture-changes`, design Decision 2).
+        this.presentation.picture.raise();
         apply();
         if (scope !== undefined) this.update(scope);
       });
@@ -694,6 +700,9 @@ export class WidgetTree {
 
   applyVisibility(focusedPath: AssemblyPath | null,
                   hiddenPaths: ReadonlySet<string>): void {
+    // `visible` is read by a draw (OpenSpec
+    // `draw-only-when-the-picture-changes`, design Decision 2).
+    this.presentation.picture.raise();
     const visit = (node: WidgetTree, path: string[]) => {
       const inFocusedSubtree = focusedPath === null
         || isPathPrefix(focusedPath, path);
@@ -729,6 +738,11 @@ export class WidgetTree {
       // domain error cannot leave an earlier sibling at the refused bank.
       const prepared: Array<{ tree: WidgetTree; matrix: THREE.Matrix4; color?: string | null }> = [];
       this.prepareTransforms(scope, changed, [], undefined, false, prepared);
+      // Raised before the first write, so a write followed by a throw is
+      // still drawn (OpenSpec `draw-only-when-the-picture-changes`,
+      // design Decision 2); a change set that reaches no node raises
+      // nothing.
+      if (prepared.length > 0) this.presentation.picture.raise();
       prepared.forEach(({ tree, matrix, color }) => {
         tree.group.matrix.copy(matrix);
         if (color !== undefined) tree.setColor(color);
@@ -806,6 +820,9 @@ export class WidgetTree {
     // expressions name a changed input, and a driver none of them names
     // costs it nothing.
     if (this.flexible && touchedBy(this.flexible.free, changed)) {
+      // Before the buffers are written, as `update` raises before a
+      // transform is (design Decision 2).
+      this.presentation.picture.raise();
       this.flexible.evaluate(scope);
     }
     for (const child of this.children) {

@@ -958,6 +958,22 @@ load is open.
   `draw-only-when-the-picture-changes`, on the pilot's "yes" of 21
   November 2026. One parsed geometry per part stays open.
 
+- **The idle frame closed by `draw-only-when-the-picture-changes`**,
+  archived 22 November 2026. In the continuous mode the loop draws only
+  when the picture can have changed since its last draw, or while
+  something moves, and skips the update that names no change (ADR-080).
+  On this page a still frame went from 16 to 20 ms of script to 0.03 to
+  0.05, with no draw call; the eight seconds after a key press from 7.4 to
+  7.5 s of script to 1.9 to 2.0. What is on screen in 18 states equals a
+  forced draw and the previous viewer's picture pixel for pixel. The
+  change's
+  `openspec/changes/archive/2026-11-22-draw-only-when-the-picture-changes/evidence.md`
+  has the measurement.
+
+- **Left open in this section.** One parsed geometry per part. And what a
+  frame costs while something moves, which no change of this section has
+  touched since the materials.
+
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 
 - **Symptom.** None seen in a project. Found on 21 November 2026 while

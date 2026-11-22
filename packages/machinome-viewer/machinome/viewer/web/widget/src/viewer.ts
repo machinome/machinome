@@ -87,6 +87,7 @@ import {
 } from './screen';
 import type { CanvasBounds, Point, ScreenRect } from './screen';
 import { drawOrderSort, highlightRequest, MaterialPresentation } from './presentation';
+import { cameraReading, sameReading } from './picture';
 import { assertColor } from './color';
 import type {
   HighlightOptions, HighlightRequest, OthersMode,
@@ -611,6 +612,27 @@ export async function mount(
   let partOf = new Map<string, THREE.Mesh[]>();
   const raycaster = new THREE.Raycaster();
 
+  // What the last draw drew, in the continuous mode (OpenSpec
+  // `draw-only-when-the-picture-changes`, design Decision 2): the tree
+  // shown, the mount's picture revision and the camera's 32 numbers.
+  // Null until the first draw, and again when a draw is forced (a
+  // restored graphics context, a page shown again).
+  let drawn: { tree: WidgetTree | undefined; revision: number;
+               camera: number[] } | null = null;
+  // The ONE draw (design Decision 2, point 7, `draw()` there): every
+  // place that drew draws through it, unconditionally. In the continuous
+  // mode it also records what it drew; on demand it records nothing
+  // (Decision 7). Named apart from `clockedRequest`'s own `draw`, the
+  // flag saying whether a request is drawn.
+  const continuous = resolved.renderMode === 'continuous';
+  const drawPicture = (): void => {
+    renderer.render(scene, camera);
+    if (continuous) {
+      drawn = { tree, revision: presentation.picture.value(),
+                camera: cameraReading(camera) };
+    }
+  };
+
   // Under a run the BANK is what poses the geometry, and the program's
   // clock name binds to elapsed simulation seconds beside it. `$t` stays
   // 0 for a version 5 document, because no expression in one reads it.
@@ -642,7 +664,7 @@ export async function mount(
     // driver are re-evaluated, and the rest keep the matrices they
     // have.
     tree?.update(scope(), { time: false, drivers: drivers.tick() });
-    renderer.render(scene, camera);
+    drawPicture();
   };
 
   const setTime = (next: number) => {
@@ -654,7 +676,7 @@ export async function mount(
       readout.textContent = formatMachineTime(time * animation.loop, animation.loop);
     }
     tree?.update(scope(), { time: true, drivers: EMPTY });
-    renderer.render(scene, camera);
+    drawPicture();
   };
 
   const setSpeed = (next: number) => {
@@ -1111,14 +1133,14 @@ export async function mount(
     const token = {};
     standingHighlight = { token, request };
     presentHighlight();
-    renderer.render(scene, camera);
+    drawPicture();
     return () => {
       if (disposed || standingHighlight?.token !== token) {
         return;
       }
       standingHighlight = null;
       presentation.setHighlight(null);
-      renderer.render(scene, camera);
+      drawPicture();
     };
   };
 
@@ -1242,7 +1264,7 @@ export async function mount(
       }
       runChrome?.commit(frame);
       refreshTransport();
-      renderer.render(scene, camera);
+      drawPicture();
     });
     started.onRefusal((reply) => {
       // A tick that committed nothing: the whole machine disagreeing
@@ -1312,7 +1334,7 @@ export async function mount(
         // A request is a gesture, and a gesture that changed the pose
         // must reach the screen -- whether it came from the panel or
         // straight off the `machine()` handle a host holds.
-        renderer.render(scene, camera);
+        drawPicture();
       },
     });
   };
@@ -1434,7 +1456,7 @@ export async function mount(
       if (!drawingStarted) publishJudged(before, started.state());
     }
     rebuildClockedChrome();
-    if (!drawingStarted) renderer.render(scene, camera);
+    if (!drawingStarted) drawPicture();
     return report;
   };
 
@@ -1499,7 +1521,7 @@ export async function mount(
         stops: [],
       };
       rebuildClockedChrome();
-      renderer.render(scene, camera);
+      drawPicture();
       throw error;
     }
     clockedOutcomes[name] = {
@@ -1517,7 +1539,7 @@ export async function mount(
     // only rewrite the fields they move.
     rebuildClockedChrome();
     if (drawingStarted) clockedChrome?.indicate(name, true);
-    else renderer.render(scene, camera);
+    else drawPicture();
     return answered;
   };
 
@@ -1709,7 +1731,7 @@ export async function mount(
         clockPlaying = false;
         clockRefusal = null;
         rebuildClockedChrome();
-        renderer.render(scene, camera);
+        drawPicture();
       },
       play() {
         setClockPlaying(!clockPlaying);
@@ -1727,7 +1749,7 @@ export async function mount(
           delete clockedOutcomes[clock];
         }
         rebuildClockedChrome();
-        renderer.render(scene, camera);
+        drawPicture();
       },
       setStep(amount: number) {
         clockStep = clockStepAmount(amount, clockStep);
@@ -1862,7 +1884,7 @@ export async function mount(
     rebuildDriverChrome();
     rebuildRunChrome();
     rebuildClockedChrome(false);
-    renderer.render(scene, camera);
+    drawPicture();
     // Whether a host called setRoot or the maker clicked the
     // breadcrumb, this is the one place that moved -- so this is the
     // one place that notifies. `setRoot` throws from `requirePath`
@@ -2057,14 +2079,53 @@ export async function mount(
     camera.updateProjectionMatrix();
   };
   resize();
-  const observer = new ResizeObserver(resize);
+  // `setSize` sets the canvas's size, which clears it when the size
+  // changes and which a browser may do at an equal size too; no
+  // comparison could see that. In the continuous mode every resize the
+  // observer makes is therefore drawn in its own callback, whatever the
+  // size, before the frame is painted
+  // (OpenSpec `draw-only-when-the-picture-changes`, design Decisions 2
+  // and 3). The resize at mount above precedes the first loop frame,
+  // which draws because nothing has been. On demand the observer resizes
+  // and draws nothing, as before (Decision 7).
+  const observer = new ResizeObserver(continuous
+    ? () => { resize(); if (!disposed) drawPicture(); }
+    : resize);
   observer.observe(container);
 
+  // Whether something moves (design Decision 5): while it does, every
+  // frame is drawn as before, the frame it stops in included.
+  const moving = (): boolean => playing || drivers.ramping() || clockPlaying
+    || clockedDrawing !== null || (runtime?.running() ?? false)
+    || partSurface.engaged();
+  // Whether the picture can have changed since the last draw (design
+  // Decision 2, points 1 to 4): never drawn or forced, another tree shown,
+  // the revision moved, or the camera moved, compared by value.
+  const changed = (): boolean => drawn === null || drawn.tree !== tree
+    || drawn.revision !== presentation.picture.value()
+    || !sameReading(drawn.camera, cameraReading(camera));
+  // A restored graphics context and a page shown again draw the next
+  // frame (design Decision 2, point 1). Continuous mode only.
+  const onContextRestored = (): void => { drawn = null; };
+  const onVisibilityChange = (): void => {
+    if (!document.hidden) drawn = null;
+  };
+
   let lastTimestamp: number | undefined;
+  if (continuous) {
+    renderer.domElement.addEventListener('webglcontextrestored', onContextRestored);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  // The loop runs on every animation frame and draws only when the
+  // picture can have changed, or while something moves (OpenSpec
+  // `draw-only-when-the-picture-changes`, design Decision 3). `wasMoving`
+  // is read before the frame's work, so the frame a motion stops in is
+  // drawn.
   if (resolved.renderMode === 'continuous') renderer.setAnimationLoop((timestamp: number) => {
     const elapsed = lastTimestamp === undefined
       ? 0 : (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
+    const wasMoving = moving();
     // Ramps advance on wall-clock elapsed time, in the same loop: their
     // endpoints and duration are exact, and only the sampling between
     // them varies with the frame rate (design D4 -- this is an
@@ -2079,7 +2140,7 @@ export async function mount(
       // mechanics: one advance in flight, and a committed bank poses the
       // tree from the frame listener above (design D2).
       runtime.frame(elapsed);
-      renderer.render(scene, camera);
+      if (wasMoving || moving() || changed()) drawPicture();
       return;
     }
     // The CLOCK's own cadence, in the same loop and for the same reason
@@ -2098,8 +2159,12 @@ export async function mount(
     if (playing) {
       setTime(advance(time, elapsed, cycleSeconds));
     }
-    tree?.update(scope(), { time: playing, drivers: movedDrivers });
-    renderer.render(scene, camera);
+    // An update whose change set names nothing writes nothing, for every
+    // kind of document, and is skipped (design Decision 4).
+    if (playing || movedDrivers.size > 0) {
+      tree?.update(scope(), { time: playing, drivers: movedDrivers });
+    }
+    if (wasMoving || moving() || changed()) drawPicture();
   });
 
   return {
@@ -2114,6 +2179,10 @@ export async function mount(
       // mount is never left full screen and empty.
       fullscreen.dispose();
       renderer.setAnimationLoop(null);
+      if (continuous) {
+        renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
       clockedDrawing = null;
       drawnBank = null;
       observer.disconnect();
@@ -2169,7 +2238,7 @@ export async function mount(
         }
       }
       applyFrame({ camera: next.camera, target: next.target });
-      renderer.render(scene, camera);
+      drawPicture();
     },
     async reload() {
       await replaceTree(captureView());
@@ -2185,7 +2254,7 @@ export async function mount(
       // same, the meshes carrying them are not (design D4).
       rebuildPartControls();
       presentHighlight();
-      renderer.render(scene, camera);
+      drawPicture();
       notifyAssemblyChange();
     },
     async manifestChanged() {
@@ -2248,7 +2317,7 @@ export async function mount(
         loadedControls = declared;
         rebuildPartControls();
         presentHighlight();
-        renderer.render(scene, camera);
+        drawPicture();
         notifyAssemblyChange();
       } finally { settlement.abandoned(); }
     },
@@ -2269,7 +2338,7 @@ export async function mount(
         throw new Error('Viewer assembly is unavailable');
       }
       assemblyNavigation.setVisible(tree, path, visible);
-      renderer.render(scene, camera);
+      drawPicture();
       notifyAssemblyChange();
     },
     setTime,

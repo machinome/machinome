@@ -52,6 +52,16 @@ it carries release together and share one version.
   materials and back instead of writing them, with the same pictures and
   the same order of drawing as before. Viewer API 30 and document versions
   1 through 14 are unchanged.
+- In the continuous render mode a frame in which nothing changed draws
+  nothing and re-evaluates nothing, where every frame was drawn: a change
+  is still shown by the next frame, and while something moves every frame
+  is drawn as before, the frame it stops in included. A resize is drawn in
+  the frame in which the canvas is resized instead of leaving that frame
+  cleared. A script that read the canvas in a later animation frame of its
+  own, relying on the viewer drawing every frame, now finds a picture only
+  in frames that changed something; a read in the task of a call that
+  draws and a page screenshot are unchanged. The on-demand mode, viewer
+  API 30 and document versions 1 through 14 are unchanged.
 
 ## 0.9.0 — 31 October 2026
 
