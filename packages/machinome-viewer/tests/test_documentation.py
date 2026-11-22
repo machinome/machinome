@@ -27,6 +27,7 @@ PAGES = (
     'reference/viewer/clocked.rst', 'reference/viewer/cli.rst',
     'reference/viewer/compatibility.rst',
     'reference/viewer/troubleshooting.rst',
+    'reference/viewer/app.rst', 'howto/give-a-model-its-app.rst',
 )
 
 
@@ -53,7 +54,7 @@ def test_the_pages_are_in_the_manual():
 
 
 def test_model_color_is_an_unreleased_source_capability():
-    assert widget()['machinomeViewerApi'] == 30
+    assert widget()['machinomeViewerApi'] == 31
     assert widget()['machinomeDocumentVersions'] == list(range(1, 15))
     entry = (ROOT / 'CHANGELOG.md').read_text().split('## Unreleased\n')[1].split('\n## ')[0]
     assert 'Viewer API 30' in entry
@@ -240,3 +241,34 @@ def test_on_demand_clocked_capture_is_documented():
     assert 'viewer API 29' in flat_release
     assert 'on-demand' in flat_release
     assert changelog.index('## 0.8.0') < changelog.index('## 0.7.1')
+
+
+def test_a_models_app_is_documented():
+    """OpenSpec `show-a-models-own-app`, the `user-documentation` delta: the
+    helper's four names, the handle's notification, which mounts show an
+    app, what a reader sees when it cannot be shown, where an app can be
+    bundled, and the API that carries it."""
+    app = flat('reference/viewer/app.rst')
+    for name in ('Viewport', 'useMachine', 'usePlay', 'useViewer',
+                 '@machinome/viewer/app'):
+        assert name in app, name
+    assert 'this model is not a clocked machine' in app
+    assert 're-renders' in app
+    mount = flat('reference/viewer/mount.rst')
+    assert "model's own app" in mount and "'none'" in mount
+    handle = flat('reference/viewer/viewer-handle.rst')
+    assert 'ViewerHandle.onMachineChange(listener)' in handle
+    clocked = flat('reference/viewer/clocked.rst')
+    assert 'MachineHandle.drawing()' in clocked
+    assert 'API 31' in flat('reference/viewer/compatibility.rst')
+    assert "This model's app is not shown:" in flat(
+        'reference/viewer/troubleshooting.rst')
+    assert 'source checkout' in flat('reference/viewer/troubleshooting.rst')
+    assert "model's own app" in flat('reference/viewer/layouts.rst')
+    assert "model's own app" in flat('howto/browser-viewer.rst')
+    assert "model's own app" in flat('howto/embed-the-viewer.rst')
+    howto = flat('howto/give-a-model-its-app.rst')
+    assert howto.startswith('=') and '.. needs:: viewer' in howto
+    assert '<Viewport' in howto and 'useMachine()' in howto
+    entry = (ROOT / 'CHANGELOG.md').read_text().split('## Unreleased\n')[1].split('\n## ')[0]
+    assert 'viewer API 31' in ' '.join(entry.split())

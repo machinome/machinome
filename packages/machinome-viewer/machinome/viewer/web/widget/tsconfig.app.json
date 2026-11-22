@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  },
+  "include": ["app", "src/molejo.d.ts"],
+  "exclude": ["app/**/*.test.tsx"]
+}

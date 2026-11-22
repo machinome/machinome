@@ -30,6 +30,7 @@ Method names are grouped by interface so they are searchable in the
    layouts
    running
    clocked
+   app
    cli
    compatibility
    troubleshooting

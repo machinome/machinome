@@ -6,8 +6,10 @@
 show a machine, and their resolution by name.
 
 A viewer shows a machine: it takes a still of one assembled instant, serves
-a build directory to a page that follows it as it is rebuilt, or gives the
-files an export or a documentation page embeds. Each viewer is a provider,
+a build directory to a page that follows it as it is rebuilt, gives the
+files an export or a documentation page embeds, or bundles a model's own app
+beside the document that names it (`bundle`, OpenSpec change
+`declare-a-models-app`). Each viewer is a provider,
 one known module beneath this package, `machinome.viewer.<name>`, shipped by
 a distribution of its own: the web viewer `machinome.viewer.web`
 (`machinome-viewer`) and the OpenSCAD viewer `machinome.viewer.openscad`
@@ -48,11 +50,13 @@ CONTRACT = 1
 EXTRAS = {'openscad': 'viewer-openscad', 'web': 'viewer'}
 
 #: The operations a viewer may offer beyond what every viewer answers.
-OPERATIONS = ('present', 'capture', 'serve', 'embed')
+OPERATIONS = ('present', 'capture', 'serve', 'embed', 'bundle')
 
 #: The viewer each operation uses when neither the command nor the project
-#: names one: a still is OpenSCAD's, serving and embedding the browser's.
-DEFAULTS = {'capture': 'openscad', 'serve': 'web', 'embed': 'web'}
+#: names one: a still is OpenSCAD's, serving, embedding and bundling a
+#: model's app the browser's.
+DEFAULTS = {'capture': 'openscad', 'serve': 'web', 'embed': 'web',
+            'bundle': 'web'}
 
 #: The manifest key a project names its viewer with.
 KEY = '[tool.machinome] viewer'
@@ -128,6 +132,17 @@ class Embedder(Protocol):
 
     def describe(self) -> dict:
         """The report of the installed viewer, `machinome viewer`'s."""
+
+
+class Bundler(Protocol):
+    """`bundle`: a model's app, bundled beside its document."""
+
+    def bundle_app(self, entry: str, root: str, output_dir: str) -> dict:
+        """Bundle the app whose entry file is `entry`, every file it reads
+        inside the project's `root`, into `output_dir`; return
+        `{'script': name, 'stylesheet': name or None, 'inputs': [path, ...]}`,
+        the names relative to `output_dir` and the inputs the project files
+        read, or raise `ViewerError` with the sentence, writing nothing."""
 
 
 @dataclass(frozen=True)

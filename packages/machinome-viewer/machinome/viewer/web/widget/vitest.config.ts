@@ -26,4 +26,8 @@ export default defineConfig({
     // page with a restrictive policy takes.
     __WORKER_SOURCE__: JSON.stringify(''),
   },
+  // The helper a model's app imports (`app/`, OpenSpec
+  // `show-a-models-own-app`) is React written with the automatic runtime,
+  // as `app-build.mjs` bundles it; the viewer's own sources carry no JSX.
+  esbuild: { jsx: 'automatic' },
 });

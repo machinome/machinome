@@ -66,7 +66,10 @@ accept these too, with the additions/defaults in :doc:`layouts`.
 .. js:attribute:: ViewerOptions.driverControls
 
    ``'inline'`` (default) or ``'none'``. Controls the built-in operating panel;
-   all driving methods remain available when the panel is hidden.
+   all driving methods remain available when the panel is hidden. Where the
+   document names its model's own app, ``'inline'`` shows that app in the
+   panel's place (:doc:`app`), and ``'none'`` suppresses the app with the panel:
+   no file of it is requested.
 
 .. js:attribute:: ViewerOptions.partControls
 

@@ -1,0 +1,13 @@
+/*
+ * machinome-viewer - the browser viewer for machinome models
+ * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+ */
+
+// An app importing a package the viewer does not provide to apps.
+
+import 'three';
+
+export default function ImportsThree() {
+  return null;
+}

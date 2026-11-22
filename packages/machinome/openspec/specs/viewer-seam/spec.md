@@ -28,7 +28,7 @@ The framework SHALL declare the contract of viewers in one module of its own,
 `machinome.viewer` (`machinome/viewer/__init__.py`), importing nothing but the
 standard library and `machinome.extras`. It SHALL state the contract version
 it speaks as the integer `CONTRACT`, the operations a viewer may offer
-(`present`, `capture`, `serve`, `embed`), and, as Protocols, what each
+(`present`, `capture`, `serve`, `embed`, `bundle`), and, as Protocols, what each
 operation asks: every viewer its name, its `CONTRACT`, the operations it
 offers, its identity, the node-tree document versions it reads (none, for a
 viewer that reads no document) and whether a version is readable; `present`
@@ -37,7 +37,10 @@ removing it; `capture`, an image of what was presented, with the snapshot
 options the viewer honours; `serve`, an interactive session on a build
 directory that can be told a build was published and can be stopped; `embed`,
 the files an export or a documentation page carries and the report of the
-installed viewer. The seam SHALL name the viewers the core knows and the extra
+installed viewer; `bundle`, a model's app bundled from its entry file and the
+project's root into a directory, answering the names of the files written and
+the project files read, or refusing with its sentence and writing nothing.
+The seam SHALL name the viewers the core knows and the extra
 that installs each, and the default viewer of each operation, and no other
 module of the core SHALL name a viewer's technology.
 
@@ -65,6 +68,12 @@ distribution resolves in an editable workspace as it does from the wheels.
 - **WHEN** `machinome.viewer` is imported
 - **THEN** no provider, web framework, browser driver or CAD library is
   imported
+
+#### Scenario: Bundling an app has a default viewer
+
+- **WHEN** a build asks which viewer bundles a model's app, with no flag and
+  no viewer declared by the project
+- **THEN** the seam answers `web`, and the contract version is unchanged
 
 ### Requirement: A viewer is chosen by name and resolved at a known address
 
@@ -179,22 +188,22 @@ its report with no verb the `web` viewer.
 ### Requirement: Each viewer declares what it offers
 
 The web viewer, `machinome.viewer.web` of the distribution `machinome-viewer`,
-SHALL offer `present`, `capture`, `serve` and `embed`, read the document
-versions its widget declares, and honour, beyond the common snapshot options
-(output, image size, time, camera), `--autocenter` and `--viewall`, which
-describe what it does by default. The OpenSCAD viewer, `machinome.viewer.openscad`
-of the distribution `machinome-viewer-openscad`, SHALL offer `present` and
-`capture`, read no node-tree document, and honour every snapshot option. Each
-provider SHALL import its machinery only when an operation is called, so
-resolving it and asking its identity or the versions it reads imports no web
-framework, browser driver or CAD library.
+SHALL offer `present`, `capture`, `serve`, `embed` and `bundle`, read the
+document versions its widget declares, and honour, beyond the common snapshot
+options (output, image size, time, camera), `--autocenter` and `--viewall`,
+which describe what it does by default. The OpenSCAD viewer,
+`machinome.viewer.openscad` of the distribution `machinome-viewer-openscad`,
+SHALL offer `present` and `capture`, read no node-tree document, and honour
+every snapshot option. Each provider SHALL import its machinery only when an
+operation is called, so resolving it and asking its identity or the versions
+it reads imports no web framework, browser driver or CAD library.
 
 #### Scenario: The declarations
 
 - **WHEN** both providers are resolved
-- **THEN** the web viewer's `OPERATIONS` are `present`, `capture`, `serve`
-  and `embed`, the OpenSCAD viewer's are `present` and `capture`, and each
-  `CONTRACT` equals the seam's
+- **THEN** the web viewer's `OPERATIONS` are `present`, `capture`, `serve`,
+  `embed` and `bundle`, the OpenSCAD viewer's are `present` and `capture`,
+  and each `CONTRACT` equals the seam's
 
 #### Scenario: Asking whether a version is readable is cheap
 
@@ -202,6 +211,12 @@ framework, browser driver or CAD library.
   13
 - **THEN** the answer is given without importing the viewer's server, its
   capture, a web framework or a browser driver
+
+#### Scenario: The OpenSCAD viewer does not bundle
+
+- **WHEN** a build asks the `openscad` viewer to bundle a model's app
+- **THEN** it is refused naming the build, bundling, the `openscad` viewer
+  and `web` as the viewer that bundles
 
 ### Requirement: The web viewer runs in the framework's process
 

@@ -123,7 +123,11 @@ prints a diagnostic and exits with status 66 (``MODEL_NOT_FOUND``); other
 build errors use a generic non-zero status. Each artifact is published whole
 or not at all, but a failed build can leave a partially updated model rather
 than the last complete set; ``errors.json`` reports it. A reader may likewise
-observe a mixed model while a build is running.
+observe a mixed model while a build is running. A root that declares its own
+app (:doc:`/howto/give-a-model-its-app`) has the app bundled into the build
+directory beside the document, which names it. An app that cannot be bundled
+is named in the document and logged as an error, and the model is published
+as usual: the exit status is the model's.
 
 machinome test
 ==============
@@ -339,8 +343,11 @@ directory that renders the model — animations and driver controls
 included — in any browser, with no server-side code. The manifest
 carries the document schema version, the machine's driver and
 instruction tables and, in a Git repository, the revision the project was
-exported from. See :doc:`/concepts/publishing` for what the output contains
-and how to use it.
+exported from. A root that declares its own app has the app's script and
+stylesheet written beside ``manifest.json``, which names them; an app that
+cannot be bundled fails the export with the sentence that says why, and
+nothing is written. See :doc:`/concepts/publishing` for what the output
+contains and how to use it.
 
 .. code-block:: bash
 
@@ -373,7 +380,8 @@ and how to use it.
     for example by the Sphinx extension at documentation build time — and
     the only way to export in an installation without ``machinome-viewer``,
     since the widget files are the web viewer's. It asks no viewer to
-    embed.
+    embed. A root that declares its own app is refused, naming the class
+    and the app, before anything is built.
 
 .. _viewer-command:
 

@@ -53,11 +53,12 @@ class TheContractTest(TestCase):
         viewers = seam()
         self.assertEqual(viewers.CONTRACT, 1)
         self.assertEqual(viewers.OPERATIONS,
-                         ('present', 'capture', 'serve', 'embed'))
+                         ('present', 'capture', 'serve', 'embed', 'bundle'))
         self.assertEqual(viewers.EXTRAS,
                          {SECOND: 'viewer-' + SECOND, 'web': 'viewer'})
         self.assertEqual(viewers.DEFAULTS,
-                         {'capture': SECOND, 'serve': 'web', 'embed': 'web'})
+                         {'capture': SECOND, 'serve': 'web', 'embed': 'web',
+                          'bundle': 'web'})
 
     def test_the_protocols_state_each_operation(self):
         viewers = seam()
@@ -68,6 +69,7 @@ class TheContractTest(TestCase):
             'Server': ('serve',),
             'Session': ('reload', 'stop'),
             'Embedder': ('files', 'describe'),
+            'Bundler': ('bundle_app',),
         }
         for protocol, names in members.items():
             with self.subTest(protocol=protocol):
@@ -184,7 +186,8 @@ class TheProvidersTest(TestCase):
         self.assertEqual((second.NAME, second.CONTRACT),
                          (SECOND, viewers.CONTRACT))
         self.assertEqual(web.OPERATIONS,
-                         frozenset({'present', 'capture', 'serve', 'embed'}))
+                         frozenset({'present', 'capture', 'serve', 'embed',
+                                    'bundle'}))
         self.assertEqual(second.OPERATIONS, frozenset({'present', 'capture'}))
         self.assertEqual(web.CAPTURE_OPTIONS,
                          frozenset({'autocenter', 'viewall'}))
@@ -205,6 +208,7 @@ class TheProvidersTest(TestCase):
             'capture': ('capture',),
             'serve': ('serve',),
             'embed': ('files', 'describe'),
+            'bundle': ('bundle_app',),
         }
         for name in ('web', SECOND):
             provider = viewers.viewer(name)
@@ -235,6 +239,22 @@ class TheProvidersTest(TestCase):
             f'{SECOND} viewer cannot; the viewers that can: web')
         self.assertIs(viewers.require('web', 'serve', 'machinome develop'),
                       viewers.viewer('web'))
+
+    def test_s1_bundling_an_app_is_an_operation_of_the_web_viewer(self):
+        # OpenSpec change `declare-a-models-app`, design Decision 2: the
+        # operation is additive, so the contract version is unchanged.
+        viewers = seam()
+        self.assertIn('bundle', viewers.OPERATIONS)
+        self.assertEqual(viewers.DEFAULTS['bundle'], 'web')
+        self.assertEqual(viewers.CONTRACT, 1)
+        self.assertIn('bundle', viewers.viewer('web').OPERATIONS)
+        self.assertNotIn('bundle', viewers.viewer(SECOND).OPERATIONS)
+        with self.assertRaises(viewers.ViewerLacks) as raised:
+            viewers.require(SECOND, 'bundle', 'the build')
+        self.assertEqual(
+            str(raised.exception),
+            f'the build needs a viewer that can bundle, and the {SECOND} '
+            f'viewer cannot; the viewers that can: web')
 
 
 #: Drop one directory from the path, as an install without the distribution
@@ -341,6 +361,7 @@ class TheDefaultRuleTest(TestCase):
         self.assertEqual(viewers.chosen('capture', origin=origin), SECOND)
         self.assertEqual(viewers.chosen('serve', origin=origin), 'web')
         self.assertEqual(viewers.chosen('embed', origin=origin), 'web')
+        self.assertEqual(viewers.chosen('bundle', origin=origin), 'web')
 
     def test_the_project_names_its_viewer(self):
         viewers = seam()

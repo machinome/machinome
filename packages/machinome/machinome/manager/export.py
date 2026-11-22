@@ -6,8 +6,10 @@ import sys
 import logging
 from machinome import viewer as viewers
 from machinome.core.loader import ProjectManifestError, load_node, select_model
+from machinome.core.app import widgetless_refusal
 from machinome.core.export import (
-    ExportModelPathError, WidgetBundleMissing, embedder, export_node,
+    ExportAppRefused, ExportModelPathError, WidgetBundleMissing, embedder,
+    export_node,
 )
 from machinome.manifest import reference_origin
 
@@ -84,11 +86,19 @@ class Export:
             sys.stderr.write(f'Error loading node: {e}\n')
             sys.exit(1)
 
+        # A model's app travels only with the widget: refused before
+        # anything is built (OpenSpec change `declare-a-models-app`).
+        refusal = None if args.widget else widgetless_refusal(node)
+        if refusal is not None:
+            sys.stderr.write(f'Error: {refusal}\n')
+            sys.exit(1)
+
         try:
             export_node(node, args.output,
                         fps=args.fps, frames=args.frames,
                         widget=args.widget, viewer=viewer)
-        except (ExportModelPathError, WidgetBundleMissing) as error:
+        except (ExportAppRefused, ExportModelPathError,
+                WidgetBundleMissing) as error:
             sys.stderr.write(f'Error: {error}\n')
             sys.exit(1)
 

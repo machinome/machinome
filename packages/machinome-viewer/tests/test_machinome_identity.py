@@ -53,7 +53,8 @@ class MachinomeViewerIdentityTest(TestCase):
         self.assertEqual(web.CONTRACT, viewers.CONTRACT)
         self.assertEqual(web.NAME, 'web')
         self.assertEqual(web.OPERATIONS, frozenset({'present', 'capture',
-                                                    'serve', 'embed'}))
+                                                    'serve', 'embed',
+                                                    'bundle'}))
         self.assertEqual(web.CAPTURE_OPTIONS,
                          frozenset({'autocenter', 'viewall'}))
         self.assertEqual(web.identity(), ('machinome-viewer', web.__version__))

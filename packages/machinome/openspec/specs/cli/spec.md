@@ -170,7 +170,11 @@ for breakpoints. `--no-web` SHALL be rejected with a clear argument error when
 combined with a flag that explicitly requests the browser viewer (`--web`,
 `--web-dev`). Each rebuild cycle SHALL respawn the builder and tell every open
 page, through the session, that a build was published, without closing its
-connection; Ctrl-C stops the session and exits 0.
+connection. When it serves through a session it SHALL also tell every open
+page, through the session, each time a build replaces the published
+document, after the files that document names are in place, so a page reads
+the build it is told of rather than the one before it. Ctrl-C stops the
+session and exits 0.
 
 #### Scenario: Default develop session
 
@@ -223,6 +227,19 @@ connection; Ctrl-C stops the session and exits 0.
 - **WHEN** a user runs `machinome develop --viewer openscad`
 - **THEN** the command fails naming the `openscad` viewer, serving and `web`,
   and starts no builder
+
+#### Scenario: An open page shows a source edit when it is published
+
+- **WHEN** a maker edits the model's source while its development page is
+  open
+- **THEN** the page receives `reload` once the rebuilt document is
+  published, and shows the edit then rather than at a later edit
+
+#### Scenario: An open page shows an app edit without a model reload
+
+- **WHEN** a maker edits the model's app while its development page is open
+- **THEN** the page receives `reload` once the watching builder has
+  published the document naming the new app, and no builder is respawned
 
 ### Requirement: Build command
 

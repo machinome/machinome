@@ -206,5 +206,19 @@ export interface Manifest {
    * knew of controls. Validated by `partControls.ts`'s `readControls`
    * at load, on `assertRenderable`'s own refusal surface. */
   controls?: Record<string, ManifestControl>;
+  /** The model's own app (OpenSpec `show-a-models-own-app`, design
+   * Decision 3): the bundled script, with its optional stylesheet, beside
+   * the document, or the producer's sentence saying why the app could not
+   * be built. ADDITIVE and gated on no document version: a viewer that
+   * reads no `app` ignores it and shows the automatic panel. Validated by
+   * `viewer.ts`'s `assertApp` on `assertRenderable`'s refusal surface. */
+  app?: ManifestApp;
   root: ManifestNode;
 }
+
+/** A document's `app` record: exactly one of a script and a refusal. The
+ * paths are relative to the document's base, with no `..` segment, no
+ * leading `/` and no scheme. */
+export type ManifestApp =
+  | { script: string; stylesheet?: string }
+  | { refusal: string };

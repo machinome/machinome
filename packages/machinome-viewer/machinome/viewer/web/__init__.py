@@ -28,9 +28,10 @@ CONTRACT = 1
 #: The name the seam knows this viewer by.
 NAME = 'web'
 
-#: Everything the contract names: a still, an interactive session and the
-#: files an export or a page embeds.
-OPERATIONS = frozenset({'present', 'capture', 'serve', 'embed'})
+#: Everything the contract names: a still, an interactive session, the
+#: files an export or a page embeds, and a model's own app bundled beside
+#: the document (OpenSpec `show-a-models-own-app`).
+OPERATIONS = frozenset({'present', 'capture', 'serve', 'embed', 'bundle'})
 
 #: The snapshot options this viewer honours beyond the common ones: the
 #: browser frames the whole model by default, which is what they ask.
@@ -111,6 +112,18 @@ def capture(staging, request, output):
         Capture(staging).render(output, (width, height), options)
     except CaptureError as error:
         raise ViewerError(str(error)) from error
+
+
+def bundle_app(entry, root, output_dir):
+    """`bundle`: bundle the app whose entry file is `entry`, every file it
+    reads inside the project's `root`, into `output_dir`, with this
+    viewer's own toolchain and its own React; return ``{'script': name,
+    'stylesheet': name or None, 'inputs': [path, ...]}``, the names relative
+    to `output_dir` and the inputs the project files read, or raise
+    `ViewerError` with the sentence, writing nothing. In this release only a
+    source checkout with its JavaScript dependencies installed can."""
+    from machinome.viewer.web.app import bundle_app as bundle
+    return bundle(entry, root, output_dir)
 
 
 def serve(build_dir, port=None):

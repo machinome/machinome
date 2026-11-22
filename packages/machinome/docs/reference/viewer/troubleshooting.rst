@@ -80,3 +80,59 @@ CSS variables. The operating panel scrolls independently. For a completely
 custom panel, set ``driverControls: 'none'``; this does not disable declared
 part gestures. Set ``partControls: 'none'`` separately if needed. See
 :doc:`layouts` and :doc:`mount`.
+
+.. _viewer-app-refusals:
+
+The model's app is not shown
+============================
+
+Where a model's own app cannot be shown, the viewer draws the model and a
+notice over it reading *This model's app is not shown:* followed by the
+reason, also written to the browser's console; no automatic panel takes the
+app's place. The reasons:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - The notice ends
+     - What it means
+   * - the producer's own sentence
+     - The app could not be built when the model was published. The sentence
+       names the declaration and why; the framework's build log has the same
+       line. Fix the app and publish again.
+   * - ``<file> could not be loaded (<status or error>)``
+     - The app's script or stylesheet named by the document is not beside it,
+       or the server refused it. Publish the whole build or export directory.
+   * - ``<file> is not an app this viewer can start (<what it sent>)``
+     - The script ran but did not announce an app this viewer can start:
+       a hand-made script, or a bundle from a different viewer.
+   * - ``it failed as it started: <message>``
+     - The app threw as it started.
+   * - ``it failed as it rendered: <message>``
+     - A component of the app threw while it rendered.
+   * - ``it places no <Viewport/>, so the model would not be seen``
+     - The app rendered without the picture. Render ``<Viewport/>`` once.
+   * - ``this model is not a clocked machine; ...``
+     - ``useMachine()`` or ``usePlay()`` was used on a posed or running model.
+
+A document whose ``app`` record is malformed is refused as a whole, naming the
+record.
+
+When the model is published, the viewer bundles the app with its own build
+tool and its own React. The bundling is refused, by name and writing nothing,
+for:
+
+* an import of anything but the app's own files, ``react``, ``react-dom`` and
+  ``@machinome/viewer/app``, naming the import;
+* a file read from outside the project, naming the file;
+* source that does not build, with its file, line and column;
+* a viewer installed without the toolchain that bundles an app: in this
+  release an app is bundled only from a source checkout of the machinome
+  repository with its JavaScript dependencies installed;
+* a source checkout whose JavaScript dependencies are not installed, naming
+  them; install them with ``npm ci`` at the checkout's root, as
+  `The viewer is missing or stale`_ shows;
+* no Node.js on the ``PATH``.
+
+Nothing is ever installed on the way.

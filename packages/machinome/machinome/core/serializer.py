@@ -882,7 +882,7 @@ def _refuse_an_uncompiled_clocked_model(node, clocked):
 
 def document_body(node, root, drivers, instructions, program=None,
                   initial=None, fps=30, frames=360, controls=None,
-                  clocked=None):
+                  clocked=None, app=None):
     """Everything a published document carries except the two keys a
     producer owns -- the model paths it resolves in ``root``, and
     ``pieces``.
@@ -909,6 +909,13 @@ def document_body(node, root, drivers, instructions, program=None,
     consumer that ignores it still drives the machine from the
     declarations the document already published and still renders the
     truth.
+
+    ``app`` is the record of the model's own app (OpenSpec change
+    ``declare-a-models-app``): ``{'script', 'stylesheet'?}`` naming the
+    files bundled beside the document, or ``{'refusal'}``. It is the
+    body's LAST key, and absent when None, so a document whose root
+    declares no app is unchanged in every byte; it does not move the
+    version.
     """
     _refuse_an_uncompiled_clocked_model(node, clocked)
     block = None if program is None else program_block(program, initial)
@@ -937,6 +944,8 @@ def document_body(node, root, drivers, instructions, program=None,
         body['program'] = block
     if machine is not None:
         body['clocked'] = machine
+    if app is not None:
+        body['app'] = app
     return body
 
 

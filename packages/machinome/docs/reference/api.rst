@@ -263,6 +263,15 @@ Common node API
       to the class name; can be overridden with the ``name`` keyword
       argument of the constructor.
 
+   .. attribute:: app
+
+      A reserved class-body name: the model's own app, a ``.tsx``,
+      ``.ts``, ``.jsx`` or ``.js`` file named relative to the file whose
+      class body declares it, as ``app = 'app/index.tsx'``. Any other
+      value is refused where the class is written. A subclass inherits
+      it, still relative to the declaring file, and only the published
+      root's declaration is read. See :doc:`/howto/give-a-model-its-app`.
+
    .. automethod:: set_keyframe
 
    .. automethod:: clear_keyframe

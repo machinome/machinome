@@ -47,7 +47,12 @@ a finite zero condition selects off, any other finite value selects on,
 from the same scope as pose. It changes the existing body's visual color,
 without emitted light. The ``program`` and ``clocked`` payloads retain their
 running and clocked meanings; a document with neither is posed. Older readers
-refuse format 14. :doc:`/project/status` records publication state.
+refuse format 14. API 31 reads a document's ``app`` record and shows the
+model's own app in place of the automatic panel (:doc:`app`), and adds
+:js:meth:`ViewerHandle.onMachineChange` and :js:meth:`MachineHandle.drawing`.
+The record is additive within the same document versions: a reader before
+API 31 ignores it and shows the automatic panel. :doc:`/project/status`
+records publication state.
 
 Document capabilities
 =====================

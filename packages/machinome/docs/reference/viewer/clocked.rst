@@ -28,6 +28,14 @@ Read the machine
    transition is still being drawn on screen, and it follows a slider of the
    built-in panel while a maker drags it.
 
+.. js:method:: MachineHandle.drawing()
+
+   Return whether a drawn transition is running now: true from the request
+   that starts one (a ``trigger()`` or a gesture on the built-in panel) until
+   its last frame is shown or a later request lands it. While it is true,
+   ``state()`` already answers the transition's end.
+   :js:meth:`ViewerHandle.onMachineChange` tells a page when it changes.
+
 .. js:method:: MachineHandle.drivers()
 
    Return the declared input-driver table. Entries have ``default``, ``range``,

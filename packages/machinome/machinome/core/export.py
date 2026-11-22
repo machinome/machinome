@@ -31,6 +31,8 @@ from .serializer import (
     compiled_program, document_body,
     drivers_table, instructions_table, serialize_node, symbolic_document,
 )
+from .app import (AppRefused, bundle, bundler, checked_entry, declared_app,
+                  widgetless_refusal)
 from .builder import get_build_dir, project_build_lock
 from .pieces import PieceInventory
 from machinome import viewer as viewers
@@ -76,6 +78,12 @@ def embedder(name=None):
         # viewer's own words.
         raise WidgetBundleMissing(error) from None
     return provider
+
+
+class ExportAppRefused(Exception):
+    """The exported root's app cannot be carried: it cannot be bundled,
+    or the export carries no widget. The message is the sentence; nothing
+    is written (OpenSpec change `declare-a-models-app`)."""
 
 
 class ExportModelPathError(Exception):
@@ -151,14 +159,59 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True,
     taken here, before the build, so the export's own artifacts cannot
     mark it dirty.
 
+    When the root declares an app, the viewer that bundles (chosen with
+    the embedding one) bundles it after the build into a directory of its
+    own, and its files are copied beside `manifest.json`, which names them
+    as `app`. An app that cannot be bundled is `ExportAppRefused`, and so
+    is a widget-less export of such a root, before anything is built;
+    either way no output directory is created or modified.
+
     Returns the manifest dict."""
+    refusal = None if widget else widgetless_refusal(node)
+    if refusal is not None:
+        raise ExportAppRefused(refusal)
     provider = embedder(viewer) if widget else None
+    app = None
+    if widget and declared_app(node) is not None:
+        try:
+            entry, project = checked_entry(node)
+            app = (bundler(node, 'machinome export', viewer, node.src),
+                   entry, project)
+        except AppRefused as refused:
+            raise ExportAppRefused(str(refused)) from None
     node.clear_keyframe()
     source = _source_record(project_root(node.src))
 
     with project_build_lock():
         node.build_stls()
 
+    staging = None
+    record = None
+    if app is not None:
+        # Bundled before the output exists, so a refusal writes nothing.
+        staging = tempfile.mkdtemp(prefix='machinome-export-app-')
+        try:
+            record, _inputs = bundle(node, app[0], app[1], app[2], staging)
+        except AppRefused as refused:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise ExportAppRefused(str(refused)) from None
+    try:
+        manifest = _write_export(node, output_dir, fps, frames, viewer,
+                                 source, record, staging)
+    finally:
+        if staging is not None:
+            shutil.rmtree(staging, ignore_errors=True)
+
+    if widget:
+        _copy_widget(provider, output_dir)
+
+    return manifest
+
+
+def _write_export(node, output_dir, fps, frames, viewer, source, app,
+                  staging):
+    """The manifest and the models of `export_node`, and the app's files
+    bundled into `staging` when `app` names them."""
     # An external atomic writer is not required to take the project lock.
     # Retry a changed path from a wholly fresh inventory so copied bytes and
     # facts can never come from different artifact identities.
@@ -207,7 +260,7 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True,
                     node, root, drivers, events, program,
                     initial if program is not None else bank, fps, frames,
                     controls=compiled_controls(program, initial),
-                    clocked=clocked)
+                    clocked=clocked, app=app)
                 manifest['root'] = root
                 manifest['pieces'] = inventory.pieces()
                 if source is not None:
@@ -227,6 +280,12 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True,
                     target = os.path.join(output_dir, marking_path)
                     _copy_artifact(artifact, target)
                     logger.info(f'{artifact} -> {target}')
+                for key in ('script', 'stylesheet'):
+                    if app is not None and key in app:
+                        bundled = os.path.join(staging, app[key])
+                        target = os.path.join(output_dir, app[key])
+                        _copy_artifact(bundled, target)
+                        logger.info(f'{bundled} -> {target}')
 
                 inventory.validate()
                 manifest_path = os.path.join(output_dir, 'manifest.json')
@@ -237,10 +296,6 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True,
         except ArtifactChanged:
             if attempt == 2:
                 raise
-
-    if widget:
-        _copy_widget(provider, output_dir)
-
     return manifest
 
 

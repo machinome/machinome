@@ -11,6 +11,25 @@ Unreleased
   and replay follow the standing state. This is visual color, without
   emission physics (``color-model-lamps``, ``read-model-color-choice``).
 
+* **A model can carry its own app.** A node class may declare
+  ``app = 'app/index.tsx'``, a TypeScript or JavaScript file relative to
+  the file that declares it; ``app`` is a reserved class-body name, and
+  only the published root's declaration is read. ``machinome build``,
+  ``develop`` and ``export`` bundle the root's app through the viewer's
+  new seam operation ``bundle`` beside the document, which names it as its
+  ``app`` record, and the viewer shows the app in place of its panel. An
+  app that cannot be bundled is named in the document and the model still
+  published (``build`` exits 0), while an export refuses it and writes
+  nothing; ``export --no-widget`` refuses a model with an app.
+  ``develop`` follows the app's files: the running build republishes an
+  edited app without loading the model again, and every open page is now
+  told when a build replaces the document, so it shows each edit, a Python
+  edit included, when it is published rather than at the following edit.
+  In this release an app is bundled only from a source checkout with the
+  viewer's JavaScript dependencies installed. Document versions are
+  unchanged; the viewer that shows an app declares viewer API 31
+  (``declare-a-models-app``, ``show-a-models-own-app``).
+
 * **``make upload`` uploads one archive per request.** PyPI refused the
   0.9.0 upload part way, at its limit on creating new projects in one
   window and then on the requests themselves, and twine stopped there, the

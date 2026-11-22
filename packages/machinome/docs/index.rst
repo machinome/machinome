@@ -79,6 +79,7 @@ its source; the :doc:`examples` page says what to look for there.
    howto/browser-viewer
    howto/share-an-export
    howto/embed-the-viewer
+   howto/give-a-model-its-app
    howto/film-a-movie
    howto/declare-a-movie
    howto/draw-a-movie-stage

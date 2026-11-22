@@ -1391,6 +1391,38 @@ publishes the same program as before. A control whose part THIS render
 omitted is left out rather than refused; the headless browser-snapshot
 capture publishes no table at all, as it publishes no instructions.
 
+**An app** puts the model's own React application in place of the
+viewer's panel, declared on the ROOT class beside `instructions` and
+`controls`:
+
+```python
+app = 'app/index.tsx'
+```
+
+The value is a `.tsx`, `.ts`, `.jsx` or `.js` file named relative to the
+file whose class body writes it; anything else (a number, an absolute
+path, a `.py`) is refused at class definition, `app` being a reserved
+name on a node class. A subclass inherits it, still relative to the
+declaring file. Only the PUBLISHED ROOT's declaration is read: a child
+whose class declares an app contributes nothing. The project carries only
+the app's own `.tsx`/`.ts`/`.jsx`/`.js`/`.css` files beside the model; an
+app imports its own files, `react`, `react-dom` and
+`@machinome/viewer/app`, and nothing else. `machinome build` (and so
+`develop` and the Studio's build) bundles it through the viewer's `bundle`
+operation into the build directory beside `viewer.json`, and the
+document's top-level `app` record names `{script, stylesheet}`. An app
+that cannot be bundled (a missing file, a file outside the project, no web
+viewer, sources that do not build) is recorded as `{refusal: sentence}`,
+logged as an error, and the model is still published: `machinome build`
+exits 0, and every page shows the sentence over the model.
+`machinome export` writes the app's files beside `manifest.json` and
+refuses an app that cannot be bundled (exit 1, nothing written);
+`machinome export --no-widget` refuses a root that declares an app.
+`machinome develop` republishes an edited app in place, without loading
+the model again. In this release an app is bundled only from a source
+checkout with the viewer's JavaScript dependencies installed; elsewhere
+the record is the viewer's refusal.
+
 The viewer scopes the driving panel to the focused assembly, with a breadcrumb into
 subassemblies; declare a whole-machine move on the root. Versions 1–4 use
 driver sliders and absolute instruction buttons. A viewer supporting the

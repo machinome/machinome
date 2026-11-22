@@ -44,7 +44,7 @@ viewer_version = '0.9.0'
 viewer_api = '29'               # a clocked machine captured on demand
 document_versions = '1 to 13'    # supported by the released paired viewer
 # Source capabilities after that release; publication state lives in status.
-source_viewer_api = '30'
+source_viewer_api = '31'
 source_document_versions = '1 to 14'
 framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'
 # The studio's, held to its source by the studio's documentation test

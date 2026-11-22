@@ -64,6 +64,12 @@ zip-safe = false
     "widget/build.mjs",
     "widget/tsconfig.json",
     "widget/vitest.config.ts",
+    # The toolchain that bundles a model's app is a source checkout's, not
+    # an installed copy's (OpenSpec `show-a-models-own-app`, design
+    # Decision 11): a wheel without it refuses by name.
+    "widget/app/*",
+    "widget/app-build.mjs",
+    "widget/tsconfig.app.json",
 ]
 
 [tool.setuptools.cmdclass]

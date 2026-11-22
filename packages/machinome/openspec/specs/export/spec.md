@@ -32,6 +32,13 @@ outside the export directory. A marking artifact outside its resolved build
 directory SHALL fail export before the requested output is created or
 modified, as a model artifact outside it already does.
 
+When the exported root declares an app under the `model-app` capability, the
+output directory SHALL also hold the app's bundled script and, when it has
+one, its stylesheet, beside `manifest.json`, named in the manifest's `app`
+record; an app that cannot be bundled SHALL fail export before the requested
+output is created or modified, and a widget-less export of such a root SHALL
+be refused before anything is built.
+
 #### Scenario: Widget-less export
 
 - **WHEN** export runs with `widget=False` (`--no-widget`)
@@ -50,6 +57,25 @@ modified, as a model artifact outside it already does.
 - **WHEN** a node whose parts declare markings is exported
 - **THEN** every marking reference in `manifest.json` resolves to a copied
   artifact beneath the export's `models/` directory, with no parent traversal
+
+#### Scenario: An export carries the app it names
+
+- **WHEN** a node whose root declares an app is exported with its widget
+- **THEN** the manifest's `app` record names a script and a stylesheet that
+  are files beside `manifest.json` in the export directory
+
+#### Scenario: An app that cannot be bundled fails the export
+
+- **WHEN** a node whose app's file does not exist is exported
+- **THEN** the export fails naming the class and the file, and writes no
+  output directory
+
+#### Scenario: A widget-less export of a model with an app is refused
+
+- **WHEN** export runs with `widget=False` on a node whose root declares an
+  app
+- **THEN** it fails naming the class and the app before any part is built,
+  and writes no output directory
 
 ### Requirement: Manifest contract
 
@@ -2449,3 +2475,4 @@ Ordinary build, export and snapshot producers SHALL use the common color seriali
 
 - **WHEN** a version-14 color document is opened by a reader supporting only versions 1–13
 - **THEN** it refuses the version before rendering a misleading static lamp
+

@@ -158,8 +158,14 @@ describe('API_VERSION', () => {
   // one. A build at 28 refuses the same mount, so a film host asks
   // before it mounts. The document list does not move: no field is
   // read anew.
-  it('declares model-selected colors as API 30', () => {
-    expect(API_VERSION).toBe(30);
+  // API 30 declares model-selected colors.
+  // API 31 (OpenSpec `show-a-models-own-app`, design Decision 13): a
+  // document's `app` record is read and the model's own app shown in place
+  // of the automatic panel, and the handle tells a page of a clocked
+  // machine's changes (`onMachineChange`, `machine().drawing()`). The
+  // record is additive: the document list does not move.
+  it('declares a model\'s own app as API 31', () => {
+    expect(API_VERSION).toBe(31);
   });
 });
 

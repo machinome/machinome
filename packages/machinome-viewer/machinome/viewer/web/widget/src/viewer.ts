@@ -96,6 +96,11 @@ import {
   createFullscreenController, fullscreenRootFor,
 } from './fullscreen';
 import type { FullscreenController } from './fullscreen';
+import { MachineChangeNotifier } from './machineChange';
+import type { MachineChangeListener } from './machineChange';
+import { mountApp, sameApp } from './app';
+import type { ShownApp } from './app';
+import type { ManifestApp } from './types';
 
 export type AnimationMode = 'inline' | 'toggle' | 'none' | 'external';
 // Whether the widget presents the driver chrome itself. A host building
@@ -226,6 +231,11 @@ export interface MachineHandle extends ClockedMachine {
   /** Start or stop the clock. Refused by name on a machine that
    * declares no clock: there is nothing to run. */
   setClockPlaying(playing: boolean): void;
+  /** Whether a drawn transition is running now: true from the request
+   * that starts it until its last frame or its landing (OpenSpec
+   * `show-a-models-own-app`, design Decision 6). The bank `state()`
+   * answers already stands at the transition's end. */
+  drawing(): boolean;
 }
 
 export type { ClockedRequest, ClockedSnapshot };
@@ -328,6 +338,19 @@ export interface ViewerHandle {
    * this is null for every other: one question, one truthful answer
    * (OpenSpec `execute-the-commit`, design §4). */
   machine(): MachineHandle | null;
+  /** Subscribe to the clocked machine's changes (OpenSpec
+   * `show-a-models-own-app`, design Decision 6): the listener is called
+   * with no argument, once, after every accepted operation that changes
+   * the committed bank or starts or ends a drawn transition, whoever made
+   * it -- the panel, a host's `machine()` call, the clock's transport, a
+   * dragged slider, a drawing's last frame or its landing, a load or a
+   * republish -- and never for a refused request. It means that what was
+   * last read may be stale; it observes and must not drive the viewer
+   * from inside itself (ADR-049). The subscription belongs to the mount,
+   * so it survives a republish that replaces the machine. A document with
+   * no clocked machine never notifies. Returns the function that cancels
+   * it. */
+  onMachineChange(listener: MachineChangeListener): () => void;
   /** The controls the loaded document declares (design D15), with each
    * part's current on-screen rectangle and a point a press reaches it
    * at. `[]` for a document that declares none, and the FULL listing
@@ -404,10 +427,30 @@ export async function mount(
   // not "permanent" (design D2).
   let animationBarElement: HTMLElement | undefined;
   let runTransportElement: HTMLElement | undefined;
+  // A model's own app (OpenSpec `show-a-models-own-app`). `appRecord` is
+  // the loaded document's record; `viewport` is the PICTURE -- the canvas
+  // and its corner control -- created only once an app is to be shown, so
+  // a document naming no app keeps today's DOM; `shownApp` is the app this
+  // mount runs, or its refusal (design Decisions 1, 4 and 9).
+  let appRecord: ManifestApp | null = null;
+  let viewport: HTMLElement | undefined;
+  let shownApp: ShownApp | null = null;
+  let appHandle: ViewerHandle | undefined;
+  /** Whether this mount shows the document's app in place of its panels:
+   * the document names one, the chrome is presented, and the frame loop
+   * runs -- every on-demand mount already suppresses the chrome (design
+   * Decision 1). A refusal record counts: its notice stands in the app's
+   * place and no panel is built (Decision 8). */
+  const showsApp = (): boolean => appRecord !== null
+    && resolved.driverControls === 'inline'
+    && resolved.renderMode === 'continuous';
   function placeFullscreenControl(): void {
     fullscreen.place({
       runTransport: runTransportElement,
       animationBar: animationBarElement,
+      // In the picture's corner wherever an app placed it (design
+      // Decision 4).
+      corner: viewport,
     });
   }
   const scene = new THREE.Scene();
@@ -530,6 +573,38 @@ export async function mount(
   // gesture, one solve, one pose (design §3).
   let loadedMachine: LoadedMachine | null = null;
   let machine: ClockedMachine | undefined;
+  // The machine's change notification, on the MOUNT, so a subscription
+  // survives a republish that replaces the machine (OpenSpec
+  // `show-a-models-own-app`, design Decision 6). An operation that can
+  // change the committed bank or start or end a drawing runs inside
+  // `machineOperation`; what it changed is MARKED where it happens (the
+  // pose hook, a drawing set or cleared); and the one notification is
+  // sent when the OUTERMOST operation returns, so a gesture that lands a
+  // drawing and makes a request -- one accepted operation -- notifies
+  // once, after its bank is committed and its panel written, and a
+  // refused request, which marks nothing, notifies nobody.
+  const machineChanges = new MachineChangeNotifier();
+  let machineDepth = 0;
+  let machineChanged = false;
+  const markMachineChanged = (): void => { machineChanged = true; };
+  function machineOperation<T>(action: () => T): T {
+    machineDepth += 1;
+    try {
+      return action();
+    } finally {
+      machineDepth -= 1;
+      if (machineDepth === 0 && machineChanged) {
+        machineChanged = false;
+        if (!disposed) machineChanges.notify();
+      }
+    }
+  }
+  /** A load or a republish built, rebuilt or kept the machine: notified
+   * at once, after it is installed (design Decision 6). */
+  const notifyMachineInstalled = (): void => {
+    machineChanged = false;
+    if (!disposed) machineChanges.notify();
+  };
   let clockedChrome: ClockedChrome | undefined;
   const clockedNudge: Record<string, number> = {};
   let clockedOutcomes: Record<string, ClockedOutcome | null> = {};
@@ -1344,9 +1419,13 @@ export async function mount(
           // started from, which is where the drawing begins, and nothing
           // is rendered: the drawing's first frame is the next picture.
           tree?.admit(clockedScope(next, time, bindingsTable), posed(moved));
+          // Accepted: the machine assigns this bank as the hook returns
+          // (OpenSpec `show-a-models-own-app`, design Decision 6).
+          if (moved.length > 0) markMachineChanged();
           return;
         }
         tree?.update(clockedScope(next, time, bindingsTable), posed(moved));
+        if (moved.length > 0) markMachineChanged();
         if (following) {
           // A FOLLOWED position of a dragged slider
           // (`follow-the-slider-as-it-is-dragged`, design Decisions 3 and
@@ -1391,14 +1470,17 @@ export async function mount(
    * would move or repose the machine calls this first. Landing loses
    * nothing: the transition already happened, and the alternative is a
    * maker who cannot act for two seconds. */
-  const landDrawing = (): void => {
+  const landDrawing = (): void => machineOperation(() => {
     const running = clockedDrawing;
     if (running === null) return;
     clockedDrawing = null;
+    // A drawing ended (OpenSpec `show-a-models-own-app`, design
+    // Decision 6); inside a gesture this folds into its one notification.
+    markMachineChanged();
     drawFrame(running.drawn.land());
     drawnBank = null;
     if (running.name !== null) clockedChrome?.indicate(running.name, false);
-  };
+  });
 
   /** Issue ONE request, report its outcome AT THE CONTROL that made it
    * (design §13) whatever the machine answers, and DRAW the transition
@@ -1428,7 +1510,10 @@ export async function mount(
    * and a drawn step would be a transport control that pauses the
    * transport (design D4). */
   const clockedRequest = (id: string, request: { by?: number; to?: number },
-                          draw = false, pressed = false): ClockedOutcome | null => {
+                          draw = false, pressed = false): ClockedOutcome | null =>
+    machineOperation(() => clockedRequestNow(id, request, draw, pressed));
+  const clockedRequestNow = (id: string, request: { by?: number; to?: number },
+                             draw: boolean, pressed: boolean): ClockedOutcome | null => {
     // `pressed` is a press's own drawn jump (OpenSpec
     // `follow-the-slider-as-it-is-dragged`, design Decision 3): it does
     // not end the press it belongs to, and its rebuild is replaced by the
@@ -1534,7 +1619,9 @@ export async function mount(
    * once, after the drawing's state is set, and nothing is rendered: the
    * drawing's first frame is the next picture. An instruction of zero
    * duration is posed and rendered by the machine's hook, as before. */
-  const clockedPlay = (name: string): ClockedRequest => {
+  const clockedPlay = (name: string): ClockedRequest =>
+    machineOperation(() => clockedPlayNow(name));
+  const clockedPlayNow = (name: string): ClockedRequest => {
     endPress();
     const started = machine as ClockedMachine;
     landDrawing();
@@ -1618,6 +1705,9 @@ export async function mount(
       && loadedMachine?.drivers[inputId]?.dtype === 'int';
     const drawn = drawing(answered, before, duration, integer);
     clockedDrawing = { name, drawn, clock: drawingClock() };
+    // A drawing started (OpenSpec `show-a-models-own-app`, design
+    // Decision 6): one notification with the request that started it.
+    markMachineChanged();
     drawFrame(drawn.advance(0));
     return true;
   };
@@ -1638,6 +1728,9 @@ export async function mount(
     if (frame.done) {
       clockedDrawing = null;
       drawnBank = null;
+      // The drawing's last frame ends it (OpenSpec
+      // `show-a-models-own-app`, design Decision 6).
+      markMachineChanged();
       if (running.name !== null) clockedChrome?.indicate(running.name, false);
     }
   };
@@ -1756,7 +1849,9 @@ export async function mount(
    * latest request's stops, or its refusal; a refusal that follows a
    * refusal of the same press leaves the report as it stands (design
    * Decision 4; evidence.md, "Departures"). */
-  const askPosition = (pressed: SliderPress, position: number): void => {
+  const askPosition = (pressed: SliderPress, position: number): void =>
+    machineOperation(() => askPositionNow(pressed, position));
+  const askPositionNow = (pressed: SliderPress, position: number): void => {
     const started = machine;
     if (started === undefined || started !== pressed.machine) return;
     landDrawing();
@@ -1896,6 +1991,12 @@ export async function mount(
       : 0;
     clockedChrome?.remove();
     clockedChrome = undefined;
+    // A model's own app stands in the panel's place (OpenSpec
+    // `show-a-models-own-app`, design Decision 5).
+    if (showsApp()) {
+      placeFullscreenControl();
+      return;
+    }
     if (machine === undefined || loadedMachine === null) {
       // The clocked panel never contributes to full-screen placement --
       // it lives in the side rail, not a bottom bar (design D2) -- but a
@@ -1963,36 +2064,40 @@ export async function mount(
         }
       },
       reset() {
-        endPress();
-        landDrawing();
-        machine?.reset();
-        tree?.update(scope());
-        clockedOutcomes = {};
-        // A machine that reset itself WHILE RUNNING would be a machine
-        // nobody could read, so reset stops the transport too.
-        clockPlaying = false;
-        clockRefusal = null;
-        rebuildClockedChrome();
-        drawPicture();
+        machineOperation(() => {
+          endPress();
+          landDrawing();
+          machine?.reset();
+          tree?.update(scope());
+          clockedOutcomes = {};
+          // A machine that reset itself WHILE RUNNING would be a machine
+          // nobody could read, so reset stops the transport too.
+          clockPlaying = false;
+          clockRefusal = null;
+          rebuildClockedChrome();
+          drawPicture();
+        });
       },
       play() {
         setClockPlaying(!clockPlaying);
       },
       step() {
-        endPress();
-        const clock = machine?.clock();
-        if (clock === undefined || clock === null) return;
-        // A STEP is ONE request of a stated number of seconds, made
-        // whether or not the transport is playing.
-        const report = clockedRequest(clock, { by: clockStep });
-        clockRefusal = report !== null && report.status === 'refused'
-          ? report.message : null;
-        if (clockRefusal !== null) {
-          clockPlaying = false;
-          delete clockedOutcomes[clock];
-        }
-        rebuildClockedChrome();
-        drawPicture();
+        machineOperation(() => {
+          endPress();
+          const clock = machine?.clock();
+          if (clock === undefined || clock === null) return;
+          // A STEP is ONE request of a stated number of seconds, made
+          // whether or not the transport is playing.
+          const report = clockedRequest(clock, { by: clockStep });
+          clockRefusal = report !== null && report.status === 'refused'
+            ? report.message : null;
+          if (clockRefusal !== null) {
+            clockPlaying = false;
+            delete clockedOutcomes[clock];
+          }
+          rebuildClockedChrome();
+          drawPicture();
+        });
       },
       setStep(amount: number) {
         endPress();
@@ -2057,6 +2162,70 @@ export async function mount(
     placeFullscreenControl();
   }
 
+  // -------------------------------------------------------------------
+  // A model's own app (OpenSpec `show-a-models-own-app`, design Decisions
+  // 1, 4, 5, 9 and 10).
+
+  /** The PICTURE, made once an app is to be shown: a `div` filling the
+   * container, the canvas moved into it and placed absolutely at its top
+   * left (so a canvas sized in pixels never holds its place open when the
+   * place shrinks), the observer moved from the container to it, and the
+   * corner control anchored on it (design Decision 4). Never made for a
+   * document that names no app. */
+  const ensureViewport = (): HTMLElement => {
+    if (viewport !== undefined) return viewport;
+    const place = document.createElement('div');
+    place.className = 'machinome-viewport';
+    place.style.cssText = VIEWPORT_STYLE;
+    const canvas = renderer.domElement;
+    if (canvas.parentElement === container) container.insertBefore(place, canvas);
+    else container.prepend(place);
+    canvas.style.position = 'absolute';
+    canvas.style.left = '0';
+    canvas.style.top = '0';
+    place.append(canvas);
+    viewport = place;
+    observer.unobserve(container);
+    observer.observe(place);
+    placeFullscreenControl();
+    resize();
+    drawn = null;
+    return place;
+  };
+
+  /** Install the incoming document's record, taking away a running app
+   * the record no longer names (design Decision 9). Called before the
+   * panels are rebuilt, so a removed app's place is free for the panel and
+   * an added app's panel is never built. */
+  const releaseStaleApp = (incoming: ManifestApp | null): void => {
+    appRecord = incoming;
+    if (shownApp === null) return;
+    const wanted = showsApp() ? appRecord : null;
+    if (wanted !== null && sameApp(shownApp.record, wanted)) return;
+    // The picture is put back filling the container, so it stands
+    // between the two apps.
+    shownApp.dispose();
+    shownApp = null;
+    drawn = null;
+  };
+
+  /** Start the app the loaded document names, unless the running one is
+   * that app; awaited, so a handle a host receives is a handle on a page
+   * that shows the app or names why not (design Decision 2). A failure
+   * never rejects: the model is mounted. */
+  const startWantedApp = async (): Promise<void> => {
+    if (disposed || appHandle === undefined || shownApp !== null) return;
+    const wanted = showsApp() ? appRecord : null;
+    if (wanted === null) return;
+    const place = ensureViewport();
+    const next = mountApp({
+      record: wanted, baseUrl, container, viewport: place, viewer: appHandle,
+      moved: () => { drawn = null; },
+    });
+    shownApp = next;
+    await next.ready;
+  };
+
   const replaceTree = async (view: ViewerView | null) => {
     const { document, table, program, machine: loaded,
             controls: declared, settlement } = await loadDocument(sourceUrl);
@@ -2070,6 +2239,10 @@ export async function mount(
       // driver, binding or runtime state. A failed required asset changes none.
       const next = new WidgetTree(document.root, baseUrl, null, table, undefined, presentation);
       pendingTrees.add(next);
+      // Whether a machine stood before this load: a load that builds,
+      // rebuilds or removes one notifies (`show-a-models-own-app`, design
+      // Decision 6).
+      let hadMachine = false;
       try {
         await next.loaded;
         if (!disposed) {
@@ -2080,6 +2253,7 @@ export async function mount(
           // and ends here, its last position asked of the machine the
           // maker dragged, before that machine is replaced.
           endPress();
+          hadMachine = machine !== undefined;
           startMachine(loaded);
           await startRuntime(document, program);
           if (disposed) { runtime?.dispose(); runtime = undefined; }
@@ -2109,6 +2283,7 @@ export async function mount(
       rebuildPartControls();
       presentHighlight();
 
+      releaseStaleApp(document.app ?? null);
       refreshControls(document);
       // Mount calls this before the handle exists, so no listener can be
       // subscribed yet and this notifies nobody by construction -- not a
@@ -2116,6 +2291,12 @@ export async function mount(
       // this with the handle already returned, and notifies whoever is
       // subscribed.
       notifyAssemblyChange();
+      // The same holds for the machine's notification: a reload that
+      // built, rebuilt or removed the machine says so once, after it is
+      // installed (`show-a-models-own-app`, design Decision 6). The app
+      // is started by the caller, once the handle exists
+      // (`startWantedApp`).
+      if (hadMachine || machine !== undefined) notifyMachineInstalled();
     } finally { settlement.abandoned(); }
   };
 
@@ -2138,7 +2319,9 @@ export async function mount(
     speedControl = undefined;
     readout = undefined;
     animationBarElement = undefined;
-    if (plan.bar) {
+    // No bar while a model's own app is shown; `$t` still plays as the
+    // options say (OpenSpec `show-a-models-own-app`, design Decision 5).
+    if (plan.bar && !showsApp()) {
       const built = buildControls(
         container,
         animation,
@@ -2205,6 +2388,9 @@ export async function mount(
   function rebuildDriverChrome(): void {
     driverChrome?.remove();
     driverChrome = undefined;
+    // A model's own app stands in the panel's place (OpenSpec
+    // `show-a-models-own-app`, design Decision 5).
+    if (showsApp()) return;
     const table = drivers.drivers();
     // A document carrying a program has NO on-screen control in this
     // change (design §11): its inputs are moved by commands, not by a
@@ -2275,6 +2461,12 @@ export async function mount(
     runChrome?.remove();
     runChrome = undefined;
     runTransportElement = undefined;
+    // A model's own app stands in the panel's place (OpenSpec
+    // `show-a-models-own-app`, design Decision 5).
+    if (showsApp()) {
+      placeFullscreenControl();
+      return;
+    }
     const started = runtime;
     if (loadedProgram === null || started === undefined) {
       placeFullscreenControl();
@@ -2374,8 +2566,12 @@ export async function mount(
     if (disposed) {
       return;
     }
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    // The picture's own size once an app placed it (OpenSpec
+    // `show-a-models-own-app`, design Decision 4); the container's
+    // otherwise, as before.
+    const sized = viewport ?? container;
+    const width = sized.clientWidth;
+    const height = sized.clientHeight;
     renderer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -2452,18 +2648,25 @@ export async function mount(
     // twice; and `$t` keeps advancing beside it, because the timeline
     // and the transport advance different values and neither moves the
     // other's.
-    clockFrame(elapsed);
-    // And the DRAWING of a pressed instruction, in the same loop and on
-    // the same wall seconds (OpenSpec `play-the-instruction`, design
-    // §3). What this costs is a POSE of the ids the frame moved: the
-    // machine was solved once, at the press, and is not called here.
-    drawingFrame(elapsed);
-    // And a DRAGGED slider's latest position, ONE request a frame, after
-    // the drawing's frame so that a drawn jump landing in this frame is
-    // followed in it (OpenSpec `follow-the-slider-as-it-is-dragged`,
-    // design Decisions 3 and 6). It poses without drawing; the draw below
-    // shows it.
-    pressFrame();
+    //
+    // The three are ONE operation of the machine's (OpenSpec
+    // `show-a-models-own-app`, design Decision 6): a frame that advanced
+    // the clock, ended a drawing or followed a slider notifies once, at
+    // its end.
+    machineOperation(() => {
+      clockFrame(elapsed);
+      // And the DRAWING of a pressed instruction, in the same loop and on
+      // the same wall seconds (OpenSpec `play-the-instruction`, design
+      // §3). What this costs is a POSE of the ids the frame moved: the
+      // machine was solved once, at the press, and is not called here.
+      drawingFrame(elapsed);
+      // And a DRAGGED slider's latest position, ONE request a frame, after
+      // the drawing's frame so that a drawn jump landing in this frame is
+      // followed in it (OpenSpec `follow-the-slider-as-it-is-dragged`,
+      // design Decisions 3 and 6). It poses without drawing; the draw
+      // below shows it.
+      pressFrame();
+    });
     if (playing) {
       setTime(advance(time, elapsed, cycleSeconds));
     }
@@ -2475,7 +2678,9 @@ export async function mount(
     if (wasMoving || moving() || changed()) drawPicture();
   });
 
-  return {
+  // Built before the app starts, which is given it (OpenSpec
+  // `show-a-models-own-app`, design Decision 2).
+  const handle: ViewerHandle = {
     apiVersion: API_VERSION,
     dispose() {
       if (disposed) {
@@ -2486,6 +2691,17 @@ export async function mount(
       // before anything else about the mount is torn down, so a disposed
       // mount is never left full screen and empty.
       fullscreen.dispose();
+      // Then the model's app, while everything it reads still answers:
+      // its disposer runs its own clean-up, its stylesheet and its element
+      // go, and a script still loading is abandoned
+      // (`show-a-models-own-app`, design Decision 10).
+      shownApp?.dispose();
+      shownApp = null;
+      viewport?.remove();
+      // Every subscription to the machine's changes is dropped before
+      // anything else is released, and nobody is notified of the disposal
+      // (`show-a-models-own-app`, design Decisions 6 and 10).
+      machineChanges.dispose();
       renderer.setAnimationLoop(null);
       if (continuous) {
         renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
@@ -2551,6 +2767,9 @@ export async function mount(
     },
     async reload() {
       await replaceTree(captureView());
+      // The app is kept, replaced, removed or added as for a republish
+      // (`show-a-models-own-app`, design Decision 9).
+      await startWantedApp();
     },
     async artifactChanged(path: string) {
       partSurface.clear();
@@ -2608,6 +2827,7 @@ export async function mount(
         if (disposed) return;
         drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
         bindingsTable = table;
+        const hadMachine = machine !== undefined;
         if (document.version === 14) {
           if (keepMachine) loadedMachine = incomingMachine;
           else startMachine(incomingMachine);
@@ -2615,6 +2835,10 @@ export async function mount(
         await startRuntime(document, program, true);
         if (disposed) { runtime?.dispose(); runtime = undefined; return; }
         settlement.installed();
+        // Before the panels: a removed app frees its place for the panel,
+        // and an added one keeps the panel from being built (design
+        // Decision 9).
+        releaseStaleApp(document.app ?? null);
         if (tree) {
           const rootChanged = assemblyNavigation.reconcile(tree);
           tree.update(scope());
@@ -2628,6 +2852,14 @@ export async function mount(
         presentHighlight();
         drawPicture();
         notifyAssemblyChange();
+        // A republish that built, rebuilt, kept or removed the machine
+        // notifies once, after it is installed (`show-a-models-own-app`,
+        // design Decision 6).
+        if (hadMachine || machine !== undefined) notifyMachineInstalled();
+        // A record that changed was taken away before the panels were
+        // rebuilt; the app it now names starts here, the picture standing
+        // in the meantime (design Decision 9).
+        await startWantedApp();
       } finally { settlement.abandoned(); }
     },
     assembly() {
@@ -2679,6 +2911,8 @@ export async function mount(
       }
       return drivers.trigger(name);
     },
+    onMachineChange: (listener: MachineChangeListener) =>
+      machineChanges.subscribe(listener),
     controls: partControlViews,
     partOnScreen,
     project,
@@ -2700,13 +2934,15 @@ export async function mount(
         // authority over the pose while it runs, and the transition it
         // draws has already happened, so landing it loses nothing and
         // every gesture acts on a bank the maker can read.
-        move: (input, request) => {
+        // Each verb is one operation of the machine's, notified once at
+        // its end (OpenSpec `show-a-models-own-app`, design Decision 6).
+        move: (input, request) => machineOperation(() => {
           endPress();
           landDrawing();
           const answered = started.move(input, request);
           rebuildClockedChrome();
           return answered;
-        },
+        }),
         // PLAYING an instruction, from the handle exactly as from the
         // button: one request, made once, and its transition drawn over
         // the declared duration. Refused on demand BEFORE the request
@@ -2719,25 +2955,27 @@ export async function mount(
             + "or mount with renderMode 'continuous'.");
           return clockedPlay(name);
         },
-        restore: (state) => {
+        restore: (state) => machineOperation(() => {
           endPress();
           landDrawing();
           started.restore(state);
           rebuildClockedChrome();
-        },
+        }),
         // A machine that reset itself while running would be a machine
         // nobody could read, so a reset stops the transport -- from the
         // panel and from the handle alike.
-        reset: () => {
+        reset: () => machineOperation(() => {
           endPress();
           landDrawing();
           started.reset();
           clockPlaying = false;
           clockRefusal = null;
           rebuildClockedChrome();
-        },
+        }),
         clockPlaying: () => clockPlaying,
         setClockPlaying,
+        // Whether a drawn transition runs now (design Decision 6).
+        drawing: () => clockedDrawing !== null,
       };
     },
     run(): RunHandle | null {
@@ -2768,7 +3006,20 @@ export async function mount(
       };
     },
   };
+  // The model's own app, started with the handle and awaited: the host
+  // receives a handle on a page that shows the app or names why not, and
+  // an app's failure never rejects the mount (`show-a-models-own-app`,
+  // design Decision 2).
+  appHandle = handle;
+  await startWantedApp();
+  return handle;
 }
+
+/** The picture's place while a model's app may hold it (OpenSpec
+ * `show-a-models-own-app`, design Decision 4): it fills whatever it is put
+ * in, and never holds that place open. */
+const VIEWPORT_STYLE = 'position:relative;overflow:hidden;width:100%;'
+  + 'height:100%;min-width:0;min-height:0;';
 
 const EMPTY: ReadonlySet<string> = new Set();
 
@@ -3447,6 +3698,74 @@ export function assertMarkings(node: ManifestNode, sourceUrl: string): void {
   });
 }
 
+/** A path an app record may name: relative to the document's base, with
+ * no `..` segment, no leading `/` or `\`, no backslash and no scheme. */
+const APP_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
+function appPathProblem(value: unknown): string | null {
+  if (typeof value !== 'string' || value === '') return 'is not a file name';
+  if (value.startsWith('/')) return 'is rooted at "/"';
+  if (value.includes('\\')) return 'carries a backslash';
+  if (APP_SCHEME.test(value)) return 'carries a scheme';
+  if (value.split('/').some((segment) => segment === '..')) {
+    return 'climbs out of the document\'s directory with ".."';
+  }
+  return null;
+}
+
+/** Refuse an `app` record this viewer cannot read, by name (OpenSpec
+ * `show-a-models-own-app`, design Decision 3), as a malformed `markings`
+ * list is refused: it is a producer error, not a model to show half of.
+ *
+ * The record is an object carrying exactly one of `script` (with an
+ * optional `stylesheet`) and `refusal`, and nothing else. A record with a
+ * key this viewer does not know is refused too: an app this viewer read in
+ * part would be shown as if it were the one its author published. */
+export function assertApp(document: Manifest, sourceUrl: string): void {
+  const record = (document as { app?: unknown }).app;
+  if (record === undefined) return;
+  const refuse = (reason: string): never => {
+    throw new Error(
+      `${sourceUrl}: the document's \`app\` record ${reason}. Refusing the `
+      + 'document rather than showing a model\'s app this viewer cannot read.');
+  };
+  if (typeof record !== 'object' || record === null || Array.isArray(record)) {
+    refuse('is not an object');
+  }
+  const fields = record as Record<string, unknown>;
+  const unknown = Object.keys(fields)
+    .filter((key) => !['script', 'stylesheet', 'refusal'].includes(key));
+  if (unknown.length > 0) {
+    refuse(`carries ${unknown.map((key) => `"${key}"`).join(', ')}, which `
+           + 'this viewer does not read (it reads "script", "stylesheet" and '
+           + '"refusal")');
+  }
+  const script = 'script' in fields;
+  const refusal = 'refusal' in fields;
+  if (script === refusal) {
+    refuse(script ? 'names both a script and a refusal'
+                  : 'names neither a script nor a refusal');
+  }
+  if (refusal) {
+    if (typeof fields.refusal !== 'string' || fields.refusal.trim() === '') {
+      refuse('records a refusal that is not a sentence');
+    }
+    if ('stylesheet' in fields) refuse('names a stylesheet beside a refusal');
+    return;
+  }
+  const scriptProblem = appPathProblem(fields.script);
+  if (scriptProblem !== null) {
+    refuse(`names the script ${JSON.stringify(fields.script)}, which `
+           + scriptProblem);
+  }
+  if ('stylesheet' in fields) {
+    const sheetProblem = appPathProblem(fields.stylesheet);
+    if (sheetProblem !== null) {
+      refuse(`names the stylesheet ${JSON.stringify(fields.stylesheet)}, which `
+             + sheetProblem);
+    }
+  }
+}
+
 /** The document load (OpenSpec `keep-a-live-model-parsed`, design
  * Decision 1): a refused document requests a reclamation as it is
  * refused, and a validated one carries the `settlement` its viewer calls
@@ -3479,6 +3798,11 @@ function assertRenderableScoped(document: Manifest,
       'part of a machine it does not understand.',
     );
   }
+  // The model's app record, read and checked with the document whatever
+  // the mount presents (`show-a-models-own-app`, design Decisions 1 and
+  // 3): a host that suppresses the chrome gets no app, and the same
+  // refusal of a malformed record.
+  assertApp(document, sourceUrl);
 
   // Built and validated FIRST (D7): a malformed table -- a bad shape, a
   // duplicate name, a forward-only violation, a name colliding with a

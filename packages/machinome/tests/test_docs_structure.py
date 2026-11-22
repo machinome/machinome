@@ -147,7 +147,8 @@ class NavigationTest(unittest.TestCase):
         for caption, entries in (
                 ('How-to guides', ('howto/browser-viewer',
                                    'howto/share-an-export',
-                                   'howto/embed-the-viewer')),
+                                   'howto/embed-the-viewer',
+                                   'howto/give-a-model-its-app')),
                 ('Reference', ('reference/viewer/index',))):
             toctree = re.search(
                 rf':caption:\s*{caption}\n\n((?:   \S+\n)+)', index)
@@ -160,8 +161,8 @@ class NavigationTest(unittest.TestCase):
                             section)
         self.assertIsNotNone(toctree, 'the viewer section has no toctree')
         self.assertEqual(toctree.group(1).split(), [
-            'mount', 'viewer-handle', 'layouts', 'running', 'clocked', 'cli',
-            'compatibility', 'troubleshooting'])
+            'mount', 'viewer-handle', 'layouts', 'running', 'clocked', 'app',
+            'cli', 'compatibility', 'troubleshooting'])
 
     def test_the_skills_guide_is_a_how_to(self):
         # `join-skills`: the skills package's guide is a how-to that installs

@@ -107,7 +107,9 @@ The inspector uses a narrow permanent toggle rail. The operating panel is
 inside the viewer, normally 30% of its width with a 260–420px bound and internal
 scrolling. The navigator handles descending into subassemblies; duplicate child
 buttons are omitted from the panel. Clocked Reset chrome is also omitted in
-this layout, while the machine handle retains ``reset()``.
+this layout, while the machine handle retains ``reset()``. Where the document
+names its model's own app (:doc:`app`), the app fills the viewer's pane in the
+panel's place, and the rail, the sidebar and the navigator stay beside it.
 
 Development page
 ================

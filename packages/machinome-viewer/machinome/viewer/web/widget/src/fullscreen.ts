@@ -173,6 +173,10 @@ export interface FullscreenBars {
    * inline, styled bar (design D2) -- a toggled or externally driven bar
    * is not "permanent" and does not count. */
   animationBar?: HTMLElement | undefined;
+  /** Where the corner button stands when it falls to the corner: the
+   * picture a model's own app placed (OpenSpec `show-a-models-own-app`,
+   * design Decision 4), or `undefined` for the viewer's own element. */
+  corner?: HTMLElement | undefined;
 }
 
 export interface FullscreenController {
@@ -258,7 +262,8 @@ function backgroundChain(root: HTMLElement, doc: Document): string[] {
 /** Build the full-screen controller for one mount (design D1, D3-D9).
  * `root` is this mount's full-screen root (`fullscreenRootFor(container)`);
  * `container` is the viewer's own element, where the corner button is
- * anchored regardless of what the root is (design D2). Returns an inert
+ * anchored regardless of what the root is (design D2), unless `place` is
+ * given the picture a model's app placed as its corner. Returns an inert
  * controller, with no button and no listener installed, where
  * `fullscreenAvailable` is false (design D5). */
 export function createFullscreenController(
@@ -349,7 +354,7 @@ export function createFullscreenController(
         bars.animationBar!.append(button);
       } else {
         button.style.cssText = CORNER_BUTTON_STYLE;
-        container.append(button);
+        (bars.corner ?? container).append(button);
       }
     },
     dispose(): void {

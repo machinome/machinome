@@ -1,6 +1,6 @@
 # ADR-194: Viewers Are Providers Behind One Seam, Chosen by Name
 
-**Status:** Accepted; its clause keeping `machinome-viewer` and the module form printing what they printed, amended 2026-10-12 by [ADR-196](ADR-196-the-viewer-s-verbs-are-the-framework-s-viewer-command.md): the viewer's verbs are `machinome viewer`'s, and the capture request carries the camera's parts
+**Status:** Accepted; its clause keeping `machinome-viewer` and the module form printing what they printed, amended 2026-10-12 by [ADR-196](ADR-196-the-viewer-s-verbs-are-the-framework-s-viewer-command.md): the viewer's verbs are `machinome viewer`'s, and the capture request carries the camera's parts; its operations amended 2026-11-22 by [ADR-198](ADR-198-a-model-s-app-is-declared-on-its-root-and-bundled-by-the-viewer-beside-every-document.md): the seam gains `bundle`
 **Date:** 2026-10-12
 **Change:** [`viewer-seam`](../../../openspec/changes/archive/2026-10-12-viewer-seam/)
 **Supersedes:**
@@ -150,3 +150,13 @@ kept.
   `release-tooling`
 - `packages/machinome/workflow/ongoing/lean-core.md`, "The last cycle of the
   phase: `viewer-seam`"
+
+## Amendment (2026-11-22)
+
+[ADR-198](ADR-198-a-model-s-app-is-declared-on-its-root-and-bundled-by-the-viewer-beside-every-document.md)
+adds a fifth operation, `bundle`: a model's app bundled from its entry file
+and the project's root into the directory a document is published in, the
+Protocol `Bundler` (`bundle_app(entry, root, output_dir)`), its default
+viewer `web`. `CONTRACT` stays 1: the operation is additive, and a viewer
+that does not declare it is refused by `require`'s existing `ViewerLacks`.
+The web viewer offers it; the OpenSCAD viewer does not.

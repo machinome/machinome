@@ -1077,6 +1077,8 @@ class NodeMeta(type):
                 commitment.check_declared_on(cls)
         if 'controls' in namespace:
             _validate_controls(cls, name, namespace['controls'])
+        if 'app' in namespace:
+            _validate_app(name, namespace['app'])
         if _declares_marking(cls):
             _validate_markings(cls, name, namespace)
         # Descriptor __set_name__ and every class-level declaration check are
@@ -1142,6 +1144,32 @@ def _validate_controls(cls, name, table):
                 f"reserved; rename the attribute.")
         control.check_declared_on(cls, entry_name)
     cls._declares_controls = bool(table)
+
+
+#: The files a model's app may be: its entry is a TypeScript or JavaScript
+#: module (OpenSpec change `declare-a-models-app`, design Decision 1).
+APP_SUFFIXES = ('.tsx', '.ts', '.jsx', '.js')
+
+
+def _validate_app(name, value):
+    """Check the form of an `app` declaration where it is written: a
+    non-empty relative POSIX path to a TypeScript or JavaScript file.
+
+    `app` is therefore a RESERVED class-body name on a node class, as
+    `controls` is. Whether the file exists, and whether it lies inside
+    the project, is judged where the model is published
+    (`machinome.core.app`): a class is imported in places that publish
+    nothing.
+    """
+    if (isinstance(value, str) and value and not value.startswith('/')
+            and '\\' not in value
+            and not (len(value) > 1 and value[1] == ':')
+            and value.endswith(APP_SUFFIXES)):
+        return
+    raise TypeError(
+        f"{name}.app is {value!r}. On a node class `app` names the model's "
+        f"app: a TypeScript or JavaScript file relative to this file, such "
+        f"as 'app/index.tsx'; the name is reserved")
 
 
 def _declares_marking(cls):

@@ -78,9 +78,10 @@ class DevelopHarness(TestCase):
             patch.object(viewers, 'viewer', side_effect=resolve),
             patch('machinome.manager.develop.get_build_dir', return_value=BUILD_DIR),
             patch('machinome.manager.develop.Process'),
+            patch('machinome.manager.develop.watch_publication'),
         ]
         (self.resolved, self.get_build_dir,
-         self.process) = (p.start() for p in patches)
+         self.process, self.publication) = (p.start() for p in patches)
         for p in patches:
             self.addCleanup(p.stop)
 
@@ -252,6 +253,11 @@ class ViewerSessionLifecycleTest(DevelopHarness):
         self.web.serve.assert_called_once_with(BUILD_DIR)
         self.assertEqual(self.session.reload.call_count, 2)
         self.session.stop.assert_called_once_with()
+        # And told each time the document is published (OpenSpec change
+        # `declare-a-models-app`): the build directory watched for the
+        # session, the watch stopped with it.
+        self.publication.assert_called_once_with(BUILD_DIR, self.session)
+        self.publication.return_value.stop.assert_called_once_with()
 
     def test_first_builder_invocation_is_not_flagged_as_reload(self):
         self.run_develop(default_args())

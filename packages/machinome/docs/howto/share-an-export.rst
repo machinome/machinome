@@ -19,6 +19,10 @@ The framework creates exports; the viewer reads them. Follow the
    ├── manifest.json
    └── models/
 
+A model that declares its own app (:doc:`/howto/give-a-model-its-app`) also
+has the app's script and stylesheet, ``app-<hash>.js`` and ``app-<hash>.css``,
+beside ``manifest.json``; they belong to the directory like the rest.
+
 Serve it over HTTP or HTTPS, not ``file://``. For a local review:
 
 .. code-block:: console
@@ -28,7 +32,8 @@ Serve it over HTTP or HTTPS, not ``file://``. For a local review:
 Open ``http://localhost:8080/``. To publish it, copy the entire directory to
 your static host, preserving relative paths. The reader needs no Python or CAD
 runtime. An export made with ``--no-widget`` has no page or viewer bundle;
-provide a host as described in :doc:`/howto/embed-the-viewer`.
+provide a host as described in :doc:`/howto/embed-the-viewer`. A model with
+its own app cannot be exported that way.
 
 The bundle carries its licence and the notices of the libraries it bundles.
 Preserve them when you redistribute it; it is licensed |framework_licence|, at

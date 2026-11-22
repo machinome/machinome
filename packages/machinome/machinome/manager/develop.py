@@ -2,8 +2,11 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+import os
 import sys
 import logging
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 from machinome import viewer as viewers
 from machinome.core.builder import Builder, BuildOutcome, get_build_dir
 from machinome.core.loader import ProjectManifestError, select_model
@@ -27,6 +30,35 @@ WEB_DEV_NOTICE = ('--web-dev no longer does anything: the development page '
 #
 # The viewer is not one of these targets at all: it serves in this process,
 # in a session it owns, reached through the seam `machinome.viewer`.
+
+
+class _Publication(FileSystemEventHandler):
+    """Tells the session's pages each time the document is replaced."""
+
+    def __init__(self, session):
+        super().__init__()
+        self.session = session
+
+    def on_moved(self, event):
+        # `atomic_write` replaces `viewer.json` by a rename inside the build
+        # directory, after every file the document names is in place.
+        if (not event.is_directory
+                and os.path.basename(event.dest_path) == 'viewer.json'):
+            logger.info('The document was published; reloading the viewer')
+            self.session.reload()
+
+
+def watch_publication(build_dir, session):
+    """Watch `build_dir`, created if absent, and call `session.reload()`
+    once each time `viewer.json` is replaced there, so an open page reads
+    the document it is told of rather than the one before it (OpenSpec
+    change `declare-a-models-app`, design Decision 5b). Returns the
+    started observer, which the caller stops."""
+    os.makedirs(build_dir, exist_ok=True)
+    observer = Observer()
+    observer.schedule(_Publication(session), build_dir, recursive=False)
+    observer.start()
+    return observer
 
 
 def run_builder(path, overrides, is_reload=False, callback=None,
@@ -134,12 +166,21 @@ class Develop:
                 raise SystemExit(1)
 
         session = None
+        publication = None
         if self.provider is not None:
             try:
                 session = self.web()
             except viewers.ViewerError as error:
                 sys.stderr.write(f'Error: {error}\n')
                 raise SystemExit(1)
+            publication = watch_publication(get_build_dir(self.path), session)
+
+        def stop():
+            if publication is not None:
+                publication.stop()
+                publication.join()
+            if session is not None:
+                session.stop()
 
         if args.debug_builder:
             return run_builder(self.path, self.overrides, callback=callback,
@@ -169,8 +210,7 @@ class Develop:
                 try:
                     builder_proc.join()
                 except KeyboardInterrupt:
-                    if session is not None:
-                        session.stop()
+                    stop()
                     sys.exit(0)
 
                 exitcode = builder_proc.exitcode
@@ -182,7 +222,6 @@ class Develop:
                     continue
                 if first_run and exitcode:
                     logger.error('Initial build failed, exiting')
-                    if session is not None:
-                        session.stop()
+                    stop()
                     sys.exit(exitcode)
                 first_run = False

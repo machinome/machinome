@@ -119,6 +119,11 @@ input's name from a part label. :doc:`/reference/viewer/running` and
 complete. :js:meth:`ViewerHandle.setDriver` writes native values in the posed
 driver table; it is not a command to a retained running or clocked bank.
 
+A host that builds its own operating panel mounts with
+``driverControls: 'none'``. That suppresses the model's own app too, where the
+model has one (:doc:`/reference/viewer/app`): neither the app nor the built-in
+panel is drawn, and no file of the app is requested.
+
 Hosting requirements
 ====================
 

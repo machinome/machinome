@@ -5,6 +5,27 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- A model's own app, named by its document's `app` record, is shown in place
+  of the automatic panel, its instruction buttons and its animation bar,
+  wherever the panel would be presented: the export page, the development
+  page and a host's page mounting with the default options. It is not shown
+  under `driverControls: 'none'` or on any on-demand mount, and no file of it
+  is requested there. The app fills the viewer's area, places the model's
+  picture with `<Viewport/>` and operates the machine through the helper
+  `@machinome/viewer/app` (`useMachine()`, `usePlay()`, `useViewer()`); the
+  inspector's sidebar stays beside it and the full-screen control stands in
+  the picture's corner. An app that cannot be shown is named in a notice over
+  the model, with no panel in its place; a malformed record refuses the
+  document. A republish keeps an unchanged app and replaces an edited one,
+  the picture standing. The web viewer bundles a model's app with its own
+  build tool and its own React and React DOM 19.3.0 (the seam's operation
+  `bundle`), from a source checkout with its JavaScript dependencies
+  installed, and refuses by name elsewhere; the viewer's own bundle carries
+  no React. `ViewerHandle.onMachineChange(listener)` tells a page once after
+  every accepted change of a clocked machine's committed bank or drawing,
+  whoever made it, and `MachineHandle.drawing()` answers whether a transition
+  is being drawn. The viewer declares viewer API 31 and reads document
+  versions 1 through 14.
 - A row of the assembly navigator whose parts all show one colour now
   shows that colour, where a row with children showed only a colour its
   node declared or inherited and was otherwise neutral. A part is every

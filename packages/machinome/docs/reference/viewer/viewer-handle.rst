@@ -259,6 +259,24 @@ Operating handles and part controls
    Return the :doc:`MachineHandle <clocked>` for a clocked document, otherwise
    null. ``run()`` and ``machine()`` cannot both be non-null.
 
+.. js:method:: ViewerHandle.onMachineChange(listener)
+
+   Subscribe to a clocked machine's changes. The listener is called with no
+   argument, once, after every accepted operation that changes the committed
+   bank or starts or ends a drawn transition, whoever made it: the built-in
+   panel, a call on ``machine()``, the clock's transport (once per frame it
+   advances), a dragged slider, the last frame of a drawing or its landing,
+   and a load or republish that builds, rebuilds or keeps the machine. A
+   refused request notifies nobody. The call means that what the page last
+   read may be stale: read ``machine().state()`` and ``machine().drawing()``
+   again. The subscription belongs to the mount, so it survives a republish
+   that replaces the machine, where a ``MachineHandle`` from before must be
+   reacquired. A listener that throws does not keep the others from being
+   called. A document with no clocked machine never notifies, and
+   :js:meth:`ViewerHandle.dispose` drops every subscription and notifies
+   nobody. Return value is a zero-argument unsubscribe function. This is an
+   observation channel: do not drive the viewer from inside its callback.
+
 .. js:method:: ViewerHandle.controls()
 
    Return all declared part controls as ``PartControlView[]``, even with

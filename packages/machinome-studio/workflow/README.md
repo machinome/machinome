@@ -79,9 +79,8 @@ Flat notes on how a part of the studio is built, kept beside the plans:
 
 The framework keeps `warts.md`, a running log of friction met while
 building real machines, grouped by the project that produced it and
-carrying the pilot's triage in place. The studio has no such log yet. When
-floor work on a real project produces findings worth keeping before anyone
-decides there is a change, they go in a `warts.md` here, in that shape.
+carrying the pilot's triage in place. The studio's is `warts.md`, in that
+shape: findings worth keeping before anyone decides there is a change.
 
 ## Where this fits
 

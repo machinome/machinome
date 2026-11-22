@@ -24,6 +24,7 @@ from .serializer import (
     serialize_node, symbolic_document,
 )
 from . import pieces
+from .app import WATCHED_SUFFIXES, declared_app, publish_app
 from .pieces import PieceInventory
 from machinome._artifact import ArtifactChanged, VERDICT_STORE_DIRECTORY
 from machinome import currency
@@ -34,6 +35,18 @@ from machinome.manifest import reference_origin
 
 
 logger = logging.getLogger('core.builder')
+
+#: Seconds an edit to a model's app waits before it is republished, so the
+#: files one save writes are one republication, and a model source saved
+#: in the same burst makes it a model change (OpenSpec change
+#: `declare-a-models-app`, design Decision 5a).
+APP_SETTLE = 0.1
+
+#: What a watching builder says when its publication was replaced by
+#: another producer since it published, and an app edit therefore rebuilds.
+REPLACED_SINCE_PUBLISHED = (
+    'the published document changed since this builder published it; '
+    'reloading the model to publish the app')
 
 #: What the builder was doing with the model when an initial failure
 #: stopped it, by the stage `Builder._start` names: the head of the one
@@ -297,6 +310,18 @@ class Builder(FileSystemEventHandler):
         self._broad_python_watch = None
         self.observer = Observer()
 
+        # The model's app, watched apart from the model's own sources: an
+        # edit to one of these republishes the app in place (OpenSpec
+        # change `declare-a-models-app`, design Decision 5a). The files
+        # the bundle read, or the directory of the declared file where it
+        # was refused before they were known; and what this builder last
+        # published, `(snapshot, bytes)`.
+        self.app_changed = None
+        self._app_sources = set()
+        self._app_directory = None
+        self._app_watches = []
+        self._published = None
+
     def start(self):
         """Start the rendering process and wait for a file to change, then exits"""
         task = self._start()
@@ -306,6 +331,7 @@ class Builder(FileSystemEventHandler):
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
         self.file_changed = self.loop.create_future()
+        self.app_changed = self.loop.create_future()
         outcome = self.loop.run_until_complete(task)
         self.observer.stop()
         if self.observer.is_alive():
@@ -634,11 +660,96 @@ class Builder(FileSystemEventHandler):
         return await self.wait_for_change()
 
     async def wait_for_change(self):
+        """Wait for a source of the model to change, and return
+        `SOURCE_CHANGED`; republish an edit to the model's app in place,
+        and go on waiting, unless it cannot be (`_republish_app`)."""
+        loop = asyncio.get_running_loop()
         if self.file_changed is None:
-            self.file_changed = asyncio.get_running_loop().create_future()
-        if not self.file_changed.done():
-            await self.file_changed
-        return BuildOutcome.SOURCE_CHANGED
+            self.file_changed = loop.create_future()
+        while True:
+            if self.app_changed is None:
+                self.app_changed = loop.create_future()
+            if not self.file_changed.done() and not self.app_changed.done():
+                await asyncio.wait((self.file_changed, self.app_changed),
+                                   return_when=asyncio.FIRST_COMPLETED)
+            if not self.file_changed.done():
+                # One save may write several files, the model's among them.
+                await asyncio.sleep(APP_SETTLE)
+            if self.file_changed.done():
+                return BuildOutcome.SOURCE_CHANGED
+            self.app_changed = None
+            if not self._republish_app():
+                return BuildOutcome.SOURCE_CHANGED
+
+    def _republish_app(self):
+        """Republish the model's app with the loaded root, under the build
+        lock: bundled again, the held document encoded with the new record
+        and written when its bytes differ, the previous app's files swept,
+        the new inputs watched. Nothing is loaded and no part rendered.
+
+        Returns False, saying why, where the edit must rebuild the model
+        instead: this builder published nothing, or the published document
+        is no longer the one it published (another producer published
+        since)."""
+        if self._published is None:
+            logger.info('this builder has published nothing; reloading the '
+                        'model to publish the app')
+            return False
+        changed = False
+        with project_build_lock(self.build_dir):
+            snapshot, published = self._published
+            if self._published_document() != published:
+                logger.info(REPLACED_SINCE_PUBLISHED)
+                return False
+            publication = publish_app(
+                self.node, self.build_dir, 'the build',
+                getattr(self, 'viewer', None),
+                reference_origin(getattr(self, 'path', None)))
+            self._follow_app(publication)
+            snapshot = dict(snapshot)
+            snapshot['app'] = publication.record
+            document = json.dumps(snapshot).encode()
+            if document != published:
+                atomic_write(os.path.join(self.build_dir, 'viewer.json'),
+                             document)
+                self._sweep_unreferenced_artifacts(snapshot)
+                changed = True
+            self._published = (snapshot, document)
+        if changed:
+            logger.info('The app was republished')
+            self._notify_callback()
+        return True
+
+    def _follow_app(self, publication):
+        """Watch what an edit to the app is: the files its bundle read,
+        or the directory of its declared file; the previous watches of the
+        app removed."""
+        if not self.watch:
+            return
+        for watch in self._app_watches:
+            try:
+                self.observer.unschedule(watch)
+            except KeyError:
+                pass
+        self._app_watches = []
+        self._app_sources = {os.path.realpath(path)
+                             for path in publication.inputs}
+        self._app_directory = publication.directory
+        for path in sorted(self._app_sources):
+            self._app_watches.append(
+                self.observer.schedule(self, path, recursive=False))
+        if publication.directory is not None:
+            self._app_watches.append(self.observer.schedule(
+                self, publication.directory, recursive=True))
+
+    def _in_app_directory(self, source):
+        directory = self._app_directory
+        if directory is None:
+            return False
+        try:
+            return os.path.commonpath((source, directory)) == directory
+        except ValueError:
+            return False
 
     def _write_viewer_snapshot(self):
         """Record the source-backed viewer tree beside a completed build.
@@ -650,16 +761,30 @@ class Builder(FileSystemEventHandler):
         Serialized in symbolic driver mode, the same guarantee export
         makes: the published document describes the machine, not the
         pose whatever bound a snapshot last happened to leave it in.
+
+        A root that declares an app has it bundled into the build
+        directory first, once, and the document names it, or the refusal
+        (OpenSpec change `declare-a-models-app`); a root that declares
+        none asks no viewer, and its document has no `app`.
         """
+        app = None
+        if declared_app(self.node) is not None:
+            publication = publish_app(
+                self.node, self.build_dir, 'the build',
+                getattr(self, 'viewer', None),
+                reference_origin(getattr(self, 'path', None)))
+            self._follow_app(publication)
+            app = publication.record
         for attempt in range(3):
             try:
                 with PieceInventory() as inventory:
-                    return self._write_viewer_snapshot_with_inventory(inventory)
+                    return self._write_viewer_snapshot_with_inventory(
+                        inventory, app)
             except ArtifactChanged:
                 if attempt == 2:
                     raise
 
-    def _write_viewer_snapshot_with_inventory(self, inventory):
+    def _write_viewer_snapshot_with_inventory(self, inventory, app=None):
         """Serialize while artifact snapshots stay pinned through publish."""
         os.makedirs(self.build_dir, exist_ok=True)
         # Compiled off the NUMERIC rest render, before the symbolic walk,
@@ -696,7 +821,7 @@ class Builder(FileSystemEventHandler):
                                  program,
                                  initial if program is not None else bank,
                                  controls=compiled_controls(program, initial),
-                                 clocked=clocked)
+                                 clocked=clocked, app=app)
         snapshot['root'] = root
         snapshot['pieces'] = inventory.pieces()
         _warn_unreadable(snapshot['version'], getattr(self, 'viewer', None),
@@ -718,9 +843,11 @@ class Builder(FileSystemEventHandler):
             # published for one process's own use -- a presentation a
             # killed snapshot left -- goes now (ADR-177).
             self._sweep_unreferenced_artifacts(snapshot, transient_only=True)
+            self._published = (snapshot, document)
             return recovered
         # An old error must be gone before this manifest exposes new work.
         atomic_write(os.path.join(self.build_dir, 'viewer.json'), document)
+        self._published = (snapshot, document)
         self._sweep_unreferenced_artifacts(snapshot)
         return True
 
@@ -818,6 +945,12 @@ class Builder(FileSystemEventHandler):
                                        '.lock', '.tmp')))
 
         collect(snapshot['root'])
+        # A model's app is spared by reference as a marking is: the files
+        # the document names are kept, an earlier app's are swept.
+        app = snapshot.get('app') or {}
+        for key in ('script', 'stylesheet'):
+            if key in app:
+                referenced.add(os.path.normpath(app[key]))
         collect_kept(self.node)
         # A declared model's directory is its own to sweep: the build root's
         # walk does not descend into one. Nor into the test framework's
@@ -893,6 +1026,18 @@ class Builder(FileSystemEventHandler):
             return
         source = os.path.realpath(event.src_path)
         known_source = source in self._watched_sources
+        if not known_source and (
+                source in self._app_sources or (
+                    self._in_app_directory(source)
+                    and source.endswith(WATCHED_SUFFIXES))):
+            # The model's app: republished in place by this builder.
+            logger.info(f'{event.src_path} changed, republishing the app')
+            self.loop.call_soon_threadsafe(self._resolve_app_changed)
+            return
+        if (not known_source and self._broad_python_watch is None
+                and self._in_app_directory(source)):
+            # Another file of the app's directory, which nothing reads.
+            return
         broad_python = (source.endswith('.py') and
                         '__pycache__' not in source)
         if (broad_python and self._broad_python_watch is not None):
@@ -918,6 +1063,12 @@ class Builder(FileSystemEventHandler):
         # touching more than one path under the broad fallback watch).
         if self.file_changed is not None and not self.file_changed.done():
             self.file_changed.set_result(True)
+
+    def _resolve_app_changed(self):
+        if self.app_changed is None:
+            self.app_changed = self.loop.create_future()
+        if not self.app_changed.done():
+            self.app_changed.set_result(True)
 
 
 def exclude_build_from_git(build_dir):

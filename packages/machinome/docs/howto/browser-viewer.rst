@@ -48,7 +48,9 @@ What the viewer shows
 The viewer presents the controls the model declares. A static part, a posed
 mechanism, a running simulation and a clocked machine do not have the same
 controls. A missing slider is not necessarily a missing feature: the machine
-may only accept requests through its inputs.
+may only accept requests through its inputs. A model with its own app shows
+that app instead of the panel: the model's own app places the picture and
+offers the controls its author wrote (:doc:`/howto/give-a-model-its-app`).
 
 Inspect the assembly
 ====================

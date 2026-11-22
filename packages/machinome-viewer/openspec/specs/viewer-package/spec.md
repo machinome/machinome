@@ -1016,7 +1016,11 @@ The host SHALL be able to choose at mount time whether the on-screen
 chrome (controls and focus affordance) is presented, for a posed document,
 for a running one and for a CLOCKED one alike — one switch over all three
 kinds. By default it is
-presented for documents that declare drivers. A host that suppresses
+presented for documents that declare drivers. Where the document names its
+model's own app and the chrome is presented, the app SHALL be shown in place
+of that chrome under the `model-app` capability, and no posed, running or
+clocked panel and no animation bar SHALL be drawn; suppressing the chrome
+SHALL suppress the app with it. A host that suppresses
 it SHALL retain the full driving API unchanged, for a running
 document the full run API unchanged, and for a clocked one the full machine
 API — its requests, its session verbs and its clock — unchanged.
@@ -1071,6 +1075,19 @@ unchanged.
 - **THEN** no part shows a cursor, a highlight or a name, pressing a part
   moves the camera, and the handle still lists the document's controls
   and drives the run unchanged
+
+#### Scenario: A model's own app is presented in the chrome's place
+
+- **WHEN** a maker opens, with default options, an export of a clocked
+  document that names its model's app
+- **THEN** the app is shown and no clocked panel, instruction button or
+  animation bar of the viewer's is drawn
+
+#### Scenario: Suppressing the chrome suppresses the app
+
+- **WHEN** a host mounts the same document with the chrome suppressed
+- **THEN** neither the app nor any panel is drawn, and the machine API is
+  unchanged
 
 ### Requirement: A maker drives a running machine by requesting movement
 
@@ -5232,17 +5249,21 @@ dependency. It SHALL be placed on the control surface the viewer draws:
   drawn;
 - otherwise as a permanently visible overlay in the bottom-right corner of
   the viewer, for a static model, a model posed only by drivers, a clocked
-  machine, and an animation presented toggled, externally or not at all.
+  machine, and an animation presented toggled, externally or not at all;
+- while a model's own app is shown, as a permanently visible overlay in the
+  bottom-right corner of the picture the app places, wherever the app places
+  it.
 
 Activating the control SHALL put the viewer's full-screen root into full
 screen, or take it out when it is already full screen. The full-screen root
 SHALL be the element the host gave the viewer, or the whole composed layout
 when the viewer is part of a layout the package mounted, so the model, its
-on-screen chrome and the control all remain on screen. The canvas SHALL
-follow the full-screen size on entering and return to the container's size
-on leaving. While in full screen the root SHALL be painted with the page
-background it was seen on (white when none is set), not the browser's
-black backdrop.
+on-screen chrome or its app, and the control all remain on screen. The
+canvas SHALL follow the full-screen size on entering and return to the
+container's size on leaving, or, while an app is shown, to the size of the
+place the app gives the picture. While in full screen the root SHALL be
+painted with the page background it was seen on (white when none is set),
+not the browser's black backdrop.
 
 The `f` key, lower or upper case, SHALL toggle full screen when it is pressed
 inside the viewer's full-screen root, or when nothing on the page has focus
@@ -5305,6 +5326,14 @@ the stable class `machinome-fullscreen`, so a host can style or hide it.
 - **WHEN** a page mounts two viewers and nothing has focus
 - **THEN** `f` puts neither in full screen, and `f` pressed on a control
   inside one of them toggles only that one
+
+#### Scenario: A model's app carries it in the picture's corner
+
+- **WHEN** a clocked document naming its model's app is mounted and the app
+  places the picture above its own keyboard
+- **THEN** the full-screen button stands in the bottom-right corner of the
+  picture, not of the viewer's area, and activating it puts the whole app
+  in full screen
 
 ### Requirement: A host reads where any part stands on screen
 
@@ -6024,4 +6053,49 @@ A marking SHALL be drawn as before, with its own smoothed normals, its lift and 
 
 - **WHEN** a document whose parts carry markings, one of them naming its part's own file, and whose tree holds flexible parts is mounted
 - **THEN** each marking is drawn lifted over its surface with its own smoothed normals, from the same geometry and material as before, and each flexible part is drawn as before
+
+### Requirement: A page is told when a clocked machine's bank or drawing changes
+
+For a document carrying a clocked machine, the mount handle SHALL let a page
+subscribe to the machine's changes and SHALL answer whether a drawn
+transition is running. A subscriber SHALL be notified once after every
+accepted operation that changes the committed bank or starts or ends a drawn
+transition, whatever made it — a gesture on the viewer's panel, a call on
+the machine's handle, the clock's transport, a dragged slider, the last
+frame of a drawing or its landing, or a load or republish that builds,
+rebuilds or keeps the machine — and SHALL NOT be notified for a refused
+request. The notification SHALL mean that what the page last read may be
+stale; it SHALL carry no value, and the page reads the bank and the drawing
+from the handle. The subscription SHALL belong to the mount, so it SHALL
+survive a republish that replaces the machine. A subscriber that throws
+SHALL NOT keep the others from being notified. Disposing the viewer SHALL
+drop every subscription and notify nobody. A document with no clocked
+machine SHALL never notify.
+
+#### Scenario: A drawn instruction notifies twice
+
+- **WHEN** a page plays a declared instruction with a duration through the
+  machine's handle
+- **THEN** it is notified once at the request, when the handle answers that
+  a transition is drawn and the bank already stands at its end, and once
+  when the drawing's last frame is shown, when the handle answers that none
+  is drawn
+
+#### Scenario: A refused request notifies nobody
+
+- **WHEN** a request is refused by the machine
+- **THEN** no subscriber is notified and the bank is unchanged
+
+#### Scenario: A republish keeps the subscription
+
+- **WHEN** the document is republished with a changed machine and the page
+  then moves the new machine
+- **THEN** the page is notified of the republish and of the move, reading
+  the new machine's bank
+
+#### Scenario: The clock notifies per played frame
+
+- **WHEN** a machine declaring a clock plays its transport
+- **THEN** a subscriber is notified once for each frame the clock advanced
+  in
 

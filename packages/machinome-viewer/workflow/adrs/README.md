@@ -103,3 +103,6 @@ ADR-194 is the current account.
 - [ADR-081](EXPORT/ADR-081-a-dragged-clocked-slider-is-followed-one-posed-request-a-frame.md) — A dragged clocked slider is followed, one posed request a frame — **Accepted**, amends 065, extends 064 and 080, builds on 073
 - [ADR-082](EXPORT/ADR-082-one-reading-of-a-model-file-is-one-geometry-held-by-count.md) — One reading of a model file is one geometry, held by count — **Accepted**, amended by 083, amends 078, builds on 076 and 056
 - [ADR-083](EXPORT/ADR-083-a-part-read-from-a-file-holds-its-positions-alone.md) — A part read from a file holds its positions alone, and its facets are lit from their own planes — **Accepted**, amends 082 and 056, builds on 076
+- [ADR-084](EXPORT/ADR-084-a-models-app-is-a-script-the-viewer-starts-inside-mount.md) — A model's app is a script the viewer starts inside mount(), through a framework-neutral contract — **Accepted**, builds on 076 and 080
+- [ADR-085](EXPORT/ADR-085-a-clocked-machine-notifies-a-page-on-the-mount-handle.md) — A clocked machine notifies a page of a changed bank or drawing, on the mount handle — **Accepted**, extends 064, builds on 049
+- [ADR-086](EXPORT/ADR-086-the-viewer-bundles-a-models-app-with-its-own-toolchain.md) — The viewer bundles a model's app with its own toolchain, and refuses where it has none — **Accepted**, builds on 059 and 084

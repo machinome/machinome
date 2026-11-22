@@ -2554,3 +2554,36 @@ and `sources/movie-first-keypress-recording-v1.json`.
   and is what the film was drawn with, through an opt-in variable added to
   Videomaker. **Recorded, for the pilot:** whether `machinome snapshot` and
   the hub's previews should prefer llvmpipe where Mesa provides it.
+
+## The development page is told of a build before it is published (22 November 2026, framework)
+
+Found while proposing `declare-a-models-app` for the Enigma I's own app
+(`projects/enigma-i`), and observed on the bench `machinome/WTs/model-apps`
+at `50bdffdf`: `openspec/changes/archive/2026-11-22-declare-a-models-app/evidence/develop-reload-observation.md`
+and its probe `develop-reload-probe.py` (to be read under
+`openspec/changes/archive/` once the change is archived).
+
+- **The open page showed every edit one edit late.** The page learns of a
+  build only through `reload` on its socket (`reloader.ts` `onmessage` →
+  `checkBuild`: `/_build_error`, then `manifestChanged()`). The session
+  sends it when a socket opens and when `session.reload()` is called, which
+  `manager/develop.py` did only at the top of its loop, after a builder
+  process exited and before the next one started (lines 158-170 at the
+  base); a watching builder exits when a source changes
+  (`core/builder.py` 514-518, 636-641). So `reload` reached the page about
+  0.1 s after an edit, the page read the document still on disk, and the
+  new one was published about a second later with nothing telling the
+  page: radius 3 appeared at the second edit, height 20 never.
+- **What `declare-a-models-app` fixed** (design Decision 5b): when it serves
+  through a session, `develop` watches the build directory
+  (`watch_publication`) and calls `session.reload()` once each time
+  `viewer.json` is replaced there, after the files the document names are
+  in place; the respawn `reload` is kept. A published document, a Python
+  edit's and an app's alike, now reaches the open page when it is
+  published (the change's X2: about 1.1 s from a Python edit, 0.4-0.5 s from
+  an app edit, on the bench).
+- **What remains.** A build error is still announced before it is written:
+  `errors.json` is not watched, so the page that receives the respawn
+  `reload` reads `/_build_error` before the failing builder writes it, and
+  shows the error only at a following `reload` (by reading the code; not
+  observed). Untriaged.
