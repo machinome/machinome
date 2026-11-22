@@ -974,6 +974,24 @@ load is open.
   frame costs while something moves, which no change of this section has
   touched since the materials.
 
+- **The geometry, measured 22 November 2026**
+  (`evidence/enigma-page-memory-2026-11-22.md`), on the pilot's "yes" to
+  measuring where one open copy's 4.3 GB goes. One copy is 4,214 MiB here,
+  and 3,207 of it is the model's triangles held twice: 1,603 MiB of typed
+  arrays in the tab and the same bytes again as WebGL buffers in the
+  graphics process. Of each 1,603, the 2,868 parts read from model files
+  are 1,110 (positions and normals, not indexed), the 426 flexible parts
+  490, the markings 3. No geometry is used by more than one mesh, and the
+  2,868 parts name 993 files: 16.2 million triangles are held where 7.8
+  million are distinct. One geometry a file would hold 573.5 MiB less in
+  each process.
+
+- **Taken up, the geometry,** as the change
+  `share-one-geometry-per-model-file`, on the pilot's "go" of 22 November
+  2026, after they asked how a changed file would be handled. It revises
+  ADR-078, which gave each subscriber its own parse and its own mutable
+  geometry and set a cache aside.
+
 ## After an in-place update, the order new parts are drawn in can follow which fetch finished first
 
 - **Symptom.** None seen in a project. Found on 21 November 2026 while
@@ -1119,3 +1137,41 @@ load is open.
   stopping the transport when a slider is pressed, as starting a drawing
   already does, and having the transport write the panel in place instead
   of rebuilding it.
+
+## An update that asks for a file still being fetched is given the earlier request's bytes
+
+- **Symptom, measured in the suites and not reported by a project.** A
+  host calls `artifactChanged()` for a path, the file is rewritten, and the
+  host calls it again while the first call's request is still outstanding:
+  one request is made in all, and the part ends showing the first call's
+  bytes. In the suite's Chromium, with the bundle of framework `4b456edf`,
+  the part's rectangle on screen was 53.4 px wide where a fresh mount of
+  the final file gives 76.3. In the widget suite, with three.js's own
+  loaders over a stubbed network, a new tree for the document (the path
+  `reload()` takes) and a republish adding a part, each begun while a
+  request for their file was held and after the file was rewritten, showed
+  the earlier bytes too.
+
+- **Cause.** three.js 0.156.1's `FileLoader` keeps one table of the URLs
+  in flight for the whole page and hands every caller of a URL in it the
+  same response. The admission of ADR-078 lets a later load join a group
+  until its first subscriber settles, and each subscriber's own
+  `loadAsync` is then folded into the request already made. "A later
+  genuine artifact request must read the current resource, not join a
+  completed group" holds for a completed group and not for one in flight.
+
+- **Reach.** `machinome develop` never calls `artifactChanged()`
+  (`develop.ts`): a changed file reaches the viewer there as a republish
+  with a moved `mtime`. A host that sends artifact notices can meet it when
+  two builds of one file land within the time of one fetch.
+
+- **Found** on 22 November 2026 by the agent proposing
+  `share-one-geometry-per-model-file`, whose scratch tests are not kept;
+  that change's test S4 asserts the base's behaviour as it is.
+
+- **Not taken up.** The proposal carried a correction (an update never
+  joins a request sent before it began, and its own request waits for the
+  earlier one to settle); the review struck it from that change, whose
+  finding is the page's memory, and which gives every part the bytes it is
+  given today. It costs extra requests whenever updates overlap, two
+  viewers mounting together included. With the pilot.
