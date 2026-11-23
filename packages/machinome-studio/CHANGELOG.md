@@ -4,6 +4,15 @@ All notable changes to Machinome Studio, numbered with Machinome. Work
 after a release is recorded as it lands, in one `Unreleased` section above
 that release's section.
 
+## Unreleased
+
+- **Correction.** An agent running on Claude Code holds its profile prompt
+  from its first turn. The session was told to read the prompt from a file
+  outside the project, which none of its tools can open, so every agent of
+  both profiles worked without the conduct its prompt states. The prompt's
+  text now travels in the session's instructions, as it does on OpenCode
+  and Codex.
+
 ## 0.9.0 — 31 October 2026
 
 The first release of Machinome Studio, released with Machinome 0.9.0 and

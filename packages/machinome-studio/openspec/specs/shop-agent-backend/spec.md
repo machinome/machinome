@@ -132,8 +132,10 @@ The Claude backend SHALL launch one `claude` process per profile-declared agent
 in non-interactive streaming mode, exchange newline-delimited JSON frames over
 stdio, and use the active project as its working directory.
 
-It SHALL deliver the resolved profile prompt and the agent's skill catalogue as
-session-level instructions so the first user message remains a broker envelope.
+It SHALL deliver the text of the resolved profile prompt and the agent's skill
+catalogue as session-level instructions so the first user message remains a
+broker envelope. It SHALL NOT deliver a path in the prompt's place, and a role
+SHALL NOT need to read a file to learn its role.
 It SHALL register that agent's skills with the session's tool server and SHALL
 NOT name a skill's filesystem path to the session. It SHALL use the profile's
 selected Claude model, effort, and available tools rather than Markdown
@@ -162,6 +164,12 @@ operator has already configured.
 #### Scenario: The role contract does not consume a conversational turn
 - **WHEN** Claude opens a profile agent
 - **THEN** the prompt contract and skill catalogue are delivered as session-level instructions and the first user message is a broker envelope
+
+#### Scenario: A role holds its profile prompt when it opens
+- **WHEN** Claude opens a profile agent, whose prompt file lies outside the
+  active project
+- **THEN** the session-level instructions contain that prompt's text, and
+  nothing in them sends the session to read a file for it
 
 #### Scenario: Runtime capability comes from the selected profile
 - **WHEN** Claude opens Designer from `fordesmac`

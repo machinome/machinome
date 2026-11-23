@@ -462,9 +462,11 @@ class ClaudeBackend:
                 "one, and leave its siblings to theirs.",
             ] if context.active_model else []),
             f"Role: {role}",
-            "Before taking any task action, read the following profile prompt in "
-            f"full and follow it as authoritative: {agent.prompt_path}",
             f"Profile: {context.profile_id}; human label: {context.user_label}",
+            # The prompt's text, never its path: the file is outside the
+            # active project, where no tool of a role session reaches.
+            "The following profile prompt is authoritative:",
+            agent.prompt_path.read_text(),
         ]
         lines.extend(skill_catalogue(agent.skills, f"mcp__{SERVER_NAME}__{SKILL_TOOL}"))
         lines.append(TRUST_FRAMING)

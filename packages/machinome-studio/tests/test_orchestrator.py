@@ -1375,7 +1375,8 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
         argv = next(i for i in captured if i["kind"] == "environment")["argv"]
         contract = argv[argv.index("--append-system-prompt") + 1]
-        self.assertIn(str(ROOT / "machinome" / "studio" / "profiles" / "fordesmac" / "machinist.md"), contract)
+        prompt = ROOT / "machinome" / "studio" / "profiles" / "fordesmac" / "machinist.md"
+        self.assertIn(prompt.read_text(), contract)
         self.assertIn("trusted control plane", contract)
 
         user_messages = [
@@ -1383,6 +1384,39 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             if i["kind"] == "message" and i["value"].get("type") == "user"
         ]
         self.assertEqual(user_messages, [], "open_role must not send a user turn")
+        await self.claude.close()
+
+    async def test_every_shipped_role_holds_its_profile_prompt_when_it_opens(self) -> None:
+        """A role has no tool that reaches its prompt file: the text must arrive."""
+        await self.claude.start()
+        opened = []
+        for profile in (FORDESMAC, _resolved_profile("openspec-builder")):
+            for agent in profile.agents:
+                await self.claude.open_role(
+                    agent.id,
+                    RoleContext(
+                        shop_root=str(ROOT / "machinome" / "studio"),
+                        active_project=str(self.project),
+                        agent=agent,
+                        profile_id=profile.id,
+                        user_label=profile.user_label,
+                        user_agent_label=profile.user_agent.label,
+                    ),
+                )
+                opened.append(agent)
+        environments = [i for i in self.captured() if i["kind"] == "environment"]
+        self.assertEqual(len(environments), len(opened))
+        self.assertEqual(len(opened), 5)
+        for agent, environment in zip(opened, environments):
+            argv = environment["argv"]
+            contract = argv[argv.index("--append-system-prompt") + 1]
+            with self.subTest(agent=agent.id):
+                self.assertFalse(
+                    agent.prompt_path.resolve().is_relative_to(self.project.resolve())
+                )
+                self.assertIn(agent.prompt_path.read_text(), contract)
+                self.assertNotIn(str(agent.prompt_path), contract)
+                self.assertNotIn("read the following profile prompt", contract)
         await self.claude.close()
 
     async def test_role_card_supplies_model_and_scoped_mcp_tools(self) -> None:

@@ -21,3 +21,16 @@ Nothing here is ratified.
   file's directory. Found while designing the framework's OpenSpec change
   `declare-a-models-app` (its design, Decision 9); the watcher is
   unchanged. Untriaged.
+
+# The change `give-a-claude-role-its-prompt` (23 November 2026)
+
+- **A Claude readiness test fails intermittently.**
+  `tests/test_orchestrator.py`,
+  `test_first_delivery_reports_last_pending_status_on_readiness_timeout`,
+  gives the backend 0.05 s to see the tool server ready and expects the
+  timeout to report "last status: pending". Run alone on the unchanged main
+  `777631e6` it failed 6 of 16 times: the fake CLI is a new Python process,
+  and when it has not written its first frame within the 0.05 s the
+  backend reports another status. The test passes in the whole suite most
+  of the time, so a red run reads as a regression that is not one.
+  Untriaged.

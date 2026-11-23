@@ -227,10 +227,14 @@ class ReleaseFactsTest(unittest.TestCase):
         self.assertTrue(sections and (sections[0].startswith("Unreleased")
                                       or sections[0].startswith(f"{version} \N{EM DASH} ")),
                         changelog[:80])
-        unreleased = " ".join(sections[0].split())
-        self.assertIn("### Joined to the Machinome repository", sections[0])
-        self.assertIn("numbered with Machinome", unreleased)
-        self.assertIn("`machinome studio`", unreleased)
+        # The join is recorded in the release that made it; work recorded
+        # since sits in an `Unreleased` section above that one.
+        release = f"{version} \N{EM DASH} "
+        section = next((s for s in sections if s.startswith(release)), sections[0])
+        joined = " ".join(section.split())
+        self.assertIn("### Joined to the Machinome repository", section)
+        self.assertIn("numbered with Machinome", joined)
+        self.assertIn("`machinome studio`", joined)
 
 
 class CaveatTest(unittest.TestCase):
