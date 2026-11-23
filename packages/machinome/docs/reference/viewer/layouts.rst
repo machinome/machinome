@@ -47,6 +47,15 @@ state belongs to the navigator; focused root and visibility belong to the
 viewer. A name tooltip includes its full hierarchical path when a label is
 truncated.
 
+While a layer is shown (:js:meth:`ViewerHandle.show`), a row whose node, and
+every node below it, is not on that layer is marked obscured, as a row under a
+hidden ancestor is. Its visibility checkbox still reports the node's own
+setting and toggling it still hides or shows the node, and its accessible name
+says that the shown layer, named by its label, leaves it out, after the hiding
+ancestor where both apply. A row with any part on the layer at or below it is
+not marked. The navigator offers no control that shows or switches a layer; a
+model's own app does that (:doc:`/howto/show-a-layer`).
+
 .. code-block:: javascript
 
    const viewer = await MachinomeViewer.mount('#model', 'export/manifest.json');
@@ -177,7 +186,8 @@ All names below start with ``machinome-nav``:
    * - ``-row--root``, ``-row--hidden``
      - Focused root and explicitly hidden node.
    * - ``-row--obscured``, ``-row--leaf``
-     - Hidden by an ancestor; node without children.
+     - Hidden by an ancestor, or outside the shown layer; node without
+       children.
    * - ``-twisty``, ``-spacer``
      - Expand/collapse button and leaf alignment space.
    * - ``-visibility``, ``-name``

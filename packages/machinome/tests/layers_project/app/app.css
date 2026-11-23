@@ -1,0 +1,27 @@
+/*
+ * Machinome - A framework for mechanical CAD projects
+ * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+ */
+
+.layers-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  font: 14px system-ui, sans-serif;
+}
+.layers-app .layers-app-picture {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.layers-app .layers-app-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 56px;
+  padding: 0 12px;
+  background: #20242a;
+  color: #fff;
+}

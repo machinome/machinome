@@ -420,7 +420,7 @@ export function mountNavigator(
     if (!local) {
       return;
     }
-    rows = navigatorRows(currentAssembly, currentNavigation ?? { root: null, hidden: [] }, local);
+    rows = navigatorRows(currentAssembly, currentNavigation ?? { root: null, hidden: [], layer: null }, local);
     buildToolbar();
     buildRows();
     if (focusAfter) {

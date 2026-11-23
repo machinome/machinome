@@ -47,11 +47,13 @@ An app imports its own files, ``react``, ``react-dom`` and the helper
 
 .. js:function:: useMachine()
 
-   Return ``{bank, drawing}`` for a clocked machine: ``bank`` is the committed
-   bank, frozen, keyed by qualified ID in native units, as
+   Return ``{bank, drawing, layers}`` for a clocked machine: ``bank`` is the
+   committed bank, frozen, keyed by qualified ID in native units, as
    :js:meth:`MachineHandle.state` answers it; ``drawing`` is whether a
-   transition is being drawn, as :js:meth:`MachineHandle.drawing` answers it.
-   While a transition is drawn the bank already stands at its end.
+   transition is being drawn, as :js:meth:`MachineHandle.drawing` answers it;
+   ``layers`` is what :js:meth:`ViewerHandle.layers` answers, the same array
+   until a republished document changes the list. While a transition is drawn
+   the bank already stands at its end.
 
    The component re-renders after every change of either, whoever made it: the
    app itself, a script on the host page, the clock's transport, the end of a
@@ -74,7 +76,11 @@ An app imports its own files, ``react``, ``react-dom`` and the helper
    Return the mount's :doc:`ViewerHandle <viewer-handle>`, whole, on any
    model: an app can read the assembly, move the camera, drive a posed or
    running model through its handle, or subscribe to
-   :js:meth:`ViewerHandle.onMachineChange` itself.
+   :js:meth:`ViewerHandle.onMachineChange` itself. On any model, clocked or
+   not, it reads the document's layers and shows one with
+   :js:meth:`ViewerHandle.layers`, :js:meth:`ViewerHandle.layer` and
+   :js:meth:`ViewerHandle.show`; the viewer presents no control for them, so
+   the app makes its own (:doc:`/howto/show-a-layer`).
 
 An error thrown while the app renders refuses it: *it failed as it rendered:*
 followed by the error's message.

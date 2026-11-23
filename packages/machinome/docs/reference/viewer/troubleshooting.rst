@@ -81,6 +81,29 @@ custom panel, set ``driverControls: 'none'``; this does not disable declared
 part gestures. Set ``partControls: 'none'`` separately if needed. See
 :doc:`layouts` and :doc:`mount`.
 
+A layer is refused
+==================
+
+A document whose ``layers`` are malformed is refused by name before anything
+is drawn, because showing part of a machine as one of its layers would be a
+false picture. The refusal names the document and says which of these it is:
+``layers`` is not a list; an entry is not an object, declares no key or no
+label, or repeats a key; a node's ``layers`` is not a list of keys, holds an
+entry that is not a string, or names a key twice; or a node names a layer the
+document's ``layers`` does not list. It is a producer error: publish the model
+again with the framework that produced the document.
+
+:js:meth:`ViewerHandle.show` refuses a string, ``undefined`` and a layer whose
+key the document does not declare, by name: *show() takes a layer from layers()
+or layer(key), or null* for a string, *Unknown layer 'x': this document
+declares the layers a, b* otherwise. The refusal changes nothing and notifies
+nobody. :js:meth:`ViewerHandle.layer` refuses an unknown key the same way. A
+layer shown before a republish stays shown while the new document still
+declares its key, and the whole machine is shown when it does not.
+
+If rows of the navigator are dimmed and no one hid them, a layer is shown: see
+:doc:`layouts`.
+
 .. _viewer-app-refusals:
 
 The model's app is not shown

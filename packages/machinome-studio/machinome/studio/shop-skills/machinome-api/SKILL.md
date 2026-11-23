@@ -1423,6 +1423,43 @@ the model again. In this release an app is bundled only from a source
 checkout with the viewer's JavaScript dependencies installed; elsewhere
 the record is the viewer's refusal.
 
+**Layers** name groups of a machine's parts that a model's app can show
+on their own. Define each layer once, in a module of the project, and
+import it where a node class declares it, so that no use site spells a
+string:
+
+```python
+from machinome.layers import Layer
+
+ELECTRICAL = Layer('electrical', label='Electrical path')
+MECHANICAL = Layer('mechanical', label='Rotor stepping')
+```
+
+`Layer(key, *, label)` takes a non-empty string key, which the document
+carries, and a non-empty string label, which a person reads; anything else
+is refused by argument name. A layer never changes and equals only itself.
+A node class declares the layers it is on with `layers`, one layer or a
+non-empty tuple of them in which none repeats, as `layers = ELECTRICAL` or
+`layers = (ELECTRICAL, MECHANICAL)`; `layers` is a reserved name on a node
+class, and any other value (a string, a list, an empty tuple, a repeated
+layer) is refused at class definition, naming the class. A node is on the
+layers its class declares and on every layer of every node above it in the
+published tree, so tagging an assembly puts all its parts on the layer. A
+child or a subclass ADDS layers (a subclass's declaration and a plain
+mixin's add to its bases') and nothing removes one. A part fused into a
+rigid node and a child omitted from its parent's render are not published
+and contribute nothing. A node instance that assigns `layers` is refused
+when the model is published, naming the node. Two different `Layer` objects
+with one key in one model are refused when the document is produced,
+naming the key and both nodes; define the layer once and import it.
+A layer is not part of a part's identity: it changes no geometry, artifact
+name or piece. The document carries a top-level `layers` list of
+`{key, label}` and each node's own declared keys, ADDITIVELY: both are
+absent where nothing is declared, no document version moves, and a model
+with no layer publishes the bytes it published before. A model's app shows
+one layer through the viewer's handle, `show(layer)` and `show(null)`,
+which needs viewer API 32; the viewer adds no layer control of its own.
+
 The viewer scopes the driving panel to the focused assembly, with a breadcrumb into
 subassemblies; declare a whole-machine move on the root. Versions 1–4 use
 driver sliders and absolute instruction buttons. A viewer supporting the

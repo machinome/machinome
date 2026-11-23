@@ -442,7 +442,7 @@ class RegulatorInABrowserTest(TestCase):
                          self.document['clocked']['identity'])
         self.assertEqual(mounted['clock'], 'time')
         self.assertIsNone(mounted['run'])
-        self.assertEqual(result['apiVersion'], 31)
+        self.assertEqual(result['apiVersion'], 32)
         # The bank's id order is DERIVED: drivers, then states, then the
         # clock.
         self.assertEqual(mounted['order'], ['engaged', 'count', 'time'])

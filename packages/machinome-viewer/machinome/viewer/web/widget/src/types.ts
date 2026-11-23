@@ -83,6 +83,18 @@ export interface ManifestNode {
   // key is absent on a node that declares none, and such a node takes
   // exactly the path it took before this viewer could read one.
   markings?: ManifestMarking[];
+  /** The keys of the layers this node's own class declares, each once,
+   * every one a key of the document's `layers` (OpenSpec
+   * `show-only-a-layer`). ADDITIVE and gated on NO document version. The
+   * key is absent on a node that declares none; a node is on these layers
+   * and on every layer an entry above it names. */
+  layers?: string[];
+}
+
+/** One layer of the document's top-level `layers` list. */
+export interface ManifestLayer {
+  key: string;
+  label: string;
 }
 
 // Every document version this package renders. The producer emits the
@@ -164,6 +176,11 @@ export interface ManifestControl {
 export interface Manifest {
   format: string;
   version: ManifestVersion;
+  /** The layers the model declares, in the order its tree first meets
+   * them (OpenSpec `show-only-a-layer`). ADDITIVE and gated on NO
+   * document version; absent when nothing is declared, and a viewer that
+   * ignores it draws the whole machine. */
+  layers?: ManifestLayer[];
   animation: {
     fps: number;
     frames: number;

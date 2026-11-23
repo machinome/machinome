@@ -147,7 +147,8 @@ the bank is unchanged; catch it where the app wants to say so:
 ``useViewer().machine().move(id, {to})``, frame a part, or read the assembly.
 ``useMachine()`` and ``usePlay()`` read a clocked machine; on a posed or a
 running model they refuse the app, and ``useViewer()`` is the way to drive it.
-:doc:`/reference/viewer/app` lists the four names.
+:doc:`/reference/viewer/app` lists the four names. A model that declares
+layers lets its app show one at a time: :doc:`/howto/show-a-layer`.
 
 Where the app appears
 =====================

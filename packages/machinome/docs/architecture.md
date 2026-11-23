@@ -221,6 +221,23 @@ An omitted
 `Wrapped`'s zero lands) and refused for any other. A frame builds nothing; it is the end
 of a **mate** (Kinematics, below).
 
+A **layer** says which group of a machine a node belongs to
+(`declare-a-parts-layers`, ADR-201): `Layer(key, *, label)` from `machinome.layers`,
+a module that imports nothing, defined once by a project and declared in a
+node class body as `layers = ELECTRICAL` or a non-empty tuple. `layers` is
+a reserved class-body name checked by form where the class is written, like
+`controls` and `app`; it is neither a `Declaration` nor a descriptor, so it
+never reaches `identity_values` and keys no artifact. `NodeMeta.__new__`
+collects the DECLARED layers off `reversed(cls.__mro__)`, a plain mixin
+included, each once, base before subclass, and keeps them on the class as
+`_declared_layers` (`()` on the node base): a subclass's declaration adds
+to its bases' and nothing removes a layer. The serializer reads the class,
+never the instance, and refuses an instance whose own `__dict__` holds
+`layers`. Membership is inherited down the PUBLISHED tree by the consumer,
+which unions the keys along the path from the root as it inherits `color`;
+a part fused into a rigid node and a child omitted from its parent's render
+are not published and contribute nothing.
+
 The public surface is split by concern above the node package, so an
 import line says what each name is for: build parameters come from
 `machinome/parameters.py`, node classes from `machinome/node/`, ports
@@ -2822,6 +2839,21 @@ markings existed (ADR-120, the `piece` precedent of ADR-043).
 ordinary atomic copy rather than through the piece inventory, which
 serves only registered pieces; the browser-snapshot capture stages them
 beside the models it links.
+
+A node entry whose class declares layers (ADR-202) carries a `layers` list, the keys
+it declares itself and not the ones it inherits, after `operations`; the
+document's top level carries `layers`, one `{"key", "label"}` per distinct
+layer in the order a depth-first walk of the published tree first meets it,
+after `instructions` and `controls`. Both are gathered ONCE, in
+`document_body` (`_publish_layers`): `serialize_node` leaves each entry's
+declared `Layer` objects, and the one walk replaces them by their keys,
+builds the table and refuses two different `Layer` objects of one key in one
+tree, naming the key and the first node declaring each, so the build, the
+export and the browser-snapshot capture cannot disagree and no call site
+changes. Both keys are ABSENT where nothing is declared and move no version:
+a document whose tree declares no layer is byte-identical to the one
+published before layers existed, and a consumer that ignores them draws the
+whole machine.
 
 **An export records the revision it was made from** (ADR-158). Before it
 builds, `export_node` asks Git at the node's project root (`project_root`,

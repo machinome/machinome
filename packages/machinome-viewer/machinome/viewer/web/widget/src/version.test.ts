@@ -164,8 +164,16 @@ describe('API_VERSION', () => {
   // of the automatic panel, and the handle tells a page of a clocked
   // machine's changes (`onMachineChange`, `machine().drawing()`). The
   // record is additive: the document list does not move.
-  it('declares a model\'s own app as API 31', () => {
-    expect(API_VERSION).toBe(31);
+  it('declares a model\'s own app as API 31 or later', () => {
+    expect(API_VERSION).toBeGreaterThanOrEqual(31);
+  });
+
+  // API 32 (OpenSpec `show-only-a-layer`, design Decision 10): a document's
+  // `layers` are read and the handle shows one of them (`layers()`,
+  // `layer(key)`, `show(layer | null)`). Additive: the document list does
+  // not move.
+  it('declares a model\'s layers as API 32', () => {
+    expect(API_VERSION).toBe(32);
   });
 });
 

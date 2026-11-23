@@ -10,7 +10,7 @@ mesh, its children, its markings -- directly, never through `getattr` with a
 default. A double standing in for a node therefore declares the members the
 code it stands in for reads, with the meaning of a node that has none: not
 exact, not flexible, no artifact and no base mesh (its `mesh` is already its
-placed geometry), no children, no source file and no markings. A double
+placed geometry), no children, no source file, no markings and no layers. A double
 derives from `StandIn` and overrides what it does have.
 
 
@@ -31,6 +31,7 @@ class StandIn:
     base_mesh = None
     children = ()
     src = None
+    _declared_layers = ()
 
     def declared_markings(self):
         return {}

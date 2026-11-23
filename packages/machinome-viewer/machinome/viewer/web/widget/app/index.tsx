@@ -8,9 +8,10 @@
 // `show-a-models-own-app`, design Decision 7). Four names:
 //
 //   <Viewport/>    places the model's picture where the app renders it;
-//   useMachine()   the clocked machine's committed bank and whether a
-//                  transition is being drawn, re-rendering after every
-//                  change of either, whoever made it;
+//   useMachine()   the clocked machine's committed bank, whether a
+//                  transition is being drawn and the layers the document
+//                  declares, re-rendering after every change, whoever
+//                  made it;
 //   usePlay()      plays a declared instruction, as the panel's button does;
 //   useViewer()    the mount's handle, whole.
 //
@@ -21,7 +22,7 @@ import {
   useCallback, useContext, useLayoutEffect, useRef, useSyncExternalStore,
 } from 'react';
 import type { CSSProperties, JSX } from 'react';
-import type { ClockedRequest, ViewerHandle } from '../src/viewer';
+import type { ClockedRequest, Layer, ViewerHandle } from '../src/viewer';
 import { AppRefusal, HostContext } from './host';
 import type { AppHost } from './host';
 
@@ -45,7 +46,12 @@ export function useViewer(): ViewerHandle {
 export interface MachineReading {
   bank: Readonly<Record<string, number>>;
   drawing: boolean;
+  /** The layers the document declares, as the handle's `layers()` answers
+   * them: the same array until a republish changes the list. */
+  layers: readonly Layer[];
 }
+
+export type { Layer };
 
 const NOT_CLOCKED = 'this model is not a clocked machine; ';
 
@@ -64,11 +70,13 @@ class MachineStore {
     // A republish that took the machine away: the hook refuses on its
     // next render; the store keeps answering.
     if (machine === null) {
-      return Object.freeze({ bank: Object.freeze({}), drawing: false });
+      return Object.freeze({ bank: Object.freeze({}), drawing: false,
+                             layers: this.viewer.layers() });
     }
     return Object.freeze({
       bank: Object.freeze({ ...machine.state() }),
       drawing: machine.drawing(),
+      layers: this.viewer.layers(),
     });
   }
 
@@ -103,7 +111,7 @@ class MachineStore {
 }
 
 function sameReading(a: MachineReading, b: MachineReading): boolean {
-  if (a.drawing !== b.drawing) return false;
+  if (a.drawing !== b.drawing || a.layers !== b.layers) return false;
   const keys = Object.keys(a.bank);
   if (keys.length !== Object.keys(b.bank).length) return false;
   return keys.every((key) => Object.is(a.bank[key], b.bank[key]));

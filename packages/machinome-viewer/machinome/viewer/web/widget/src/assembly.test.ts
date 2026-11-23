@@ -68,7 +68,7 @@ describe('AssemblyNavigation', () => {
       await tree.loaded;
       const navigation = new AssemblyNavigation();
 
-      expect(navigation.state()).toEqual({ root: null, hidden: [] });
+      expect(navigation.state()).toEqual({ root: null, hidden: [], layer: null });
     });
 
     it('reports the focused path after setRoot', async () => {
@@ -114,8 +114,8 @@ describe('AssemblyNavigation', () => {
       navigation.setRoot(tree, ['right']);
       navigation.setVisible(tree, ['right'], true);
 
-      expect(before).toEqual({ root: ['left'], hidden: [['right']] });
-      expect(navigation.state()).toEqual({ root: ['right'], hidden: [] });
+      expect(before).toEqual({ root: ['left'], hidden: [['right']], layer: null });
+      expect(navigation.state()).toEqual({ root: ['right'], hidden: [], layer: null });
     });
 
     it('reports root: null and no hidden path once reconcile drops both', async () => {
@@ -128,14 +128,14 @@ describe('AssemblyNavigation', () => {
       await tree.reconcile(root(['added']), '/build/');
       navigation.reconcile(tree);
 
-      expect(navigation.state()).toEqual({ root: null, hidden: [] });
+      expect(navigation.state()).toEqual({ root: null, hidden: [], layer: null });
     });
   });
 });
 
 const change = (): AssemblyChange => ({
   assembly: { name: 'root', path: [], color: null, model: false, children: [] },
-  navigation: { root: null, hidden: [] },
+  navigation: { root: null, hidden: [], layer: null },
 });
 
 describe('AssemblyChangeNotifier', () => {

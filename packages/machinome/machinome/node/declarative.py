@@ -38,6 +38,7 @@ parameter and a child alike, which is why it knows the parameter layer's
 
 import sys
 
+from machinome.layers import Layer
 from machinome.parameters import (_RESERVED, Declaration, ParameterError,
                                    declared_parameters, evaluate)
 
@@ -1079,6 +1080,7 @@ class NodeMeta(type):
             _validate_controls(cls, name, namespace['controls'])
         if 'app' in namespace:
             _validate_app(name, namespace['app'])
+        cls._declared_layers = _collect_layers(cls, name)
         if _declares_marking(cls):
             _validate_markings(cls, name, namespace)
         # Descriptor __set_name__ and every class-level declaration check are
@@ -1170,6 +1172,60 @@ def _validate_app(name, value):
         f"{name}.app is {value!r}. On a node class `app` names the model's "
         f"app: a TypeScript or JavaScript file relative to this file, such "
         f"as 'app/index.tsx'; the name is reserved")
+
+
+_LAYERS_FORM = (
+    "On a node class `layers` names the layers the node is on: one Layer, "
+    "or a tuple of Layers, each defined once with machinome.layers.Layer "
+    "and imported; the name is reserved")
+
+
+def _layers_written(subject, statement, value):
+    """The layers one `layers` declaration names, as a tuple, or a
+    refusal: `statement` says what was written (``Contact.layers is
+    'x'``) and `subject` whose declaration repeats a layer."""
+    if isinstance(value, Layer):
+        return (value,)
+    if (isinstance(value, tuple) and value
+            and all(isinstance(layer, Layer) for layer in value)):
+        for index, layer in enumerate(value):
+            if layer in value[:index]:
+                raise TypeError(f'{subject} names {layer!r} twice')
+        return value
+    raise TypeError(f'{statement}. {_LAYERS_FORM}')
+
+
+def _collect_layers(cls, name):
+    """The class's DECLARED layers: the union, base before subclass, of
+    what every class of its method resolution order wrote under `layers`
+    in its own body, a plain mixin that is not a node included, each layer
+    once (OpenSpec change `declare-a-parts-layers`, design Decision 2).
+
+    A subclass's declaration therefore ADDS to its bases': attribute
+    lookup alone would replace them, and replacing would be a way to take
+    a layer away, which a machine's tree never allows. Each value is
+    checked by its form where it is written -- the class's own, a node
+    base's, a mixin's, the refusal naming the node class and the mixin
+    for the last -- so `layers` is a reserved class-body name as `app` is.
+    The result is kept on the class (the node base reads `()`), and is not
+    a `Declaration`: it never reaches `identity_values`.
+    """
+    declared = []
+    for klass in reversed(cls.__mro__):
+        if 'layers' not in klass.__dict__:
+            continue
+        value = klass.__dict__['layers']
+        if klass is cls or isinstance(klass, NodeMeta):
+            subject = f'{klass.__name__}.layers'
+            statement = f'{subject} is {value!r}'
+        else:
+            subject = f'{name} (layers inherited from {klass.__name__})'
+            statement = (f'{name} inherits layers = {value!r} from '
+                         f'{klass.__name__}')
+        for layer in _layers_written(subject, statement, value):
+            if layer not in declared:
+                declared.append(layer)
+    return tuple(declared)
 
 
 def _declares_marking(cls):

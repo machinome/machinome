@@ -337,11 +337,11 @@ describe('WidgetTree assembly navigation', () => {
     await tree.loaded;
 
     expect(tree.assembly()).toEqual({
-      name: 'root', path: [], color: '#336699', model: false,
+      name: 'root', path: [], color: '#336699', model: false, layers: [],
       children: [{
-        name: 'arm', path: ['arm'], color: '#336699', model: false,
+        name: 'arm', path: ['arm'], color: '#336699', model: false, layers: [],
         children: [{
-          name: 'pin', path: ['arm', 'pin'], color: '#336699', model: true,
+          name: 'pin', path: ['arm', 'pin'], color: '#336699', model: true, layers: [],
           children: [],
         }],
       }],

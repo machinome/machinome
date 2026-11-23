@@ -54,12 +54,36 @@ def test_the_pages_are_in_the_manual():
 
 
 def test_model_color_is_an_unreleased_source_capability():
-    assert widget()['machinomeViewerApi'] == 31
+    assert widget()['machinomeViewerApi'] == 32
     assert widget()['machinomeDocumentVersions'] == list(range(1, 15))
     entry = (ROOT / 'CHANGELOG.md').read_text().split('## Unreleased\n')[1].split('\n## ')[0]
     assert 'Viewer API 30' in entry
     assert 'document versions 1 through 14' in entry
     assert '{when, on, off}' in entry
+
+
+def test_layers_are_an_unreleased_source_capability():
+    # OpenSpec `show-only-a-layer`: the viewer's pages say what `show` takes,
+    # the shared how-to exists, and the changelog names the API.
+    assert widget()['machinomeViewerApi'] == 32
+    handle = flat('reference/viewer/viewer-handle.rst')
+    for member in ('ViewerHandle.layers()', 'ViewerHandle.layer(key)',
+                   'ViewerHandle.show(layer)'):
+        assert member in handle, member
+    assert 'a string' in handle and 'whole machine for ``null``' in handle
+    assert 'layer: {key, label} | null' in handle
+    assert 'layers, children' in handle
+    assert '{bank, drawing, layers}' in flat('reference/viewer/app.rst')
+    assert 'outside the shown layer' in flat('reference/viewer/layouts.rst')
+    assert 'API 32' in flat('reference/viewer/compatibility.rst')
+    assert 'A layer is refused' in flat('reference/viewer/troubleshooting.rst')
+    howto = flat('howto/show-a-layer.rst')
+    assert howto.startswith('=') and '.. needs:: viewer' in howto
+    assert 'viewer.show(null)' in howto and 'useMachine()' in howto
+    assert 'howto/show-a-layer' in flat('index.rst')
+    assert 'show-a-layer' in flat('howto/give-a-model-its-app.rst')
+    entry = (ROOT / 'CHANGELOG.md').read_text().split('## Unreleased\n')[1].split('\n## ')[0]
+    assert 'Viewer API 32' in ' '.join(entry.split())
 
 
 def test_docs_contains_no_development_records():
@@ -102,6 +126,7 @@ def test_release_facts_stay_separate_from_current_source_capability():
     assert conf_value('viewer_api') == '29'
     assert conf_value('document_versions') == '1 to 13'
     assert conf_value('source_viewer_api') == str(widget()['machinomeViewerApi'])
+    assert conf_value('source_viewer_api') == '32'
     assert conf_value('source_document_versions') == '1 to 14'
     assert conf_value('viewer_version') == widget()['version']
 

@@ -82,7 +82,7 @@ class ProfileDocumentBrowserTest(TestCase):
                     browser.close()
 
         self.assertEqual(errors, [], errors)
-        self.assertEqual(result['api'], 31)
+        self.assertEqual(result['api'], 32)
         self.assertAlmostEqual(result['dt'], 1 / 240, places=12)
         self.assertEqual(result['identity'], document['program']['identity'])
         self.assertEqual(result['canvas'], 1)

@@ -66,7 +66,34 @@ export interface AssemblyNode {
   path: string[];
   color: string | null;
   model: boolean;
+  /** The keys of the layers this node is on: its own entry's and every
+   * entry above it, each once, in the order of the document's `layers`
+   * list; [] for a node on none (OpenSpec `show-only-a-layer`). */
+  layers: string[];
   children: AssemblyNode[];
+}
+
+/** What a node is handed about layers by the node above it: the
+ * document's layer keys in its own order, and the keys the node above is
+ * on. The order is one fact of the document, carried down so that every
+ * node reports its layers in it. */
+export interface LayerScope {
+  order: readonly string[];
+  inherited: ReadonlySet<string>;
+}
+
+/** A tree built where no document layer exists: no node is on any. */
+export const NO_LAYERS: LayerScope = { order: [], inherited: new Set() };
+
+/** A node's effective layers: its own entry's keys and those of every
+ * entry above it, in the document's order, as a node inherits a colour. */
+function effectiveLayers(data: ManifestNode, scope: LayerScope): readonly string[] {
+  const own = new Set(data.layers ?? []);
+  return scope.order.filter((key) => scope.inherited.has(key) || own.has(key));
+}
+
+function scopeBelow(scope: LayerScope, keys: readonly string[]): LayerScope {
+  return { order: scope.order, inherited: new Set(keys) };
 }
 
 export function assemblyPathKey(path: AssemblyPath): string {
@@ -242,6 +269,9 @@ export class WidgetTree {
   private mtime: number | undefined;
   private color: string | null;
   private colorSpec: ManifestColor;
+  // The layers this node is on, its ancestors' included, in the
+  // document's order; replaced on every reconcile like `colorSpec`.
+  private layerKeys: readonly string[];
   private colorVars: ReadonlySet<string> | undefined;
   // Set when artifactChanged() has already fetched this node's current
   // geometry. The manifest publishes after the artifact (PRD D3), so the
@@ -294,7 +324,8 @@ export class WidgetTree {
               inheritedColor: ManifestColor = null,
               bindings: BindingTable = EMPTY_BINDINGS,
               batch = new GeometryBatch(),
-              private readonly presentation = new MaterialPresentation()) {
+              private readonly presentation = new MaterialPresentation(),
+              layerScope: LayerScope = NO_LAYERS) {
     this.owner = batch.owner();
     this.group = new THREE.Group();
     this.group.matrixAutoUpdate = false;
@@ -304,6 +335,7 @@ export class WidgetTree {
     this.bindings = bindings;
 
     this.colorSpec = data.color ?? inheritedColor;
+    this.layerKeys = effectiveLayers(data, layerScope);
     const color = initialColor(this.colorSpec);
     this.color = color;
     this.model = data.model;
@@ -329,7 +361,8 @@ export class WidgetTree {
     }
 
     for (const childData of data.children ?? []) {
-      const child = new WidgetTree(childData, baseUrl, this.colorSpec, bindings, batch, this.presentation);
+      const child = new WidgetTree(childData, baseUrl, this.colorSpec, bindings, batch, this.presentation,
+                                   scopeBelow(layerScope, this.layerKeys));
       this.children.push(child);
       this.group.add(child.group);
       pending.push(child.loaded);
@@ -430,11 +463,13 @@ export class WidgetTree {
                   inheritedColor: ManifestColor = null,
                   bindings: BindingTable = EMPTY_BINDINGS,
                   candidateScope?: () => EvalScope,
-                  beforeCommit?: () => void): Promise<void> {
+                  beforeCommit?: () => void,
+                  layerScope: LayerScope = NO_LAYERS): Promise<void> {
     const batch = new GeometryBatch();
     this.preparations.add(batch);
     try {
-      const apply = await this.prepareReconcile(data, baseUrl, inheritedColor, bindings, batch);
+      const apply = await this.prepareReconcile(data, baseUrl, inheritedColor, bindings, batch,
+                                                layerScope);
       if (this.disposed) throw this.owner.cancellation;
       withExpressions(() => {
         // Acquire the latest bank after all geometry awaits. An invalid
@@ -454,9 +489,11 @@ export class WidgetTree {
 
   private async prepareReconcile(data: ManifestNode, baseUrl: string,
                                  inheritedColor: ManifestColor,
-                                 bindings: BindingTable, batch: GeometryBatch): Promise<() => void> {
+                                 bindings: BindingTable, batch: GeometryBatch,
+                                 layerScope: LayerScope): Promise<() => void> {
     const owner = batch.owner();
     const nextColorSpec = data.color ?? inheritedColor;
+    const nextLayerKeys = effectiveLayers(data, layerScope);
     const nextColor = initialColor(nextColorSpec);
     const skipMtimeCheck = this.freshFromArtifact;
     const modelChanged = this.model !== data.model || (this.mtime !== data.mtime && !skipMtimeCheck);
@@ -505,14 +542,16 @@ export class WidgetTree {
     const nextChildren = await Promise.all((data.children ?? []).map(async (childData) => {
       const child = existing.get(childData.name);
       if (!child || !incoming.has(childData.name)) {
-        const created = new WidgetTree(childData, baseUrl, nextColorSpec, bindings, batch, this.presentation);
+        const created = new WidgetTree(childData, baseUrl, nextColorSpec, bindings, batch, this.presentation,
+                                       scopeBelow(layerScope, nextLayerKeys));
         batch.own(() => created.dispose());
         await created.loaded;
         return { tree: created, apply: () => undefined };
       }
       return {
         tree: child,
-        apply: await child.prepareReconcile(childData, baseUrl, nextColorSpec, bindings, batch),
+        apply: await child.prepareReconcile(childData, baseUrl, nextColorSpec, bindings, batch,
+                                            scopeBelow(layerScope, nextLayerKeys)),
       };
     }));
 
@@ -546,6 +585,7 @@ export class WidgetTree {
         this.freeVars = undefined;
       }
       this.colorSpec = nextColorSpec;
+      this.layerKeys = nextLayerKeys;
       this.colorVars = undefined;
       this.setColor(nextColor);
 
@@ -723,6 +763,7 @@ export class WidgetTree {
       path: [...path],
       color: this.color,
       model: this.model !== undefined,
+      layers: [...this.layerKeys],
       children: this.children.map((child) => child.assembly([...path, child.name])),
     };
   }
@@ -750,28 +791,42 @@ export class WidgetTree {
   }
 
   applyVisibility(focusedPath: AssemblyPath | null,
-                  hiddenPaths: ReadonlySet<string>): void {
+                  hiddenPaths: ReadonlySet<string>,
+                  layer: string | null = null): void {
     // `visible` is read by a draw (OpenSpec
     // `draw-only-when-the-picture-changes`, design Decision 2).
     this.presentation.picture.raise();
-    const visit = (node: WidgetTree, path: string[]) => {
+    // Whether the node is on the shown layer; every node is when none is
+    // shown. It is the third input beside the focus and the hidden paths
+    // (OpenSpec `show-only-a-layer`, design Decision 4).
+    const on = (node: WidgetTree): boolean =>
+      layer === null || node.layerKeys.includes(layer);
+    // Post-order: answers whether the node or one below it is on the
+    // layer, which spares the draw a subtree holding nothing of it.
+    const visit = (node: WidgetTree, path: string[]): boolean => {
       const inFocusedSubtree = focusedPath === null
         || isPathPrefix(focusedPath, path);
       const preservesFocusedTransform = focusedPath !== null
         && isPathPrefix(path, focusedPath);
+      const onLayer = on(node);
+      let holds = onLayer;
+      node.children.forEach((child) => {
+        if (visit(child, [...path, child.name])) holds = true;
+      });
       node.group.visible = (inFocusedSubtree || preservesFocusedTransform)
-        && !hiddenPaths.has(assemblyPathKey(path));
+        && !hiddenPaths.has(assemblyPathKey(path))
+        && holds;
       node.group.children
         .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
-        .forEach((mesh) => { mesh.visible = inFocusedSubtree; });
+        .forEach((mesh) => { mesh.visible = inFocusedSubtree && onLayer; });
       // The one line the sub-group costs (design D2). The case that
       // matters is a part that is an ANCESTOR of the focused node: its
       // group stays visible to preserve the transform, while its own
       // surface must not be drawn -- and its decals are its own surface.
       if (node.decals !== undefined) {
-        node.decals.visible = inFocusedSubtree;
+        node.decals.visible = inFocusedSubtree && onLayer;
       }
-      node.children.forEach((child) => visit(child, [...path, child.name]));
+      return holds;
     };
     visit(this, []);
   }

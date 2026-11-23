@@ -11,7 +11,7 @@ import {
 } from './camera';
 import {
   AssemblyChangeNotifier, AssemblyListener, AssemblyNavigation,
-  AssemblyNavigationState,
+  AssemblyNavigationState, Layer,
 } from './assembly';
 import {
   assertFrameLoop, assertOnDemandDocument,
@@ -72,8 +72,12 @@ import type {
   ClockedOutcome, ClockTransportPlan, FollowedInput, Following,
 } from './clockedControls';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
-import { AssemblyNode, AssemblyPath, WidgetTree, operationsMatrix } from './tree';
-import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
+import {
+  AssemblyNode, AssemblyPath, LayerScope, WidgetTree, operationsMatrix,
+} from './tree';
+import {
+  Manifest, ManifestDriver, ManifestInstruction, ManifestLayer, ManifestNode,
+} from './types';
 import {
   chooseMode, intersectPlane, MIN_RADIUS, normalize3, readControls,
   sub3, sweepAngle, TurnPlanner, visibleUpTo, worldLine, slidePosition,
@@ -125,7 +129,7 @@ export interface View {
   fov: number;
 }
 export type { AssemblyNode, AssemblyPath } from './tree';
-export type { AssemblyChange, AssemblyListener, AssemblyNavigationState } from './assembly';
+export type { AssemblyChange, AssemblyListener, AssemblyNavigationState, Layer } from './assembly';
 export type { HighlightOptions, OthersMode };
 export type VectorInput = THREE.Vector3 | readonly [number, number, number];
 export interface ViewInput {
@@ -303,10 +307,25 @@ export interface ViewerHandle {
   assembly(): AssemblyNode;
   setRoot(path: AssemblyPath | null): void;
   setVisible(path: AssemblyPath, visible: boolean): void;
-  /** The navigation state: the focused root and the explicitly hidden
-   * paths, as a serializable snapshot the handle does not later modify
-   * (design D1). Needs no tree and so never throws. */
+  /** The navigation state: the focused root, the explicitly hidden
+   * paths and the shown layer, as a serializable snapshot the handle does
+   * not later modify (design D1). Needs no tree and so never throws. */
   navigation(): AssemblyNavigationState;
+  /** The layers the document declares, in its order, each a frozen
+   * `{key, label}`; `[]` for a document that declares none. The same
+   * array and objects until a document whose layers differ is installed
+   * (OpenSpec `show-only-a-layer`, design Decision 2). */
+  layers(): readonly Layer[];
+  /** The layer the document declares under `key`. An unknown key throws,
+   * naming it and the keys the document declares. */
+  layer(key: string): Layer;
+  /** Show only the parts on `layer`, or the whole machine for `null`. A
+   * part the layer leaves out is absent: not drawn, not pressed, not
+   * framed. The focused root and the hidden paths are not touched, and
+   * the camera does not move. A string or an unknown key is refused by
+   * name, changing nothing; every accepted call notifies
+   * `onAssemblyChange` once. */
+  show(layer: Layer | null): void;
   /** Subscribe to every accepted operation that publishes a tree or
    * moves the focused root or the visibility state -- a host call, the
    * widget's own breadcrumb, or a targeted update -- and returns a
@@ -540,12 +559,38 @@ export async function mount(
   // hear back does not fight the input the maker is dragging.
   let drivingFromChrome = false;
   const assemblyNavigation = new AssemblyNavigation();
+  // The layers the installed document declares, frozen, replaced only
+  // when a document whose list differs is installed (OpenSpec
+  // `show-only-a-layer`, design Decision 2).
+  let documentLayers: readonly Layer[] = Object.freeze([]);
+  const installLayers = (declared: readonly ManifestLayer[] | undefined): void => {
+    const next = declared ?? [];
+    const same = next.length === documentLayers.length
+      && next.every((one, index) => one.key === documentLayers[index].key
+                    && one.label === documentLayers[index].label);
+    if (!same) {
+      documentLayers = Object.freeze(next.map(
+        (one) => Object.freeze({ key: one.key, label: one.label })));
+    }
+  };
+  const layerScope = (declared: readonly ManifestLayer[] | undefined): LayerScope =>
+    ({ order: (declared ?? []).map((one) => one.key), inherited: new Set() });
   // The public channel a host and this package's own future navigator
   // both read (design D4, ADR-049): no private path into the store,
   // mirroring drivers.ts's onDriverChange (`:709-714`). Notified once,
   // at the end of each operation that can move the state -- never from
   // inside AssemblyNavigation itself, which runs mid-update.
   const assemblyChanges = new AssemblyChangeNotifier();
+  const requireLayer = (key: string): Layer => {
+    const found = documentLayers.find((one) => one.key === key);
+    if (found === undefined) {
+      const names = documentLayers.map((one) => one.key);
+      throw new Error(
+        `Unknown layer '${key}': this document declares `
+        + (names.length === 0 ? 'no layer' : `the layers ${names.join(', ')}`));
+    }
+    return found;
+  };
   const notifyAssemblyChange = (): void => {
     if (!tree) {
       return;
@@ -2237,7 +2282,8 @@ export async function mount(
       if (disposed) return;
       // Prepare all geometry before replacing any of the last good document's
       // driver, binding or runtime state. A failed required asset changes none.
-      const next = new WidgetTree(document.root, baseUrl, null, table, undefined, presentation);
+      const next = new WidgetTree(document.root, baseUrl, null, table, undefined, presentation,
+                                  layerScope(document.layers));
       pendingTrees.add(next);
       // Whether a machine stood before this load: a load that builds,
       // rebuilds or removes one notifies (`show-a-models-own-app`, design
@@ -2276,7 +2322,8 @@ export async function mount(
       }
       tree = next;
       scene.add(tree.group);
-      assemblyNavigation.reconcile(tree);
+      installLayers(document.layers);
+      assemblyNavigation.reconcile(tree, documentLayers);
       applyFrame(view);
       // One of the three places a mesh can be replaced (design D4).
       loadedControls = declared;
@@ -2776,7 +2823,7 @@ export async function mount(
       presentation.forget();
       await tree?.artifactChanged(path, baseUrl);
       if (tree) {
-        assemblyNavigation.reconcile(tree);
+        assemblyNavigation.reconcile(tree, documentLayers);
       }
       // The third place a mesh can be replaced: the controls are the
       // same, the meshes carrying them are not (design D4).
@@ -2823,7 +2870,7 @@ export async function mount(
         await tree?.reconcile(document.root, baseUrl, null, table, candidateScope, () => {
           partSurface.clear();
           presentation.forget();
-        });
+        }, layerScope(document.layers));
         if (disposed) return;
         drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
         bindingsTable = table;
@@ -2839,8 +2886,9 @@ export async function mount(
         // and an added one keeps the panel from being built (design
         // Decision 9).
         releaseStaleApp(document.app ?? null);
+        installLayers(document.layers);
         if (tree) {
-          const rootChanged = assemblyNavigation.reconcile(tree);
+          const rootChanged = assemblyNavigation.reconcile(tree, documentLayers);
           tree.update(scope());
           refreshControls(document);
           if (rootChanged) {
@@ -2869,6 +2917,28 @@ export async function mount(
       return tree.assembly();
     },
     navigation: () => assemblyNavigation.state(),
+    layers: () => documentLayers,
+    layer: (key: string) => requireLayer(key),
+    show(layer: Layer | null) {
+      if (!tree) {
+        throw new Error('Viewer assembly is unavailable');
+      }
+      let declared: Layer | null = null;
+      if (layer !== null) {
+        if (typeof layer !== 'object') {
+          throw new Error(
+            'show() takes a layer from layers() or layer(key), or null; it '
+            + `was given ${typeof layer === 'string'
+              ? `the string '${layer}'` : String(layer)}`);
+        }
+        // Matched by key, not by identity: a layer an app kept from
+        // before a republish still works while the document declares it.
+        declared = requireLayer(String((layer as { key?: unknown }).key));
+      }
+      assemblyNavigation.setLayer(tree, declared);
+      drawPicture();
+      notifyAssemblyChange();
+    },
     onAssemblyChange: (listener: AssemblyListener) =>
       assemblyChanges.subscribe(listener),
     setRoot(path: AssemblyPath | null) {
@@ -3770,6 +3840,72 @@ export function assertApp(document: Manifest, sourceUrl: string): void {
  * Decision 1): a refused document requests a reclamation as it is
  * refused, and a validated one carries the `settlement` its viewer calls
  * once it has installed or abandoned it. */
+/** The document's `layers` and each node's own keys, validated (OpenSpec
+ * `show-only-a-layer`, design Decision 1). The list, when present, is a
+ * list of `{key, label}` with non-empty string key and label and no key
+ * twice; a node's `layers`, when present, is a list of distinct strings,
+ * each a key of that list. Anything else is a producer error and refuses
+ * the document by name, as a malformed `markings` list does: a viewer that
+ * read half of the layers would show part of a machine as the whole of one
+ * layer. Answers the list, `[]` for a document that declares none. */
+export function assertLayers(document: Manifest, sourceUrl: string): ManifestLayer[] {
+  const refuse = (reason: string): never => {
+    throw new Error(`${sourceUrl}: ${reason}. Refusing the document rather `
+                    + 'than showing part of a machine as one of its layers.');
+  };
+  const declared = (document as { layers?: unknown }).layers;
+  const keys = new Set<string>();
+  if (declared !== undefined) {
+    if (!Array.isArray(declared)) {
+      refuse('the document\'s "layers" is not a list');
+    }
+    (declared as unknown[]).forEach((entry, index) => {
+      if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+        refuse(`the document\'s "layers" entry at index ${index} is not an object`);
+      }
+      const layer = entry as Record<string, unknown>;
+      if (typeof layer.key !== 'string' || layer.key === '') {
+        refuse(`the document\'s "layers" entry at index ${index} declares no key`);
+      }
+      const key = layer.key as string;
+      if (typeof layer.label !== 'string' || layer.label === '') {
+        refuse(`the document\'s layer "${key}" declares no label`);
+      }
+      if (keys.has(key)) {
+        refuse(`the document\'s "layers" names the key "${key}" twice`);
+      }
+      keys.add(key);
+    });
+  }
+  const visit = (node: ManifestNode, path: string): void => {
+    const own = (node as { layers?: unknown }).layers;
+    if (own !== undefined) {
+      if (!Array.isArray(own)) {
+        refuse(`node "${path}": "layers" is not a list of keys`);
+      }
+      const seen = new Set<string>();
+      (own as unknown[]).forEach((key) => {
+        if (typeof key !== 'string') {
+          refuse(`node "${path}": "layers" holds an entry that is not a string`);
+        }
+        if (seen.has(key as string)) {
+          refuse(`node "${path}": "layers" names "${key}" twice`);
+        }
+        seen.add(key as string);
+        if (!keys.has(key as string)) {
+          refuse(`node "${path}" names the layer "${key}", which the `
+                 + 'document\'s "layers" does not list');
+        }
+      });
+    }
+    for (const child of node.children ?? []) {
+      visit(child, `${path}/${child.name}`);
+    }
+  };
+  visit(document.root, document.root.name);
+  return (declared ?? []) as ManifestLayer[];
+}
+
 export function assertRenderable(document: Manifest,
                                  sourceUrl: string): LoadedDocument {
   const { value, settlement } = withDocumentLoad(
@@ -3892,6 +4028,7 @@ function assertRenderableScoped(document: Manifest,
     }
   };
 
+  assertLayers(document, sourceUrl);
   const visit = (node: ManifestNode) => {
     // Read FIRST for this node (OpenSpec `draw-what-a-part-carries`,
     // design D6): a `markings` list this viewer cannot read is refused

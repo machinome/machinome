@@ -52,7 +52,7 @@ const keyB = assemblyPathKey(['A', 'B']);
 const keyLeaf = assemblyPathKey(['Leaf']);
 
 const nav = (overrides: Partial<AssemblyNavigationState> = {}): AssemblyNavigationState => ({
-  root: null, hidden: [], ...overrides,
+  root: null, hidden: [], layer: null, ...overrides,
 });
 
 const local = (overrides: Partial<NavigatorLocal> = {}): NavigatorLocal => ({
@@ -592,5 +592,84 @@ describe('the colour a row shows', () => {
       expect(rows.length).toBe(size);
       expect(Math.max(...reads.values())).toBeLessThanOrEqual(4);
     });
+  });
+});
+
+// OpenSpec `show-only-a-layer`, design Decision 5, N1 to N3: a row is
+// outside the shown layer when neither its node nor any node below it is on
+// that layer; it is marked obscured, its control keeps the node's own
+// setting, and its accessible name says so. Every tree is written by hand
+// with the EFFECTIVE layers the snapshot reports.
+describe('the rows a shown layer leaves out', () => {
+  const ELECTRICAL = { key: 'electrical', label: 'Electrical path' };
+  const node = (
+    path: string[], layers: string[], children: AssemblyNode[] = [],
+  ): AssemblyNode => ({
+    name: path.length === 0 ? 'Root' : path[path.length - 1],
+    path, color: null, model: children.length === 0, layers, children,
+  } as AssemblyNode);
+  // Root -> case (on no layer), keyboard (no layer of its own) -> two keys
+  // on `electrical`, and a hidden-able group `bank` -> `pin` on nothing.
+  const tree = () => node([], [], [
+    node(['case'], []),
+    node(['keyboard'], [], [
+      node(['keyboard', 'q'], ['electrical']),
+      node(['keyboard', 'w'], ['electrical']),
+    ]),
+    node(['bank'], [], [node(['bank', 'pin'], [])]),
+  ]);
+  const everyKey = (one: AssemblyNode, keys = new Set<string>()): Set<string> => {
+    keys.add(assemblyPathKey(one.path));
+    one.children.forEach((child) => everyKey(child, keys));
+    return keys;
+  };
+  const rows = (navigation: AssemblyNavigationState) =>
+    navigatorRows(tree(), navigation, local({ expanded: everyKey(tree()) }));
+  const at = (found: ReturnType<typeof rows>, path: string[]) =>
+    found.find((row) => row.key === assemblyPathKey(path))!;
+
+  it('marks the rows with nothing on the layer, and names the layer (N1)', () => {
+    const found = rows(nav({ layer: ELECTRICAL }));
+    for (const path of [['case'], ['bank'], ['bank', 'pin']]) {
+      const row = at(found, path);
+      expect(row.obscured, path.join('/')).toBe(true);
+      expect(chipState(row)).toMatchObject({
+        checked: true,
+        label: `Visibility for ${path[path.length - 1]} (not on the shown layer Electrical path)`,
+      });
+    }
+    for (const path of [[], ['keyboard'], ['keyboard', 'q'], ['keyboard', 'w']]) {
+      const row = at(found, path);
+      expect(row.obscured, path.join('/')).toBe(false);
+      expect(chipState(row).label.includes('not on the shown layer')).toBe(false);
+    }
+  });
+
+  it('keeps each row\'s own setting: hidden stays hidden, shown stays shown (N1)', () => {
+    const found = rows(nav({ layer: ELECTRICAL, hidden: [['case']] }));
+    expect(at(found, ['case'])).toMatchObject({ hidden: true, obscured: true });
+    expect(chipState(at(found, ['case']))).toMatchObject({ checked: false });
+    expect(at(found, ['bank'])).toMatchObject({ hidden: false, obscured: true });
+    expect(chipState(at(found, ['bank'])).checked).toBe(true);
+  });
+
+  it('names the hiding ancestor and the layer for a row under both (N2)', () => {
+    const found = rows(nav({ layer: ELECTRICAL, hidden: [['bank']] }));
+    const row = at(found, ['bank', 'pin']);
+    expect(row.obscured).toBe(true);
+    expect(row.hidingAncestor).toBe('bank');
+    expect(chipState(row).label).toBe(
+      'Visibility for pin (hidden with bank, not on the shown layer Electrical path)');
+    // A part under a hidden ancestor that the layer holds names only the ancestor.
+    const held = rows(nav({ layer: ELECTRICAL, hidden: [['keyboard']] }));
+    expect(chipState(at(held, ['keyboard', 'q'])).label)
+      .toBe('Visibility for q (hidden with keyboard)');
+  });
+
+  it('is what it was before when no layer is shown (N3)', () => {
+    const found = rows(nav());
+    expect(found.every((row) => !row.obscured && row.hidingAncestor === null)).toBe(true);
+    expect(found.map((row) => chipState(row).label)).toEqual(
+      found.map((row) => `Visibility for ${row.node.name}`));
   });
 });

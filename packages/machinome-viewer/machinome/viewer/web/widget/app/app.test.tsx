@@ -33,6 +33,7 @@ interface FakeHost {
   /** Replace the bank the fake machine answers, without notifying. */
   set(bank: Record<string, number>): void;
   setDrawing(drawing: boolean): void;
+  setLayers(layers: readonly unknown[]): void;
   notify(): void;
   listeners(): number;
   trigger: ReturnType<typeof vi.fn>;
@@ -53,12 +54,16 @@ function fakeHost(options: { clocked?: boolean } = {}): FakeHost {
     return { input: 'crank', admitted: 360 };
   });
   const machine = { state, drawing: () => drawing, trigger };
+  let layers: readonly unknown[] = Object.freeze([
+    Object.freeze({ key: 'electrical', label: 'Electrical path' }),
+  ]);
   const viewer = {
     onMachineChange(listener: () => void) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
     machine: () => (clocked ? machine : null),
+    layers: () => layers,
   };
   const element = document.createElement('div');
   document.body.append(element);
@@ -68,6 +73,7 @@ function fakeHost(options: { clocked?: boolean } = {}): FakeHost {
     host: { contract: 1, element, viewport, viewer, refuse: vi.fn() },
     set(next) { bank = next; },
     setDrawing(next) { drawing = next; },
+    setLayers(next) { layers = next; },
     notify() { for (const listener of [...listeners]) listener(); },
     listeners: () => listeners.size,
     trigger,
@@ -134,7 +140,10 @@ describe('H1: useMachine re-renders on a notification, and only then changes', (
     await settle();
     const second = seen[seen.length - 1];
     expect(second).not.toBe(first);
-    expect(second).toEqual({ bank: { 'w0.digit': 3, crank: 0 }, drawing: true });
+    expect(second).toEqual({
+      bank: { 'w0.digit': 3, crank: 0 }, drawing: true,
+      layers: [{ key: 'electrical', label: 'Electrical path' }],
+    });
     expect(fake.host.element.querySelector('.digit')!.textContent).toBe('3');
     expect(fake.host.element.querySelector('.drawing')!.textContent).toBe('true');
 
@@ -275,5 +284,62 @@ describe('H6: the machine hooks refuse a model that is not a clocked machine', (
     show(App, fake);
     expect(viewer).toBe(fake.host.viewer);
     expect(fake.host.refuse).not.toHaveBeenCalled();
+  });
+});
+
+describe('H7: useMachine answers the handle\'s layers', () => {
+  it('H7: the reading carries the handle\'s list, its identity unchanged by a notification that changes nothing and new when the list changes', async () => {
+    const fake = fakeHost();
+    const seen: Array<{ layers?: readonly unknown[] }> = [];
+    function App() {
+      const machine = useMachine() as { layers?: readonly unknown[] };
+      seen.push(machine);
+      return (
+        <div>
+          <Viewport />
+          <span className="layers">
+            {(machine.layers ?? []).map((one: any) => one.label).join('|')}
+          </span>
+        </div>
+      );
+    }
+    show(App, fake);
+    await settle();
+    const text = () => fake.host.element.querySelector('.layers')!.textContent;
+    expect(text()).toBe('Electrical path');
+    const first = seen[seen.length - 1];
+    expect(first.layers).toBe((fake.host.viewer as any).layers());
+
+    // A notification that changes no layer: the same list, by identity.
+    flushSync(() => fake.notify());
+    await settle();
+    expect(seen[seen.length - 1].layers).toBe(first.layers);
+
+    // A republish that changes the list: a new reading and a render.
+    const next = Object.freeze([
+      Object.freeze({ key: 'electrical', label: 'Electrical path' }),
+      Object.freeze({ key: 'mechanical', label: 'Rotor stepping' }),
+    ]);
+    fake.setLayers(next);
+    flushSync(() => fake.notify());
+    await settle();
+    expect(text()).toBe('Electrical path|Rotor stepping');
+    expect(seen[seen.length - 1]).not.toBe(first);
+    expect(seen[seen.length - 1].layers).toBe(next);
+  });
+
+  it('H7: a list that changes between the first render and the subscription is not lost', async () => {
+    const fake = fakeHost();
+    const early = Object.freeze([Object.freeze({ key: 'a', label: 'A' })]);
+    const late = Object.freeze([Object.freeze({ key: 'b', label: 'B' })]);
+    let reads = 0;
+    (fake.host.viewer as any).layers = () => { reads += 1; return reads === 1 ? early : late; };
+    function App() {
+      const machine = useMachine() as { layers?: readonly any[] };
+      return <div><Viewport /><span className="layers">{(machine.layers ?? []).map((one) => one.label).join('|')}</span></div>;
+    }
+    show(App, fake);
+    await settle();
+    expect(fake.host.element.querySelector('.layers')!.textContent).toBe('B');
   });
 });

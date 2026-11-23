@@ -42,6 +42,18 @@ explicitly referenced signal's ``value`` when ordinary presentation reads the
 color after tree solving. The helper accepts the resolved scalar, not the port
 object; it does not bypass the normal refusal of an early relation read.
 
+Layers
+======
+
+.. autoclass:: machinome.layers.Layer
+
+A project defines each layer once and imports it wherever a node class
+declares it with the reserved class-body name ``layers`` (see
+:attr:`AbstractBaseNode.layers <machinome.node.base.AbstractBaseNode.layers>`).
+Import the name from its module; ``machinome`` reexports nothing. A key or a
+label that is not a non-empty string is refused by argument name. See
+:doc:`/howto/show-a-layer`.
+
 Production assets
 =================
 
@@ -271,6 +283,19 @@ Common node API
       value is refused where the class is written. A subclass inherits
       it, still relative to the declaring file, and only the published
       root's declaration is read. See :doc:`/howto/give-a-model-its-app`.
+
+   .. attribute:: layers
+
+      A reserved class-body name: the layers the node is on, one
+      :class:`~machinome.layers.Layer` or a non-empty tuple of them in
+      which none repeats, as ``layers = ELECTRICAL``. Any other value is
+      refused where the class is written, naming the class. A subclass's
+      declaration, and a plain mixin's, adds to its bases' and never
+      replaces them, and a node is on every layer of every node above it
+      in the published tree: a child may add a layer and none removes one.
+      A node instance that assigns ``layers`` is refused when the model is
+      published. Two different layers of one key in one model are refused
+      too. See :doc:`/howto/show-a-layer`.
 
    .. automethod:: set_keyframe
 

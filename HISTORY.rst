@@ -30,6 +30,19 @@ Unreleased
   unchanged; the viewer that shows an app declares viewer API 31
   (``declare-a-models-app``, ``show-a-models-own-app``).
 
+* **A model can name layers of its parts.** A project defines each layer
+  once, ``Layer('electrical', label='Electrical path')`` from
+  ``machinome.layers``, and a node class declares the layers it is on,
+  ``layers = ELECTRICAL`` or a tuple of them; ``layers`` is a reserved
+  class-body name, checked where the class is written. A subtree is on its
+  ancestors' layers, and a child or a subclass adds layers and none removes
+  one. Two layers sharing a key in one model are refused when it is
+  published. The document carries a top-level ``layers`` list and each
+  node's own declared keys, additively, so a model that declares no layer
+  publishes the document it published before and document versions are
+  unchanged; the viewer that shows a layer declares viewer API 32
+  (``declare-a-parts-layers``, ``show-only-a-layer``).
+
 * **``make upload`` uploads one archive per request.** PyPI refused the
   0.9.0 upload part way, at its limit on creating new projects in one
   window and then on the requests themselves, and twine stopped there, the

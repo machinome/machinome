@@ -49,12 +49,18 @@ export interface NavigatorRow {
   root: boolean;
   /** Explicitly hidden, by this node's own key. */
   hidden: boolean;
-  /** Invisible only because a PROPER ancestor is hidden -- independent
-   * of this node's own `hidden` (design D5's fourth and fifth rows). */
+  /** Invisible only because a PROPER ancestor is hidden, or because the
+   * shown layer leaves the row out (`outsideLayer`) -- independent of
+   * this node's own `hidden` (design D5's fourth and fifth rows). */
   obscured: boolean;
   /** The name of the nearest hidden ancestor, for the accessible name of
    * an obscured row's visibility control; `null` when not obscured. */
   hidingAncestor: string | null;
+  /** The label of the shown layer when neither this row's node nor any
+   * node below it is on that layer, else `null` (OpenSpec
+   * `show-only-a-layer`, design Decision 5). Such a row is `obscured`,
+   * and its visibility control keeps the node's own setting. */
+  outsideLayer: string | null;
   /** The colour this row shows, or `null`: for a node with children,
    * the one colour all its parts show when they share one; otherwise the
    * node's effective, inherited colour, `node.color` (OpenSpec
@@ -110,6 +116,24 @@ export function navigatorRows(
   };
   gather(assembly);
 
+  // One post-order pass for the shown layer (design Decision 5): whether
+  // the node or any node below it is on it. A node's layers are already
+  // effective, so a node's own report covers every ancestor's. Read only
+  // while a layer is shown, so a snapshot without `layers` is never asked.
+  const shownLayer = navigation.layer ?? null;
+  const holdsLayer = new Map<AssemblyNode, boolean>();
+  if (shownLayer !== null) {
+    const hold = (node: AssemblyNode): boolean => {
+      let holds = node.layers.includes(shownLayer.key);
+      for (const child of node.children) {
+        if (hold(child)) holds = true;
+      }
+      holdsLayer.set(node, holds);
+      return holds;
+    };
+    hold(assembly);
+  }
+
   const visit = (
     node: AssemblyNode,
     depth: number,
@@ -121,6 +145,8 @@ export function navigatorRows(
     const hidden = hiddenKeys.has(key);
     const isRoot = navigation.root === null ? depth === 0 : key === rootKey;
     const partsColour = shared.get(node) ?? null;
+    const outsideLayer = shownLayer !== null && holdsLayer.get(node) === false
+      ? shownLayer.label : null;
 
     rows.push({
       node,
@@ -131,8 +157,9 @@ export function navigatorRows(
       active: local.active === key,
       root: isRoot,
       hidden,
-      obscured: hidingAncestor !== null,
+      obscured: hidingAncestor !== null || outsideLayer !== null,
       hidingAncestor,
+      outsideLayer,
       color: expandable && partsColour !== null ? partsColour : node.color,
     });
 
@@ -163,8 +190,13 @@ export interface ChipState {
 export function chipState(row: NavigatorRow): ChipState {
   const checked = !row.hidden;
   const fill: ChipFill = !checked ? 'none' : (row.color !== null ? 'color' : 'neutral');
-  const label = row.obscured
-    ? `Visibility for ${row.node.name} (hidden with ${row.hidingAncestor})`
+  // What obscures the row, hiding ancestor first, then the shown layer.
+  const reasons = [
+    ...(row.hidingAncestor !== null ? [`hidden with ${row.hidingAncestor}`] : []),
+    ...(row.outsideLayer !== null ? [`not on the shown layer ${row.outsideLayer}`] : []),
+  ];
+  const label = reasons.length > 0
+    ? `Visibility for ${row.node.name} (${reasons.join(', ')})`
     : `Visibility for ${row.node.name}`;
   return { checked, fill, label };
 }

@@ -5,6 +5,19 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- The viewer reads a document's `layers` and puts every part on its effective
+  layers, its own entry's and every entry above it, as a part inherits its
+  colour. The handle's `layers()`, `layer(key)` (an unknown key refused by
+  name) and `show(layer | null)` show only the parts on one layer or the whole
+  machine; a part the layer leaves out is absent for drawing, pressing,
+  hovering, `partOnScreen` and framing, and the camera does not move. The
+  shown layer composes with the navigator's focus and hidden paths without
+  overriding either, is reported by `navigation()` and, per node, by
+  `assembly()`, is kept on a republish that still declares it, and marks the
+  navigator's rows it leaves out. `useMachine()` answers `layers`. The viewer
+  adds no layer control of its own: a model's app makes its buttons. A
+  malformed `layers` list refuses the document by name. Viewer API 32;
+  document versions 1 through 14.
 - A model's own app, named by its document's `app` record, is shown in place
   of the automatic panel, its instruction buttons and its animation bar,
   wherever the panel would be presented: the export page, the development

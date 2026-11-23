@@ -277,6 +277,57 @@ class HarnessTest(_Browser):
         self.assertEqual(
             [one for one in self.errors if 'app is not shown' not in one], [])
 
+    def test_b7_a_page_shows_one_layer_through_the_handle(self):
+        """OpenSpec `show-only-a-layer`, design Decision 11, B7: the copy's
+        document is given `layers` and node keys by the test; a page script
+        shows a layer through the handle, and a part off it has no on-screen
+        rectangle while one on it has."""
+        path = self.build / 'viewer.json'
+        document = json.loads(path.read_text())
+        document['layers'] = [{'key': 'digits', 'label': 'Digits'},
+                              {'key': 'dial', 'label': 'Dial'}]
+        for node in document['root']['children']:
+            if node['name'] in ('w0', 'w1', 'w2', 'w3'):
+                node['layers'] = ['digits']
+            elif node['name'] == 'crank_dial':
+                node['layers'] = ['dial']
+        path.write_text(json.dumps(document))
+        self.harness()
+        base = self.serve_static()
+        with self.browsing() as page:
+            page.goto(f'{base}/harness.html')
+            result = page.evaluate("""async () => {
+              const viewer = await MachinomeViewer.mount(
+                document.getElementById('host'), 'viewer.json', {});
+              const on = (path) => viewer.partOnScreen(path) !== null;
+              const seen = () => ({ face: on(['w0', 'face']),
+                                    dial: on(['crank_dial']),
+                                    knob: on(['knob']) });
+              const out = { labels: viewer.layers().map((one) => one.label),
+                            whole: seen() };
+              viewer.show(viewer.layer('digits'));
+              out.digits = seen();
+              out.digitsState = viewer.navigation().layer;
+              viewer.show(viewer.layer('dial'));
+              out.dial = seen();
+              viewer.show(null);
+              out.restored = seen();
+              try { viewer.show('digits'); out.string = 'accepted'; }
+              catch (error) { out.string = String(error.message); }
+              try { viewer.layer('nope'); out.unknown = 'accepted'; }
+              catch (error) { out.unknown = String(error.message); }
+              return out;
+            }""")
+        self.assertEqual(result['labels'], ['Digits', 'Dial'])
+        self.assertEqual(result['whole'], {'face': True, 'dial': True, 'knob': True})
+        self.assertEqual(result['digits'], {'face': True, 'dial': False, 'knob': False})
+        self.assertEqual(result['digitsState'], {'key': 'digits', 'label': 'Digits'})
+        self.assertEqual(result['dial'], {'face': False, 'dial': True, 'knob': False})
+        self.assertEqual(result['restored'], result['whole'])
+        self.assertIn('show() takes a layer', result['string'])
+        self.assertIn("Unknown layer 'nope'", result['unknown'])
+        self.assertEqual(self.errors, [])
+
     def test_b5_a_host_that_suppresses_the_chrome_requests_no_app(self):
         self.harness()
         base = self.serve_static()

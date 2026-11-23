@@ -51,8 +51,15 @@ refuse format 14. API 31 reads a document's ``app`` record and shows the
 model's own app in place of the automatic panel (:doc:`app`), and adds
 :js:meth:`ViewerHandle.onMachineChange` and :js:meth:`MachineHandle.drawing`.
 The record is additive within the same document versions: a reader before
-API 31 ignores it and shows the automatic panel. :doc:`/project/status`
-records publication state.
+API 31 ignores it and shows the automatic panel. API 32 reads a document's
+``layers`` and adds :js:meth:`ViewerHandle.layers`,
+:js:meth:`ViewerHandle.layer` and :js:meth:`ViewerHandle.show`, a ``layer`` in
+:js:meth:`ViewerHandle.navigation` and ``layers`` on each node of
+:js:meth:`ViewerHandle.assembly`, and ``layers`` in the reading
+``useMachine()`` answers. The fields are additive within the same document
+versions: a reader before API 32 ignores them and draws the whole machine, and
+a page that needs ``show`` checks for API 32 or later.
+:doc:`/project/status` records publication state.
 
 Document capabilities
 =====================

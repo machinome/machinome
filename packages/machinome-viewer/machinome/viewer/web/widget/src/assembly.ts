@@ -4,12 +4,17 @@
  * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
+import type { ManifestLayer } from './types';
 import {
   AssemblyNode,
   AssemblyPath,
   assemblyPathKey,
   WidgetTree,
 } from './tree';
+
+/** One layer of the document, as the handle answers it: a frozen
+ * `{key, label}` (OpenSpec `show-only-a-layer`). */
+export type Layer = Readonly<ManifestLayer>;
 
 /** The navigation state a host reads: the focused root, or `null` for
  * the published document root -- the same `null` `setRoot` accepts, so a
@@ -20,11 +25,20 @@ import {
 export interface AssemblyNavigationState {
   root: string[] | null;
   hidden: string[][];
+  /** The layer shown, as a copy of its key and label -- or `null` for the
+   * whole machine, the same `null` `show` accepts, so a reported layer is
+   * always a value it can be handed back. A part the layer leaves out is
+   * never listed in `hidden`. */
+  layer: ManifestLayer | null;
 }
 
 export class AssemblyNavigation {
   private focusedPath: string[] | null = null;
   private hiddenPaths = new Map<string, string[]>();
+  // The shown layer, kept whole so a report needs no other table; null
+  // shows the whole machine. A third state, independent of the other two
+  // (OpenSpec `show-only-a-layer`, design Decision 5).
+  private shown: Layer | null = null;
 
   root(): string[] | null {
     return this.focusedPath === null ? null : [...this.focusedPath];
@@ -35,6 +49,7 @@ export class AssemblyNavigation {
     return {
       root: this.root(),
       hidden: [...this.hiddenPaths.values()].map((path) => [...path]),
+      layer: this.shown === null ? null : { key: this.shown.key, label: this.shown.label },
     };
   }
 
@@ -61,8 +76,23 @@ export class AssemblyNavigation {
     this.apply(tree);
   }
 
-  reconcile(tree: WidgetTree): boolean {
+  /** Show only the parts on `layer`, or the whole machine for null. The
+   * focus and the hidden paths are not touched. */
+  setLayer(tree: WidgetTree, layer: Layer | null): void {
+    this.shown = layer;
+    this.apply(tree);
+  }
+
+  /** Re-apply after the tree changed. `layers` is what the tree's
+   * document now declares: the shown layer stays while its key is still
+   * there (with the document's label) and is dropped otherwise, which
+   * moves no camera. Answers whether the FOCUSED ROOT was lost. */
+  reconcile(tree: WidgetTree, layers: readonly Layer[] = []): boolean {
     let rootChanged = false;
+    if (this.shown !== null) {
+      const key = this.shown.key;
+      this.shown = layers.find((one) => one.key === key) ?? null;
+    }
     if (this.focusedPath !== null && !tree.hasPath(this.focusedPath)) {
       this.focusedPath = null;
       rootChanged = true;
@@ -77,7 +107,8 @@ export class AssemblyNavigation {
   }
 
   private apply(tree: WidgetTree): void {
-    tree.applyVisibility(this.focusedPath, new Set(this.hiddenPaths.keys()));
+    tree.applyVisibility(this.focusedPath, new Set(this.hiddenPaths.keys()),
+                         this.shown === null ? null : this.shown.key);
   }
 }
 

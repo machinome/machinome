@@ -910,6 +910,21 @@ def document_body(node, root, drivers, instructions, program=None,
     declarations the document already published and still renders the
     truth.
 
+    ``layers`` is gathered HERE and not by a producer (OpenSpec change
+    ``declare-a-parts-layers``): ``serialize_node`` leaves each node's
+    declared ``Layer`` objects in its entry, and ``_publish_layers`` turns
+    them into the keys the document carries and the table at the top, one
+    ``{"key", "label"}`` per distinct layer in the order a depth-first
+    walk of the published tree first meets it, placed after
+    ``instructions`` and ``controls``. A node entry's ``layers`` are the
+    keys its class declares, never the ones it inherits from the nodes
+    above it, which a consumer derives down the tree as it derives
+    ``color``. Two different ``Layer`` objects of one key in one tree are
+    refused, so no document is published. Both keys are ABSENT where
+    nothing is declared, so a model that declares no layer publishes the
+    bytes it published before layers existed; they move no version, a
+    consumer that ignores them drawing the whole machine.
+
     ``app`` is the record of the model's own app (OpenSpec change
     ``declare-a-models-app``): ``{'script', 'stylesheet'?}`` naming the
     files bundled beside the document, or ``{'refusal'}``. It is the
@@ -918,6 +933,7 @@ def document_body(node, root, drivers, instructions, program=None,
     version.
     """
     _refuse_an_uncompiled_clocked_model(node, clocked)
+    layers = _publish_layers(root)
     block = None if program is None else program_block(program, initial)
     machine = None if clocked is None else clocked_block(clocked, initial)
     states = None if clocked is None else states_table(clocked.states)
@@ -938,6 +954,8 @@ def document_body(node, root, drivers, instructions, program=None,
     body['instructions'] = instructions
     if controls:
         body['controls'] = controls
+    if layers:
+        body['layers'] = layers
     if bindings:
         body['bindings'] = bindings
     if block is not None:
@@ -947,6 +965,55 @@ def document_body(node, root, drivers, instructions, program=None,
     if app is not None:
         body['app'] = app
     return body
+
+
+def _publish_layers(root):
+    """Replace each node entry's declared ``Layer`` objects by their keys,
+    in place, and answer the document's ``layers`` table (``[]`` when no
+    node declares one).
+
+    The walk is depth-first in child order, so the table lists the layers
+    in the order a reader of the tree first meets them, each node's own in
+    declaration order. A key two different ``Layer`` objects share is
+    refused, naming both and the root-relative path of the first node that
+    declares each: the page looks a layer up by its key, and two labels of
+    one key would make its buttons depend on which part was met first.
+    """
+    table = []
+    first = {}
+
+    def visit(entry, prefix):
+        path = f"{prefix}{entry['name']}"
+        declared = entry.get('layers')
+        if declared is not None:
+            for layer in declared:
+                seen = first.get(layer.key)
+                if seen is None:
+                    first[layer.key] = (layer, path)
+                    table.append({'key': layer.key, 'label': layer.label})
+                elif seen[0] is not layer:
+                    raise ValueError(
+                        f'two different layers share the key '
+                        f'{layer.key!r}: {seen[0]!r} on {seen[1]} and '
+                        f'{layer!r} on {path}; define a layer once and '
+                        f'import it where it is declared')
+            entry['layers'] = [layer.key for layer in declared]
+        for child in entry.get('children', ()):
+            visit(child, f'{path}/')
+
+    visit(root, '')
+    return table
+
+
+def _tree_path(node):
+    """The root-relative path of a node, its ancestors' names joined by
+    ``/``, as far as the node has been linked to its parent."""
+    names = []
+    current = node
+    while current is not None:
+        names.append(current.name)
+        current = current._parent
+    return '/'.join(reversed(names))
 
 
 def compiled_controls(program, initial):
@@ -1039,6 +1106,15 @@ def serialize_node(node, model_path, piece_id=None, *, graph_values=False,
                        if graph_values and hasattr(operation, '_graph_serialized')
                        else operation.serialized for operation in node.operations],
     }
+    if 'layers' in vars(node):
+        raise TypeError(
+            f'{_tree_path(node)} ({type(node).__name__}) assigns layers on '
+            f"the instance; a node's layers are declared in its class body")
+    declared = type(node)._declared_layers
+    if declared:
+        # The objects themselves: `document_body` replaces them by their
+        # keys, once for every producer.
+        data['layers'] = declared
     if node.rigid:
         model = model_path(node)
         data['model'] = model

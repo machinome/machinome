@@ -517,6 +517,11 @@ class AbstractBaseNode(metaclass=NodeMeta):
     # The rendering colors
     color = None
 
+    # The layers this class is on: what its body and its bases' bodies
+    # declared under `layers`, collected by `NodeMeta` (OpenSpec change
+    # `declare-a-parts-layers`). A class that declares none reads ().
+    _declared_layers = ()
+
     # This determines if stl can be generated for this Node
     rigid = True
 

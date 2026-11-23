@@ -135,9 +135,11 @@ Use the paths returned by ``assembly()`` rather than deriving them from labels.
 .. js:method:: ViewerHandle.assembly()
 
    Return an ``AssemblyNode`` snapshot of the whole published tree:
-   ``{name, path, color, model, children}``. ``path`` is a string array;
+   ``{name, path, color, model, layers, children}``. ``path`` is a string array;
    ``color`` is a string or null; ``model`` is a boolean indicating geometry;
-   ``children`` recursively contains the same structure. No three.js objects
+   ``layers`` is the array of keys of the layers the node is on, its own and
+   every ancestor's, in the order of :js:meth:`ViewerHandle.layers` (``[]``
+   for a node on none); ``children`` recursively contains the same structure. No three.js objects
    or live mutable tree state are exposed. Throws if no assembly is available.
 
 .. js:method:: ViewerHandle.setRoot(path)
@@ -154,18 +156,60 @@ Use the paths returned by ``assembly()`` rather than deriving them from labels.
 
 .. js:method:: ViewerHandle.navigation()
 
-   Return a serializable snapshot ``{root: string[] | null, hidden: string[][]}``
-   with the focus and explicitly hidden paths. Returned arrays are copies.
+   Return a serializable snapshot ``{root: string[] | null, hidden: string[][],
+   layer: {key, label} | null}`` with the focus, the explicitly hidden paths and
+   the shown layer (``null`` for the whole machine). A part that only the shown
+   layer leaves out is not listed in ``hidden``. Returned arrays and the layer
+   are copies, and the reported layer is always a value
+   :js:meth:`ViewerHandle.show` takes.
    It does not need a loaded tree and never throws. There is no
    ``restoreNavigation()`` method; reapply valid paths with ``setVisible()``
    and ``setRoot()`` if your host persists this state.
 
 .. js:method:: ViewerHandle.onAssemblyChange(listener)
 
-   Subscribe to accepted tree, focus and visibility operations. The callback
+   Subscribe to accepted tree, focus, visibility and layer operations. The callback
    receives ``{assembly, navigation}`` snapshots, including changes made by the
    built-in UI. Return value is a zero-argument unsubscribe function. This is
    an observation channel: do not drive the viewer from inside its callback.
+
+Layers
+======
+
+A model may declare layers, named groups of parts, and a page may show one at
+a time. :doc:`/howto/show-a-layer` walks through it; this is the lookup. A
+layer is the frozen object ``{key, label}``.
+
+.. js:method:: ViewerHandle.layers()
+
+   Return the layers the document declares, in the document's order, as a
+   frozen array of frozen layers; ``[]`` for a document that declares none. It
+   returns the same array, and the same objects, until a document whose layers
+   differ is installed, so an app may keep one in state and compare it.
+
+.. js:method:: ViewerHandle.layer(key)
+
+   Return the layer the document declares under ``key``. An unknown key throws
+   naming it and the keys the document declares; it never answers nothing.
+
+.. js:method:: ViewerHandle.show(layer)
+
+   Show only the parts on ``layer``, or the whole machine for ``null``; return
+   ``void``. One layer is shown at a time. ``layer`` is a layer from
+   :js:meth:`ViewerHandle.layers` or :js:meth:`ViewerHandle.layer`; it is
+   matched by its key, so a layer read before a republish still works while the
+   document declares it. A string, or a layer whose key the document does not
+   declare, throws by name and changes nothing and notifies nobody. Every
+   accepted call, a repeated one included, draws once and notifies
+   :js:meth:`ViewerHandle.onAssemblyChange` once. It does not move the camera.
+
+   A part the shown layer leaves out is absent: it is not drawn, its markings
+   are not drawn, a press, a hover and :js:meth:`ViewerHandle.partOnScreen` do
+   not reach it, and framing does not count it. A control it carries is still
+   listed by :js:meth:`ViewerHandle.controls` and cannot be reached on screen.
+   The focused root and the hidden paths are separate states and ``show``
+   leaves both as they are; a part is drawn only when the focus includes it, no
+   hidden path covers it and the shown layer holds it.
 
 Timeline and playback
 =====================
